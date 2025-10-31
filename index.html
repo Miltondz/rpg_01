@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dungeon Crawler Engine</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        
+        <!-- Debug UI Panel -->
+        <div id="debug-panel" class="debug-panel" data-ui-component="debug-panel" data-ui-name="main-debug-panel">
+            <h3>Debug Info</h3>
+            <div class="debug-item" data-ui-component="position-display" data-ui-name="position-container">
+                <span class="debug-label">Position:</span>
+                <span id="debug-position" class="debug-value" data-ui-component="position-value" data-ui-name="player-position">0, 0</span>
+            </div>
+            <div class="debug-item" data-ui-component="direction-display" data-ui-name="direction-container">
+                <span class="debug-label">Direction:</span>
+                <span id="debug-direction" class="debug-value" data-ui-component="direction-value" data-ui-name="player-direction">N</span>
+            </div>
+            <div class="debug-item" data-ui-component="fps-display" data-ui-name="fps-container">
+                <span class="debug-label">FPS:</span>
+                <span id="debug-fps" class="debug-value" data-ui-component="fps-value" data-ui-name="performance-counter">60</span>
+            </div>
+            <div class="debug-item" data-ui-component="tile-display" data-ui-name="tile-container">
+                <span class="debug-label">Tile Type:</span>
+                <span id="debug-tile-type" class="debug-value" data-ui-component="tile-value" data-ui-name="current-tile-info">floor</span>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container" data-ui-component="toast-container" data-ui-name="notification-system"></div>
+
+        <!-- Fade Overlay for Level Transitions -->
+        <div id="fade-overlay" class="fade-overlay" data-ui-component="fade-overlay" data-ui-name="transition-overlay"></div>
+
+        <!-- Minimap -->
+        <div id="minimap" class="minimap" data-ui-component="minimap-panel" data-ui-name="level-minimap">
+            <h4>Minimap</h4>
+            <div id="minimap-grid" class="minimap-grid" data-ui-component="minimap-grid" data-ui-name="minimap-display"></div>
+            <div class="minimap-legend">
+                <div><span class="legend-player">↑</span> Player</div>
+                <div><span class="legend-wall">■</span> Wall</div>
+                <div><span class="legend-floor">·</span> Floor</div>
+                <div><span class="legend-door">D</span> Door</div>
+                <div><span class="legend-door">T</span> Transition</div>
+            </div>
+        </div>
+
+        <!-- Controls Help -->
+        <div id="controls-help" class="controls-help" data-ui-component="controls-panel" data-ui-name="control-instructions">
+            <h4>Controls</h4>
+            <div class="control-group">
+                <span class="key">W/↑</span> Move Forward
+            </div>
+            <div class="control-group">
+                <span class="key">S/↓</span> Move Backward
+            </div>
+            <div class="control-group">
+                <span class="key">A/←</span> Turn Left
+            </div>
+            <div class="control-group">
+                <span class="key">D/→</span> Turn Right
+            </div>
+            <div class="control-group">
+                <span class="key">Q</span> Strafe Left
+            </div>
+            <div class="control-group">
+                <span class="key">E</span> Strafe Right
+            </div>
+            <div class="control-group">
+                <span class="key">Space</span> Interact
+            </div>
+            <div class="control-group">
+                <span class="key">I</span> Debug Info
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Game Engine Scripts -->
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>

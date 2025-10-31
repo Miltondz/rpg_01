@@ -1,0 +1,128 @@
+{
+  "id": "multi-room-20x20",
+  "width": 20,
+  "height": 20,
+  "spawn": {
+    "x": 1,
+    "z": 1,
+    "direction": 0
+  },
+  "tiles": [
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,
+    2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,
+    2, 1, 1, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 2,
+    2, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 2, 2, 2, 2,
+    2, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1, 1, 2,
+    2, 2, 2, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1, 1, 2,
+    2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2,
+    2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2,
+    2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 2,
+    2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,
+    2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,
+    2, 1, 1, 2, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 2,
+    2, 1, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 2,
+    2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 2, 2,
+    2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1, 2,
+    2, 1, 1, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 1, 2, 1, 1, 2, 1, 2,
+    2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3, 2,
+    2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+  ],
+  "doors": [
+    {
+      "x": 6,
+      "z": 1,
+      "orientation": "vertical",
+      "locked": false,
+      "keyType": null
+    },
+    {
+      "x": 3,
+      "z": 3,
+      "orientation": "horizontal",
+      "locked": true,
+      "keyType": "bronze"
+    },
+    {
+      "x": 6,
+      "z": 4,
+      "orientation": "vertical",
+      "locked": false,
+      "keyType": null
+    },
+    {
+      "x": 13,
+      "z": 4,
+      "orientation": "vertical",
+      "locked": true,
+      "keyType": "silver"
+    },
+    {
+      "x": 9,
+      "z": 7,
+      "orientation": "horizontal",
+      "locked": false,
+      "keyType": null
+    },
+    {
+      "x": 3,
+      "z": 10,
+      "orientation": "horizontal",
+      "locked": true,
+      "keyType": "gold"
+    },
+    {
+      "x": 6,
+      "z": 12,
+      "orientation": "vertical",
+      "locked": false,
+      "keyType": null
+    },
+    {
+      "x": 12,
+      "z": 12,
+      "orientation": "vertical",
+      "locked": true,
+      "keyType": "bronze"
+    },
+    {
+      "x": 14,
+      "z": 13,
+      "orientation": "horizontal",
+      "locked": false,
+      "keyType": null
+    },
+    {
+      "x": 7,
+      "z": 16,
+      "orientation": "horizontal",
+      "locked": true,
+      "keyType": "silver"
+    }
+  ],
+  "transitions": [
+    {
+      "x": 18,
+      "z": 17,
+      "type": "stairs",
+      "target": "test-room-10x10",
+      "spawn": {
+        "x": 1,
+        "z": 1,
+        "direction": 2
+      }
+    },
+    {
+      "x": 18,
+      "z": 1,
+      "type": "portal",
+      "target": "test-collision",
+      "spawn": {
+        "x": 1,
+        "z": 1,
+        "direction": 1
+      }
+    }
+  ]
+}

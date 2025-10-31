@@ -1,0 +1,41 @@
+{
+  "id": "next_level",
+  "width": 7,
+  "height": 7,
+  "spawn": {
+    "x": 1,
+    "z": 1,
+    "direction": 0
+  },
+  "tiles": [
+    2, 2, 2, 2, 2, 2, 2,
+    2, 1, 1, 1, 1, 1, 2,
+    2, 1, 2, 1, 2, 1, 2,
+    2, 1, 1, 1, 1, 1, 2,
+    2, 1, 2, 1, 2, 1, 2,
+    2, 1, 1, 1, 1, 1, 2,
+    2, 2, 2, 2, 2, 2, 2
+  ],
+  "doors": [
+    {
+      "x": 3,
+      "z": 1,
+      "orientation": "vertical",
+      "locked": false,
+      "keyType": null
+    }
+  ],
+  "transitions": [
+    {
+      "x": 5,
+      "z": 5,
+      "type": "stairs",
+      "target": "test-collision",
+      "spawn": {
+        "x": 1,
+        "z": 1,
+        "direction": 2
+      }
+    }
+  ]
+}

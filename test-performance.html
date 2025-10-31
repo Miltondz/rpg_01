@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Test - Dungeon Crawler Engine</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: #00ff00;
+        }
+        
+        #test-results {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 1px solid #00ff00;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 300px;
+        }
+        
+        #game-canvas {
+            border: 1px solid #00ff00;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .test-controls {
+            text-align: center;
+            margin: 20px;
+        }
+        
+        button {
+            background: #000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        
+        button:hover {
+            background: #00ff00;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <h1>Performance Optimization Test</h1>
+    
+    <div class="test-controls">
+        <button onclick="runPerformanceTest()">Run Performance Test</button>
+        <button onclick="runMemoryTest()">Run Memory Test</button>
+        <button onclick="runExtendedTest()">Run Extended Test (10min)</button>
+        <button onclick="showDetailedStats()">Show Detailed Stats</button>
+    </div>
+    
+    <canvas id="game-canvas" width="800" height="600"></canvas>
+    
+    <div id="test-results">
+        <div>Performance Test Results:</div>
+        <div id="fps-display">FPS: --</div>
+        <div id="memory-display">Memory: --</div>
+        <div id="instances-display">Instances: --</div>
+        <div id="culled-display">Culled: --</div>
+        <div id="optimizations-display">Optimizations: --</div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script type="module">
+        import { DungeonCrawlerEngine } from './src/main.js';
+        
+        let engine = null;
+        
+        // Initialize engine when page loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                console.log('Initializing performance test...');
+                
+                // Create engine instance
+                const engineClass = (await import('./src/main.js')).DungeonCrawlerEngine;
+                engine = new engineClass();
+                
+                // Initialize engine
+                await engine.initialize();
+                engine.start();
+                
+                // Make engine globally accessible for testing
+                window.dungeonEngine = engine;
+                
+                // Start performance monitoring
+                startPerformanceMonitoring();
+                
+                console.log('Performance test initialized successfully');
+                
+            } catch (error) {
+                console.error('Failed to initialize performance test:', error);
+                document.getElementById('test-results').innerHTML = 
+                    '<div style="color: red;">Failed to initialize: ' + error.message + '</div>';
+            }
+        });
+        
+        // Performance monitoring
+        function startPerformanceMonitoring() {
+            setInterval(() => {
+                if (engine && engine.performanceManager) {
+                    const metrics = engine.performanceManager.getPerformanceMetrics();
+                    
+                    document.getElementById('fps-display').textContent = 
+                        `FPS: ${metrics.fps.toFixed(1)}`;
+                    document.getElementById('memory-display').textContent = 
+                        `Memory: ${metrics.memoryUsage.toFixed(1)}MB`;
+                    document.getElementById('instances-display').textContent = 
+                        `Instances: ${metrics.instancedObjects}`;
+                    document.getElementById('culled-display').textContent = 
+                        `Culled: ${metrics.culledObjects}`;
+                    document.getElementById('optimizations-display').textContent = 
+                        `Optimizations: ${metrics.optimizationCount}`;
+                }
+            }, 1000);
+        }
+        
+        // Test functions
+        window.runPerformanceTest = async function() {
+            if (!engine || !engine.performanceManager) {
+                alert('Engine not ready');
+                return;
+            }
+            
+            console.log('Running performance test...');
+            
+            try {
+                // Run a 30-second stress test
+                const results = await engine.performanceManager.benchmark.runStressTest(30000);
+                
+                console.log('Performance test results:', results);
+                alert(`Performance Test Complete!\nAverage FPS: ${results.finalReport.averageFPS.toFixed(1)}\nMemory Peak: ${results.finalReport.memory.peak.toFixed(1)}MB`);
+                
+            } catch (error) {
+                console.error('Performance test failed:', error);
+                alert('Performance test failed: ' + error.message);
+            }
+        };
+        
+        window.runMemoryTest = function() {
+            if (!engine || !engine.performanceManager) {
+                alert('Engine not ready');
+                return;
+            }
+            
+            console.log('Running memory test...');
+            
+            // Force memory operations
+            const memoryManager = engine.performanceManager.memoryManager;
+            const stats = memoryManager.getStats();
+            
+            console.log('Memory test results:', stats);
+            alert(`Memory Test Results:\nCurrent Usage: ${stats.currentMemoryUsage.toFixed(1)}MB\nPeak Usage: ${stats.peakMemoryUsage.toFixed(1)}MB\nUndisposed Resources: ${stats.undisposedResources}`);
+        };
+        
+        window.runExtendedTest = async function() {
+            if (!engine || !engine.performanceManager) {
+                alert('Engine not ready');
+                return;
+            }
+            
+            if (!confirm('This will run a 10-minute extended test. Continue?')) {
+                return;
+            }
+            
+            console.log('Running extended session test...');
+            
+            try {
+                const results = await engine.performanceManager.runExtendedSessionTest(600000);
+                
+                console.log('Extended test results:', results);
+                alert(`Extended Test Complete!\nDuration: ${results.duration / 1000}s\nLeaks Detected: ${results.leaksDetected.length}\nRecommendations: ${results.recommendations.length}`);
+                
+            } catch (error) {
+                console.error('Extended test failed:', error);
+                alert('Extended test failed: ' + error.message);
+            }
+        };
+        
+        window.showDetailedStats = function() {
+            if (!engine || !engine.performanceManager) {
+                alert('Engine not ready');
+                return;
+            }
+            
+            // This will log detailed stats to console
+            engine.showPerformanceStats();
+            alert('Detailed statistics logged to console (F12)');
+        };
+    </script>
+</body>
+</html>
