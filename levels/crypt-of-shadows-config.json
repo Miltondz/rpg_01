@@ -1,0 +1,128 @@
+{
+  "dungeonId": "crypt-of-shadows",
+  "name": "Crypt of Shadows",
+  "description": "A five-floor dungeon that serves as the complete vertical slice experience",
+  "version": "1.0.0",
+  "targetLevelRange": {
+    "min": 1,
+    "max": 12
+  },
+  "estimatedPlaytime": {
+    "min": 150,
+    "max": 210
+  },
+  "floors": [
+    {
+      "id": "crypt-of-shadows-floor-1",
+      "name": "The Entrance",
+      "file": "crypt-of-shadows-floor-1.json",
+      "targetLevel": { "min": 1, "max": 2 },
+      "complexity": "tutorial",
+      "estimatedTime": 20,
+      "keyTheme": "bronze",
+      "safeZoneServices": ["save", "heal"],
+      "shopTier": null,
+      "bossType": null
+    },
+    {
+      "id": "crypt-of-shadows-floor-2",
+      "name": "The Crypts",
+      "file": "crypt-of-shadows-floor-2.json",
+      "targetLevel": { "min": 2, "max": 4 },
+      "complexity": "basic",
+      "estimatedTime": 25,
+      "keyTheme": "silver",
+      "safeZoneServices": ["save", "heal", "rest", "shop"],
+      "shopTier": "basic",
+      "bossType": null
+    },
+    {
+      "id": "crypt-of-shadows-floor-3",
+      "name": "The Shadow Chambers",
+      "file": "crypt-of-shadows-floor-3.json",
+      "targetLevel": { "min": 4, "max": 6 },
+      "complexity": "intermediate",
+      "estimatedTime": 35,
+      "keyTheme": "gold",
+      "safeZoneServices": ["save", "heal", "shop", "upgrade"],
+      "shopTier": "intermediate",
+      "bossType": "mini_boss"
+    },
+    {
+      "id": "crypt-of-shadows-floor-4",
+      "name": "The Ancient Halls",
+      "file": "crypt-of-shadows-floor-4.json",
+      "targetLevel": { "min": 6, "max": 9 },
+      "complexity": "advanced",
+      "estimatedTime": 50,
+      "keyTheme": "ancient",
+      "safeZoneServices": ["save", "heal", "shop", "upgrade", "enchant"],
+      "shopTier": "advanced",
+      "bossType": "mini_boss"
+    },
+    {
+      "id": "crypt-of-shadows-floor-5",
+      "name": "The Shadow Lord's Domain",
+      "file": "crypt-of-shadows-floor-5.json",
+      "targetLevel": { "min": 9, "max": 12 },
+      "complexity": "master",
+      "estimatedTime": 40,
+      "keyTheme": "shadow",
+      "safeZoneServices": ["save", "heal", "shop", "upgrade", "enchant", "blessing"],
+      "shopTier": "legendary",
+      "bossType": "final_boss"
+    }
+  ],
+  "progressionRules": {
+    "keyProgression": [
+      { "floor": 1, "keyType": "bronze", "sources": ["scripted_encounters", "loot_chests"] },
+      { "floor": 2, "keyType": "silver", "sources": ["scripted_encounters", "key_items"] },
+      { "floor": 3, "keyType": "gold", "sources": ["mini_boss", "key_items"] },
+      { "floor": 4, "keyType": "ancient", "sources": ["mini_boss", "key_items"] },
+      { "floor": 5, "keyType": "shadow", "sources": ["mini_boss"] },
+      { "floor": 5, "keyType": "final", "sources": ["boss"] }
+    ],
+    "levelGating": {
+      "enabled": true,
+      "recommendedLevels": [1, 2, 4, 6, 9],
+      "warningThreshold": 2
+    },
+    "safeZoneRules": {
+      "healingCooldown": 0,
+      "shopRefreshRate": "per_visit",
+      "upgradeAvailability": "floor_3_plus"
+    }
+  },
+  "balanceSettings": {
+    "encounterRates": {
+      "randomEncounter": 0.17,
+      "cooldownTiles": 3,
+      "safeZoneRadius": 1
+    },
+    "difficultyScaling": {
+      "baseEnemyLevel": "floor_number",
+      "levelVariance": 1,
+      "eliteBonus": 2,
+      "bossBonus": 4
+    },
+    "lootScaling": {
+      "goldMultiplier": [1.0, 1.2, 1.5, 2.0, 3.0],
+      "rarityBonus": [0.0, 0.1, 0.2, 0.4, 0.6],
+      "chestDensity": [0.1, 0.12, 0.15, 0.18, 0.2]
+    }
+  },
+  "completionCriteria": {
+    "requiredBossDefeats": ["shadow_lord_boss"],
+    "optionalObjectives": [
+      "defeat_all_mini_bosses",
+      "collect_all_legendary_items",
+      "discover_all_secret_areas"
+    ],
+    "rewards": {
+      "experience": 500,
+      "gold": 1000,
+      "titles": ["Shadow Slayer", "Crypt Conqueror"],
+      "achievements": ["first_completion", "speedrun_completion", "perfect_completion"]
+    }
+  }
+}

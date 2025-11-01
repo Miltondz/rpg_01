@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enemy Roster Verification - Task 12.2</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #2c1810, #4a2c1a);
+            border-radius: 10px;
+            border: 2px solid #8B4513;
+        }
+        
+        .tier-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #2a2a2a;
+            border-radius: 10px;
+            border-left: 5px solid #8B4513;
+        }
+        
+        .tier-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #D2691E;
+        }
+        
+        .enemy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .enemy-card {
+            background-color: #3a3a3a;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #555;
+        }
+        
+        .enemy-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #FFD700;
+            margin-bottom: 8px;
+        }
+        
+        .enemy-stats {
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        
+        .enemy-ai {
+            color: #87CEEB;
+            font-style: italic;
+        }
+        
+        .enemy-skills {
+            margin-top: 10px;
+            font-size: 0.8em;
+        }
+        
+        .skill-list {
+            color: #98FB98;
+        }
+        
+        .boss-card {
+            border: 2px solid #FF6347;
+            background: linear-gradient(135deg, #4a1a1a, #3a2a2a);
+        }
+        
+        .phase-info {
+            background-color: #4a2a2a;
+            padding: 8px;
+            margin-top: 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+        
+        .validation-results {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #2a4a2a;
+            border-radius: 10px;
+            border: 2px solid #32CD32;
+        }
+        
+        .error {
+            color: #FF6347;
+        }
+        
+        .success {
+            color: #32CD32;
+        }
+        
+        .warning {
+            color: #FFD700;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        button {
+            background-color: #8B4513;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        
+        button:hover {
+            background-color: #A0522D;
+        }
+        
+        .encounter-test {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #2a2a3a;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🐉 Enemy Roster Verification</h1>
+        <p>Task 12.2: Design enemy roster and boss encounters</p>
+        <p>Verifying 15 enemy types (4 per tier) + 3 bosses with unique AI behaviors</p>
+    </div>
+
+    <div class="controls">
+        <button onclick="loadEnemyRoster()">Load Enemy Roster</button>
+        <button onclick="validateDatabase()">Validate Database</button>
+        <button onclick="testEncounterGeneration()">Test Encounter Generation</button>
+        <button onclick="testBossPhases()">Test Boss Phases</button>
+    </div>
+
+    <div id="enemy-roster"></div>
+    <div id="validation-results"></div>
+    <div id="encounter-tests"></div>
+
+    <script type="module">
+        import { enemyDatabase } from './src/engine/data/EnemyDatabase.js';
+        import { Enemy } from './src/engine/combat/Enemy.js';
+        import { EnemyAI } from './src/engine/combat/EnemyAI.js';
+
+        window.enemyDatabase = enemyDatabase;
+        window.Enemy = Enemy;
+        window.EnemyAI = EnemyAI;
+
+        window.loadEnemyRoster = function() {
+            const rosterDiv = document.getElementById('enemy-roster');
+            rosterDiv.innerHTML = '';
+
+            // Group enemies by tier
+            const tiers = {
+                1: { title: 'Tier 1 Enemies (Levels 1-3)', enemies: [] },
+                2: { title: 'Tier 2 Enemies (Levels 4-7)', enemies: [] },
+                3: { title: 'Tier 3 Enemies (Levels 8-11)', enemies: [] },
+                'boss': { title: 'Boss Enemies (Levels 10+)', enemies: [] }
+            };
+
+            // Get all enemies and categorize
+            const allEnemyIds = enemyDatabase.getAllEnemyIds();
+            
+            for (const enemyId of allEnemyIds) {
+                const enemyData = enemyDatabase.getEnemy(enemyId);
+                if (enemyData) {
+                    tiers[enemyData.tier].enemies.push({ id: enemyId, ...enemyData });
+                }
+            }
+
+            // Render each tier
+            for (const [tierKey, tierData] of Object.entries(tiers)) {
+                if (tierData.enemies.length === 0) continue;
+
+                const tierSection = document.createElement('div');
+                tierSection.className = 'tier-section';
+                
+                const tierTitle = document.createElement('div');
+                tierTitle.className = 'tier-title';
+                tierTitle.textContent = `${tierData.title} (${tierData.enemies.length} enemies)`;
+                tierSection.appendChild(tierTitle);
+
+                const enemyGrid = document.createElement('div');
+                enemyGrid.className = 'enemy-grid';
+
+                for (const enemy of tierData.enemies) {
+                    const enemyCard = document.createElement('div');
+                    enemyCard.className = enemy.tier === 'boss' ? 'enemy-card boss-card' : 'enemy-card';
+
+                    const skillsList = enemy.skills ? enemy.skills.map(skill => skill.name).join(', ') : 'Basic Attack only';
+                    
+                    let phaseInfo = '';
+                    if (enemy.phases && enemy.phases.length > 0) {
+                        phaseInfo = `
+                            <div class="phase-info">
+                                <strong>Phases:</strong> ${enemy.phases.length}<br>
+                                Phase Skills: ${enemy.phases.map((phase, i) => 
+                                    `Phase ${i + 1} (${Math.floor(phase.hpThreshold * 100)}% HP)`
+                                ).join(', ')}
+                            </div>
+                        `;
+                    }
+
+                    enemyCard.innerHTML = `
+                        <div class="enemy-name">${enemy.name}</div>
+                        <div class="enemy-stats">
+                            Level: ${enemy.baseLevel} | 
+                            HP: ${enemy.baseStats.HP} | 
+                            ATK: ${enemy.baseStats.ATK} | 
+                            DEF: ${enemy.baseStats.DEF} | 
+                            SPD: ${enemy.baseStats.SPD}
+                        </div>
+                        <div class="enemy-ai">AI Type: ${enemy.aiType}</div>
+                        <div class="enemy-skills">
+                            <strong>Skills:</strong> <span class="skill-list">${skillsList}</span>
+                        </div>
+                        ${phaseInfo}
+                    `;
+
+                    enemyGrid.appendChild(enemyCard);
+                }
+
+                tierSection.appendChild(enemyGrid);
+                rosterDiv.appendChild(tierSection);
+            }
+        };
+
+        window.validateDatabase = function() {
+            const resultsDiv = document.getElementById('validation-results');
+            const validation = enemyDatabase.validateDatabase();
+            
+            let html = '<h3>Database Validation Results</h3>';
+            
+            if (validation.isValid) {
+                html += '<div class="success">✅ Database validation passed!</div>';
+            } else {
+                html += '<div class="error">❌ Database validation failed!</div>';
+            }
+            
+            html += `<div><strong>Enemy Count by Tier:</strong></div>`;
+            html += `<ul>`;
+            for (const [tier, count] of Object.entries(validation.summary)) {
+                const required = tier === 'boss' ? 3 : 4;
+                const status = count >= required ? 'success' : 'error';
+                html += `<li class="${status}">Tier ${tier}: ${count}/${required} enemies</li>`;
+            }
+            html += `</ul>`;
+            
+            if (validation.errors.length > 0) {
+                html += '<div class="error"><strong>Errors:</strong><ul>';
+                validation.errors.forEach(error => {
+                    html += `<li>${error}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            if (validation.warnings.length > 0) {
+                html += '<div class="warning"><strong>Warnings:</strong><ul>';
+                validation.warnings.forEach(warning => {
+                    html += `<li>${warning}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            resultsDiv.innerHTML = html;
+        };
+
+        window.testEncounterGeneration = function() {
+            const testsDiv = document.getElementById('encounter-tests');
+            testsDiv.innerHTML = '<h3>Encounter Generation Tests</h3>';
+            
+            const encounterTypes = ['easy', 'normal', 'hard', 'mini_boss', 'boss'];
+            const testLevels = [1, 5, 8, 12];
+            
+            for (const level of testLevels) {
+                const levelDiv = document.createElement('div');
+                levelDiv.className = 'encounter-test';
+                levelDiv.innerHTML = `<h4>Party Level ${level} Encounters</h4>`;
+                
+                for (const type of encounterTypes) {
+                    try {
+                        const encounter = enemyDatabase.createEncounterGroup(type, level);
+                        const enemyNames = encounter.map(e => `${e.type} (Lv.${e.level})`).join(', ');
+                        
+                        levelDiv.innerHTML += `
+                            <div><strong>${type}:</strong> ${enemyNames}</div>
+                        `;
+                    } catch (error) {
+                        levelDiv.innerHTML += `
+                            <div class="error"><strong>${type}:</strong> Error - ${error.message}</div>
+                        `;
+                    }
+                }
+                
+                testsDiv.appendChild(levelDiv);
+            }
+        };
+
+        window.testBossPhases = function() {
+            const testsDiv = document.getElementById('encounter-tests');
+            const bossDiv = document.createElement('div');
+            bossDiv.className = 'encounter-test';
+            bossDiv.innerHTML = '<h3>Boss Phase Testing</h3>';
+            
+            const bossTypes = ['shadow_lord', 'ancient_lich', 'elemental_overlord'];
+            
+            for (const bossType of bossTypes) {
+                try {
+                    const boss = new Enemy(bossType, 12);
+                    const ai = EnemyAI.createForEnemyType(bossType);
+                    boss.setAI(ai);
+                    
+                    bossDiv.innerHTML += `
+                        <div>
+                            <h4>${boss.name}</h4>
+                            <div>Phases: ${boss.phases ? boss.phases.length : 0}</div>
+                            <div>AI Type: ${boss.aiType} (Boss AI: ${ai.isBossAI ? 'Yes' : 'No'})</div>
+                            <div>Skills: ${boss.skills.length}</div>
+                        </div>
+                    `;
+                    
+                    // Test phase transitions
+                    if (boss.phases && boss.phases.length > 0) {
+                        bossDiv.innerHTML += '<div><strong>Phase Transition Test:</strong></div>';
+                        
+                        // Simulate damage to trigger phase transitions
+                        const originalHP = boss.currentHP;
+                        for (let i = 0; i < boss.phases.length; i++) {
+                            const phase = boss.phases[i];
+                            const targetHP = Math.floor(boss.maxHP * phase.hpThreshold);
+                            boss.currentHP = targetHP;
+                            
+                            const phaseChanged = boss.checkPhaseTransition();
+                            bossDiv.innerHTML += `
+                                <div>HP: ${targetHP}/${boss.maxHP} (${Math.floor(phase.hpThreshold * 100)}%) - 
+                                Phase: ${boss.currentPhase + 1} - Changed: ${phaseChanged}</div>
+                            `;
+                        }
+                        
+                        boss.currentHP = originalHP; // Reset
+                    }
+                } catch (error) {
+                    bossDiv.innerHTML += `
+                        <div class="error">Error testing ${bossType}: ${error.message}</div>
+                    `;
+                }
+            }
+            
+            testsDiv.appendChild(bossDiv);
+        };
+
+        // Auto-load on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEnemyRoster();
+            validateDatabase();
+        });
+    </script>
+</body>
+</html>
+</content>
+</invoke>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enemy Database Test - Crypt of Shadows</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            background-color: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        .enemy-card {
+            background-color: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #666;
+        }
+        .tier-1 { border-left-color: #4CAF50; }
+        .tier-2 { border-left-color: #FF9800; }
+        .tier-3 { border-left-color: #F44336; }
+        .boss { border-left-color: #9C27B0; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .stat {
+            background-color: #444;
+            padding: 5px;
+            text-align: center;
+            border-radius: 3px;
+        }
+        .skills {
+            margin-top: 10px;
+        }
+        .skill {
+            background-color: #555;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .encounter-test {
+            background-color: #2a4a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .validation {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .validation.valid {
+            background-color: #2a4a2a;
+            border: 1px solid #4CAF50;
+        }
+        .validation.invalid {
+            background-color: #4a2a2a;
+            border: 1px solid #F44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enemy Database Test - Crypt of Shadows</h1>
+        
+        <div class="section">
+            <h2>Database Validation</h2>
+            <div id="validation-results"></div>
+        </div>
+
+        <div class="section">
+            <h2>Enemy Roster by Tier</h2>
+            <div id="enemy-roster"></div>
+        </div>
+
+        <div class="section">
+            <h2>Encounter Generation Test</h2>
+            <button onclick="testEncounterGeneration()">Generate Test Encounters</button>
+            <div id="encounter-results"></div>
+        </div>
+
+        <div class="section">
+            <h2>Boss Phase System Test</h2>
+            <button onclick="testBossPhases()">Test Boss Phases</button>
+            <div id="boss-results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { enemyDatabase } from './src/engine/data/EnemyDatabase.js';
+        import { Enemy } from './src/engine/combat/Enemy.js';
+
+        // Make available globally for button handlers
+        window.enemyDatabase = enemyDatabase;
+        window.Enemy = Enemy;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            displayValidationResults();
+            displayEnemyRoster();
+        });
+
+        function displayValidationResults() {
+            const validation = enemyDatabase.validateDatabase();
+            const container = document.getElementById('validation-results');
+            
+            const validationDiv = document.createElement('div');
+            validationDiv.className = `validation ${validation.isValid ? 'valid' : 'invalid'}`;
+            
+            let html = `<h3>Validation ${validation.isValid ? 'PASSED' : 'FAILED'}</h3>`;
+            html += `<p><strong>Summary:</strong> Tier 1: ${validation.summary[1]}, Tier 2: ${validation.summary[2]}, Tier 3: ${validation.summary[3]}, Bosses: ${validation.summary.boss}</p>`;
+            
+            if (validation.errors.length > 0) {
+                html += '<h4>Errors:</h4><ul>';
+                validation.errors.forEach(error => {
+                    html += `<li>${error}</li>`;
+                });
+                html += '</ul>';
+            }
+            
+            if (validation.warnings.length > 0) {
+                html += '<h4>Warnings:</h4><ul>';
+                validation.warnings.forEach(warning => {
+                    html += `<li>${warning}</li>`;
+                });
+                html += '</ul>';
+            }
+            
+            validationDiv.innerHTML = html;
+            container.appendChild(validationDiv);
+        }
+
+        function displayEnemyRoster() {
+            const container = document.getElementById('enemy-roster');
+            
+            // Display by tier
+            for (const tier of [1, 2, 3, 'boss']) {
+                const tierEnemies = enemyDatabase.getEnemiesByTier(tier);
+                
+                const tierSection = document.createElement('div');
+                tierSection.innerHTML = `<h3>Tier ${tier} Enemies (${tierEnemies.length})</h3>`;
+                
+                tierEnemies.forEach(enemyData => {
+                    const enemyCard = document.createElement('div');
+                    enemyCard.className = `enemy-card tier-${tier}`;
+                    
+                    let html = `
+                        <h4>${enemyData.name} (${enemyData.id})</h4>
+                        <p><strong>Level:</strong> ${enemyData.baseLevel} | <strong>AI:</strong> ${enemyData.aiType} | <strong>Element:</strong> ${enemyData.baseStats.element}</p>
+                        <div class="stats">
+                            <div class="stat"><strong>HP:</strong> ${enemyData.baseStats.HP}</div>
+                            <div class="stat"><strong>ATK:</strong> ${enemyData.baseStats.ATK}</div>
+                            <div class="stat"><strong>DEF:</strong> ${enemyData.baseStats.DEF}</div>
+                            <div class="stat"><strong>SPD:</strong> ${enemyData.baseStats.SPD}</div>
+                            <div class="stat"><strong>Element:</strong> ${enemyData.baseStats.element}</div>
+                        </div>
+                    `;
+                    
+                    if (enemyData.skills && enemyData.skills.length > 0) {
+                        html += '<div class="skills"><strong>Skills:</strong>';
+                        enemyData.skills.forEach(skill => {
+                            html += `<div class="skill">${skill.name} (${skill.apCost} AP) - ${skill.description}</div>`;
+                        });
+                        html += '</div>';
+                    }
+                    
+                    if (enemyData.resistances && Object.keys(enemyData.resistances).length > 0) {
+                        html += '<p><strong>Resistances:</strong> ';
+                        const resistances = Object.entries(enemyData.resistances).map(([element, value]) => 
+                            `${element}: ${Math.round(value * 100)}%`
+                        );
+                        html += resistances.join(', ') + '</p>';
+                    }
+                    
+                    enemyCard.innerHTML = html;
+                    tierSection.appendChild(enemyCard);
+                });
+                
+                container.appendChild(tierSection);
+            }
+        }
+
+        // Make functions available globally
+        window.testEncounterGeneration = function() {
+            const container = document.getElementById('encounter-results');
+            container.innerHTML = '';
+            
+            const encounterTypes = ['easy', 'normal', 'hard', 'mini_boss', 'boss'];
+            const partyLevels = [1, 3, 6, 9, 12];
+            
+            partyLevels.forEach(partyLevel => {
+                const levelSection = document.createElement('div');
+                levelSection.innerHTML = `<h4>Party Level ${partyLevel} Encounters</h4>`;
+                
+                encounterTypes.forEach(encounterType => {
+                    const enemies = enemyDatabase.createEncounterGroup(encounterType, partyLevel);
+                    
+                    const encounterDiv = document.createElement('div');
+                    encounterDiv.className = 'encounter-test';
+                    
+                    let html = `<strong>${encounterType.toUpperCase()}:</strong> `;
+                    html += enemies.map(enemy => `${enemy.type} (Lv.${enemy.level})`).join(', ');
+                    
+                    encounterDiv.innerHTML = html;
+                    levelSection.appendChild(encounterDiv);
+                });
+                
+                container.appendChild(levelSection);
+            });
+        };
+
+        window.testBossPhases = function() {
+            const container = document.getElementById('boss-results');
+            container.innerHTML = '';
+            
+            // Test Shadow Lord phases
+            const shadowLord = new Enemy('shadow_lord', 12);
+            
+            const bossSection = document.createElement('div');
+            bossSection.innerHTML = `<h4>Testing ${shadowLord.name} Phase System</h4>`;
+            
+            // Simulate damage to trigger phases
+            const phases = [
+                { hp: 1.0, description: 'Full Health - Phase 1' },
+                { hp: 0.6, description: '60% Health - Phase 2' },
+                { hp: 0.3, description: '30% Health - Phase 3' }
+            ];
+            
+            phases.forEach((phase, index) => {
+                shadowLord.currentHP = Math.floor(shadowLord.maxHP * phase.hp);
+                const phaseChanged = shadowLord.checkPhaseTransition();
+                
+                const phaseDiv = document.createElement('div');
+                phaseDiv.className = 'encounter-test';
+                
+                let html = `<strong>${phase.description}</strong><br>`;
+                html += `Current Phase: ${shadowLord.currentPhase + 1}<br>`;
+                html += `Available Skills: ${shadowLord.getCurrentPhaseSkills().map(s => s.name).join(', ')}<br>`;
+                html += `Phase Changed: ${phaseChanged ? 'Yes' : 'No'}`;
+                
+                phaseDiv.innerHTML = html;
+                bossSection.appendChild(phaseDiv);
+            });
+            
+            container.appendChild(bossSection);
+        };
+    </script>
+</body>
+</html>

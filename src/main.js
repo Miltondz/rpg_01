@@ -8,6 +8,7 @@ import { GridSystem } from './engine/core/GridSystem.js';
 import { Renderer } from './engine/core/Renderer.js';
 import { InputManager } from './engine/managers/InputManager.js';
 import { MovementController } from './engine/managers/MovementController.js';
+import { GameLoopManager } from './engine/managers/GameLoopManager.js';
 import { CollisionSystem } from './engine/systems/CollisionSystem.js';
 import { DoorSystem } from './engine/systems/DoorSystem.js';
 import { TransitionSystem } from './engine/systems/TransitionSystem.js';
@@ -15,6 +16,21 @@ import { DungeonLoader } from './engine/loaders/DungeonLoader.js';
 import { GeometryFactory } from './engine/utils/GeometryFactory.js';
 import { DebugUI } from './engine/ui/DebugUI.js';
 import { PerformanceManager } from './engine/performance/PerformanceManager.js';
+
+// Import performance systems
+import { PerformanceOptimizer } from './engine/performance/PerformanceOptimizer.js';
+import { MemoryManager } from './engine/performance/MemoryManager.js';
+import { PerformanceTester } from './engine/performance/PerformanceTester.js';
+
+// Import game systems
+import { CombatSystem } from './engine/combat/CombatSystem.js';
+import { PartyManager } from './engine/character/PartyManager.js';
+import { SaveSystem } from './engine/save/SaveSystem.js';
+import { shopSystem } from './engine/shop/ShopSystem.js';
+import { lootSystem } from './engine/loot/LootSystem.js';
+import { InventorySystem } from './engine/inventory/InventorySystem.js';
+import { itemDatabase } from './engine/inventory/ItemDatabase.js';
+import { enemyDatabase } from './engine/data/EnemyDatabase.js';
 
 /**
  * Main Game Engine Class
@@ -26,6 +42,7 @@ class DungeonCrawlerEngine {
     this.renderer = null;
     this.inputManager = null;
     this.movementController = null;
+    this.gameLoopManager = null;
     this.collisionSystem = null;
     this.doorSystem = null;
     this.transitionSystem = null;
@@ -33,6 +50,21 @@ class DungeonCrawlerEngine {
     this.geometryFactory = null;
     this.debugUI = null;
     this.performanceManager = null;
+    
+    // Performance systems
+    this.performanceOptimizer = null;
+    this.memoryManager = null;
+    this.performanceTester = null;
+    
+    // Game systems
+    this.combatSystem = null;
+    this.partyManager = null;
+    this.saveSystem = null;
+    this.shopSystem = shopSystem;
+    this.lootSystem = lootSystem;
+    this.inventorySystem = null;
+    this.itemDatabase = itemDatabase;
+    this.enemyDatabase = enemyDatabase;
     
     // Game state
     this.isInitialized = false;
@@ -96,8 +128,18 @@ class DungeonCrawlerEngine {
         autoOptimize: true
       });
       
+      // Initialize performance systems
+      this.performanceOptimizer.startMonitoring();
+      this.memoryManager.startMonitoring();
+      await this.performanceTester.initialize();
+      
       // Load initial test level automatically - start with 10x10 test room
       await this.loadInitialTestLevel();
+      
+      // Initialize game loop manager after level is loaded
+      if (this.gameLoopManager) {
+        await this.gameLoopManager.initialize();
+      }
       
       // Log initial player state for debugging
       const playerPos = this.movementController.getPosition();
@@ -131,6 +173,15 @@ class DungeonCrawlerEngine {
         }
         if (event.code === 'KeyL') { // L key for loading next test level
           this.loadTestLevel();
+        }
+        if (event.code === 'KeyC') { // C key for combat performance test
+          this.runCombatPerformanceTest();
+        }
+        if (event.code === 'KeyS') { // S key for save/load performance test
+          this.runSaveLoadPerformanceTest();
+        }
+        if (event.code === 'KeyR') { // R key for performance report
+          this.showPerformanceReport();
         }
       });
       
@@ -168,6 +219,20 @@ class DungeonCrawlerEngine {
     
     // Initialize performance manager
     this.performanceManager = new PerformanceManager(this.renderer, this.renderer.getCamera());
+    
+    // Initialize performance systems
+    this.performanceOptimizer = new PerformanceOptimizer();
+    this.memoryManager = new MemoryManager();
+    this.performanceTester = new PerformanceTester(this);
+    
+    // Initialize game systems
+    this.combatSystem = new CombatSystem();
+    this.partyManager = new PartyManager();
+    this.saveSystem = new SaveSystem();
+    this.inventorySystem = new InventorySystem(40);
+    
+    // Initialize game loop manager
+    this.gameLoopManager = new GameLoopManager(this);
     
     // Initialize camera position based on movement controller
     const initialWorldPos = this.movementController.getCurrentWorldPosition();
@@ -1351,6 +1416,150 @@ class DungeonCrawlerEngine {
   }
 
   /**
+   * Run combat performance test (press C key)
+   */
+  async runCombatPerformanceTest() {
+    if (!this.performanceTester) {
+      this.debugUI.showWarning('Performance tester not available');
+      return;
+    }
+    
+    this.debugUI.showToast('Starting combat performance test (100 combats)...', 'info');
+    console.log('Starting combat performance test...');
+    
+    try {
+      const results = await this.performanceTester.runCombatPerformanceTest({
+        targetCount: 100,
+        enemyCount: 6
+      });
+      
+      console.log('=== COMBAT PERFORMANCE TEST RESULTS ===');
+      console.log(`Combats completed: ${results.combats.length}`);
+      console.log(`Average combat time: ${results.metrics.avgCombatTime.toFixed(0)}ms`);
+      console.log(`Average FPS: ${results.metrics.avgFPS.toFixed(1)}`);
+      console.log(`Min FPS: ${results.metrics.minFPS.toFixed(1)}`);
+      console.log(`Memory increase: ${results.metrics.memoryIncrease.toFixed(1)}MB`);
+      console.log(`Success rate: ${(results.metrics.successRate * 100).toFixed(1)}%`);
+      console.log('======================================');
+      
+      // Show summary in UI
+      const fpsStatus = results.metrics.avgFPS >= 55 ? '✅' : '❌';
+      const summary = `Combat test: ${fpsStatus} ${results.metrics.avgFPS.toFixed(1)} FPS avg, ${results.metrics.avgCombatTime.toFixed(0)}ms avg time`;
+      this.debugUI.showSuccess(summary);
+      
+    } catch (error) {
+      console.error('Combat performance test failed:', error);
+      this.debugUI.showError('Combat performance test failed', { system: 'PerformanceTester' });
+    }
+  }
+
+  /**
+   * Run save/load performance test (press S key)
+   */
+  async runSaveLoadPerformanceTest() {
+    if (!this.performanceTester) {
+      this.debugUI.showWarning('Performance tester not available');
+      return;
+    }
+    
+    this.debugUI.showToast('Starting save/load performance test (50 operations)...', 'info');
+    console.log('Starting save/load performance test...');
+    
+    try {
+      const results = await this.performanceTester.runSaveLoadPerformanceTest({
+        targetCount: 50
+      });
+      
+      console.log('=== SAVE/LOAD PERFORMANCE TEST RESULTS ===');
+      console.log(`Operations completed: ${results.operations.length}`);
+      console.log(`Average save time: ${results.metrics.avgSaveTime.toFixed(0)}ms`);
+      console.log(`Average load time: ${results.metrics.avgLoadTime.toFixed(0)}ms`);
+      console.log(`Max save time: ${results.metrics.maxSaveTime.toFixed(0)}ms`);
+      console.log(`Max load time: ${results.metrics.maxLoadTime.toFixed(0)}ms`);
+      console.log(`Success rate: ${(results.metrics.successRate * 100).toFixed(1)}%`);
+      console.log(`Failure count: ${results.metrics.failureCount}`);
+      console.log('=========================================');
+      
+      // Show summary in UI
+      const saveStatus = results.metrics.avgSaveTime < 1000 ? '✅' : '❌';
+      const loadStatus = results.metrics.avgLoadTime < 1000 ? '✅' : '❌';
+      const summary = `Save/Load test: ${saveStatus} ${results.metrics.avgSaveTime.toFixed(0)}ms save, ${loadStatus} ${results.metrics.avgLoadTime.toFixed(0)}ms load`;
+      this.debugUI.showSuccess(summary);
+      
+    } catch (error) {
+      console.error('Save/load performance test failed:', error);
+      this.debugUI.showError('Save/load performance test failed', { system: 'PerformanceTester' });
+    }
+  }
+
+  /**
+   * Show comprehensive performance report (press R key)
+   */
+  showPerformanceReport() {
+    if (!this.performanceTester) {
+      this.debugUI.showWarning('Performance tester not available');
+      return;
+    }
+    
+    const results = this.performanceTester.getTestResults();
+    const optimizerMetrics = this.performanceOptimizer.getMetrics();
+    const memoryStats = this.memoryManager.getMemoryStats();
+    
+    console.log('=== COMPREHENSIVE PERFORMANCE REPORT ===');
+    
+    // Current performance metrics
+    console.log('\n--- Current Performance ---');
+    console.log(`FPS: ${optimizerMetrics.avgFPS.toFixed(1)} (min: ${optimizerMetrics.minFPS.toFixed(1)}, max: ${optimizerMetrics.maxFPS.toFixed(1)})`);
+    console.log(`Frame Time: ${optimizerMetrics.frameTime.toFixed(2)}ms`);
+    console.log(`Memory Usage: ${optimizerMetrics.memoryUsage.toFixed(1)}MB (peak: ${optimizerMetrics.peakMemory.toFixed(1)}MB)`);
+    
+    // Optimization status
+    console.log('\n--- Optimizations ---');
+    console.log(`Object Pooling: ${optimizerMetrics.optimizations.objectPooling ? 'Enabled' : 'Disabled'}`);
+    console.log(`Batch Rendering: ${optimizerMetrics.optimizations.batchRendering ? 'Enabled' : 'Disabled'}`);
+    console.log(`Culling: ${optimizerMetrics.optimizations.culling ? 'Enabled' : 'Disabled'}`);
+    console.log(`Particle Limit: ${optimizerMetrics.optimizations.particleLimit}`);
+    console.log(`Effect Quality: ${optimizerMetrics.optimizations.effectQuality}`);
+    
+    // Memory analysis
+    console.log('\n--- Memory Analysis ---');
+    console.log(`Current Usage: ${memoryStats.current.toFixed(1)}MB`);
+    console.log(`Peak Usage: ${memoryStats.peak.toFixed(1)}MB`);
+    console.log(`Object Counts:`, memoryStats.objectCounts);
+    
+    // Test results summary
+    if (results.summary) {
+      const summary = results.summary;
+      console.log('\n--- Test Results Summary ---');
+      console.log(`Total Tests Run: ${summary.totalTests}`);
+      
+      if (summary.combat.testsRun > 0) {
+        console.log(`Combat Tests: ${summary.combat.testsRun} (${(summary.combat.passRate * 100).toFixed(1)}% pass rate)`);
+        console.log(`  Avg FPS: ${summary.combat.avgFPS.toFixed(1)}, Avg Time: ${summary.combat.avgCombatTime.toFixed(0)}ms`);
+      }
+      
+      if (summary.saveLoad.testsRun > 0) {
+        console.log(`Save/Load Tests: ${summary.saveLoad.testsRun} (${(summary.saveLoad.passRate * 100).toFixed(1)}% pass rate)`);
+        console.log(`  Avg Save: ${summary.saveLoad.avgSaveTime.toFixed(0)}ms, Avg Load: ${summary.saveLoad.avgLoadTime.toFixed(0)}ms`);
+      }
+      
+      if (summary.session.testsRun > 0) {
+        console.log(`Session Tests: ${summary.session.testsRun}`);
+        console.log(`  Duration: ${summary.session.duration.toFixed(1)}min, Memory Increase: ${summary.session.memoryIncrease.toFixed(1)}MB`);
+        console.log(`  Min FPS: ${summary.session.minFPS.toFixed(1)}`);
+      }
+    }
+    
+    console.log('=======================================');
+    
+    // Show summary in UI
+    const fpsStatus = optimizerMetrics.avgFPS >= 55 ? '✅' : '❌';
+    const memoryStatus = optimizerMetrics.memoryUsage <= 400 ? '✅' : '❌';
+    const uiSummary = `Performance: ${fpsStatus} ${optimizerMetrics.avgFPS.toFixed(1)} FPS, ${memoryStatus} ${optimizerMetrics.memoryUsage.toFixed(1)}MB`;
+    this.debugUI.showToast(uiSummary, 'info');
+  }
+
+  /**
    * Dispose of engine resources
    */
   dispose() {
@@ -1358,6 +1567,19 @@ class DungeonCrawlerEngine {
     
     // Stop game loop
     this.stop();
+    
+    // Dispose performance systems
+    if (this.performanceTester) {
+      this.performanceTester.destroy();
+    }
+    
+    if (this.performanceOptimizer) {
+      this.performanceOptimizer.destroy();
+    }
+    
+    if (this.memoryManager) {
+      this.memoryManager.destroy();
+    }
     
     // Dispose performance manager
     if (this.performanceManager) {

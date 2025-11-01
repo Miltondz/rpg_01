@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dungeon Progression Validation Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #00ff00;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #00ff00;
+            padding-bottom: 20px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+        }
+        
+        .success {
+            color: #00ff00;
+            background-color: #003300;
+        }
+        
+        .error {
+            color: #ff0000;
+            background-color: #330000;
+        }
+        
+        .warning {
+            color: #ffaa00;
+            background-color: #332200;
+        }
+        
+        .info {
+            color: #00aaff;
+            background-color: #002233;
+        }
+        
+        .floor-info {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 3px solid #00ff00;
+            background-color: #1a2a1a;
+        }
+        
+        .validation-results {
+            margin-top: 20px;
+        }
+        
+        .error-list, .warning-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        .error-list li, .warning-list li {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 3px;
+        }
+        
+        .error-list li {
+            background-color: #330000;
+            border-left: 4px solid #ff0000;
+        }
+        
+        .warning-list li {
+            background-color: #332200;
+            border-left: 4px solid #ffaa00;
+        }
+        
+        button {
+            background-color: #003300;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+            border-radius: 5px;
+            margin: 10px 5px;
+        }
+        
+        button:hover {
+            background-color: #00ff00;
+            color: #000000;
+        }
+        
+        .progress-indicator {
+            width: 100%;
+            height: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background-color: #00ff00;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏰 Crypt of Shadows - Dungeon Progression Validation</h1>
+        <p>Testing the 5-floor dungeon layout and progression mechanics</p>
+    </div>
+
+    <div class="test-section info">
+        <h2>📋 Test Overview</h2>
+        <p>This test validates the dungeon progression system including:</p>
+        <ul>
+            <li>Floor size progression (10x10 → 20x20)</li>
+            <li>Key and door mechanics</li>
+            <li>Safe zone services and shops</li>
+            <li>Difficulty scaling</li>
+            <li>Loot progression</li>
+            <li>Boss encounter placement</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🎮 Dungeon Configuration</h2>
+        <button onclick="loadDungeonInfo()">Load Dungeon Info</button>
+        <div id="dungeonInfo"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>✅ Validation Tests</h2>
+        <button onclick="runValidation()">Run Full Validation</button>
+        <div class="progress-indicator">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div id="validationResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🗺️ Floor Analysis</h2>
+        <button onclick="analyzeFloors()">Analyze All Floors</button>
+        <div id="floorAnalysis"></div>
+    </div>
+
+    <script src="levels/validate-dungeon-progression.js"></script>
+    <script>
+        let validator = null;
+        let dungeonConfig = null;
+        let floorData = [];
+
+        async function loadDungeonInfo() {
+            try {
+                updateProgress(10);
+                const response = await fetch('./levels/crypt-of-shadows-config.json');
+                dungeonConfig = await response.json();
+                
+                updateProgress(50);
+                
+                const infoDiv = document.getElementById('dungeonInfo');
+                infoDiv.innerHTML = `
+                    <div class="floor-info">
+                        <h3>${dungeonConfig.name}</h3>
+                        <p><strong>Description:</strong> ${dungeonConfig.description}</p>
+                        <p><strong>Target Level Range:</strong> ${dungeonConfig.targetLevelRange.min} - ${dungeonConfig.targetLevelRange.max}</p>
+                        <p><strong>Estimated Playtime:</strong> ${dungeonConfig.estimatedPlaytime.min} - ${dungeonConfig.estimatedPlaytime.max} minutes</p>
+                        <p><strong>Total Floors:</strong> ${dungeonConfig.floors.length}</p>
+                    </div>
+                `;
+                
+                // Load floor data
+                for (const floorConfig of dungeonConfig.floors) {
+                    const floorResponse = await fetch(`./levels/${floorConfig.file}`);
+                    const floorDataItem = await floorResponse.json();
+                    floorData.push({
+                        config: floorConfig,
+                        data: floorDataItem
+                    });
+                }
+                
+                updateProgress(100);
+                
+                // Add floor summary
+                let floorSummary = '<h4>Floor Summary:</h4>';
+                dungeonConfig.floors.forEach((floor, index) => {
+                    const data = floorData[index].data;
+                    floorSummary += `
+                        <div class="floor-info">
+                            <strong>Floor ${index + 1}:</strong> ${floor.name} (${data.width}x${data.height}) - 
+                            Level ${floor.targetLevel.min}-${floor.targetLevel.max} - 
+                            ${floor.estimatedTime} min
+                        </div>
+                    `;
+                });
+                infoDiv.innerHTML += floorSummary;
+                
+            } catch (error) {
+                document.getElementById('dungeonInfo').innerHTML = 
+                    `<div class="error">Error loading dungeon info: ${error.message}</div>`;
+            }
+        }
+
+        async function runValidation() {
+            try {
+                updateProgress(0);
+                validator = new DungeonProgressionValidator();
+                
+                updateProgress(20);
+                const report = await validator.validate();
+                updateProgress(100);
+                
+                const resultsDiv = document.getElementById('validationResults');
+                
+                let html = `
+                    <div class="validation-results">
+                        <h3>Validation Report</h3>
+                        <div class="${report.summary.isValid ? 'success' : 'error'}">
+                            <strong>Status:</strong> ${report.summary.isValid ? '✅ VALID' : '❌ INVALID'}
+                        </div>
+                        <p><strong>Errors:</strong> ${report.summary.errorCount}</p>
+                        <p><strong>Warnings:</strong> ${report.summary.warningCount}</p>
+                        <p><strong>Generated:</strong> ${new Date(report.timestamp).toLocaleString()}</p>
+                `;
+                
+                if (report.errors.length > 0) {
+                    html += '<h4>❌ Errors:</h4><ul class="error-list">';
+                    report.errors.forEach(error => {
+                        html += `<li>${error}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                
+                if (report.warnings.length > 0) {
+                    html += '<h4>⚠️ Warnings:</h4><ul class="warning-list">';
+                    report.warnings.forEach(warning => {
+                        html += `<li>${warning}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                
+                if (report.summary.isValid) {
+                    html += `
+                        <div class="success">
+                            <h4>🎉 Validation Successful!</h4>
+                            <p>The dungeon progression system is properly configured and ready for implementation.</p>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('validationResults').innerHTML = 
+                    `<div class="error">Validation failed: ${error.message}</div>`;
+            }
+        }
+
+        async function analyzeFloors() {
+            if (floorData.length === 0) {
+                await loadDungeonInfo();
+            }
+            
+            const analysisDiv = document.getElementById('floorAnalysis');
+            let html = '';
+            
+            floorData.forEach((floor, index) => {
+                const data = floor.data;
+                const config = floor.config;
+                
+                const safeZones = data.safeZones || [];
+                const doors = data.doors || [];
+                const encounters = data.scriptedEncounters || [];
+                const chests = data.lootChests || [];
+                
+                html += `
+                    <div class="floor-info">
+                        <h4>Floor ${index + 1}: ${config.name}</h4>
+                        <p><strong>Size:</strong> ${data.width}x${data.height} (${data.width * data.height} tiles)</p>
+                        <p><strong>Target Level:</strong> ${config.targetLevel.min}-${config.targetLevel.max}</p>
+                        <p><strong>Safe Zones:</strong> ${safeZones.length} (${safeZones.map(z => z.type).join(', ')})</p>
+                        <p><strong>Doors:</strong> ${doors.length} (${doors.filter(d => d.locked).length} locked)</p>
+                        <p><strong>Encounters:</strong> ${encounters.length} (${encounters.filter(e => e.type === 'boss' || e.type === 'mini_boss').length} boss-type)</p>
+                        <p><strong>Loot Chests:</strong> ${chests.length}</p>
+                        <p><strong>Services:</strong> ${safeZones.flatMap(z => z.services).join(', ')}</p>
+                    </div>
+                `;
+            });
+            
+            analysisDiv.innerHTML = html;
+        }
+
+        function updateProgress(percent) {
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percent + '%';
+        }
+
+        // Auto-load dungeon info on page load
+        window.addEventListener('load', () => {
+            loadDungeonInfo();
+        });
+    </script>
+</body>
+</html>

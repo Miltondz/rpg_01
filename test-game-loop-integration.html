@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Loop Integration Test</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        .test-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .test-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 3px;
+        }
+        
+        .test-section h4 {
+            margin: 0 0 10px 0;
+            color: #00ff00;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-active { background-color: #00ff00; }
+        .status-inactive { background-color: #ff0000; }
+        .status-warning { background-color: #ffff00; }
+        
+        .event-log {
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        
+        .event-entry {
+            margin-bottom: 2px;
+            padding: 2px;
+        }
+        
+        .event-encounter { color: #ff6666; }
+        .event-safezone { color: #66ff66; }
+        .event-combat { color: #ffff66; }
+        .event-movement { color: #66ffff; }
+        
+        .controls {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 3px;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: #333;
+            color: white;
+            border: 1px solid #666;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+        
+        .controls button:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        
+        <!-- Debug UI Elements -->
+        <div id="debug-ui">
+            <div id="debug-info"></div>
+            <div id="debug-messages"></div>
+        </div>
+        
+        <!-- Minimap -->
+        <div id="minimap">
+            <div id="minimap-grid"></div>
+        </div>
+        
+        <!-- Performance Display -->
+        <div id="performance-display">
+            <div id="fps-counter">FPS: --</div>
+            <div id="frame-time">Frame: --ms</div>
+            <div id="memory-usage">Memory: --MB</div>
+        </div>
+    </div>
+
+    <!-- Game Loop Test Panel -->
+    <div class="test-panel">
+        <h3>Game Loop Integration Test</h3>
+        
+        <div class="test-section">
+            <h4>System Status</h4>
+            <div id="system-status">
+                <div><span class="status-indicator status-inactive" id="gameloop-status"></span>Game Loop: Initializing</div>
+                <div><span class="status-indicator status-inactive" id="encounter-status"></span>Encounters: Inactive</div>
+                <div><span class="status-indicator status-inactive" id="safezone-status"></span>Safe Zones: Inactive</div>
+                <div><span class="status-indicator status-inactive" id="difficulty-status"></span>Difficulty: Normal</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h4>Current State</h4>
+            <div id="current-state">
+                <div>Floor: <span id="current-floor">1</span></div>
+                <div>In Combat: <span id="in-combat">No</span></div>
+                <div>In Safe Zone: <span id="in-safezone">No</span></div>
+                <div>Encounters: <span id="encounter-count">0</span></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h4>Event Log</h4>
+            <div class="event-log" id="event-log">
+                <div class="event-entry">System initializing...</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <h4>Test Controls</h4>
+            <button onclick="testEncounterTrigger()">Force Encounter</button>
+            <button onclick="testSafeZoneEntry()">Test Safe Zone</button>
+            <button onclick="changeDifficulty()">Change Difficulty</button>
+            <button onclick="clearEventLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import './src/main.js';
+        
+        // Game Loop Integration Test
+        class GameLoopTest {
+            constructor() {
+                this.eventCount = 0;
+                this.encounterCount = 0;
+                this.setupEventListeners();
+                this.updateInterval = setInterval(() => this.updateDisplay(), 1000);
+            }
+            
+            setupEventListeners() {
+                // Game loop events
+                window.addEventListener('gameLoopEvent', (event) => {
+                    this.handleGameLoopEvent(event.detail);
+                });
+                
+                // Encounter events
+                window.addEventListener('encounterEvent', (event) => {
+                    this.handleEncounterEvent(event.detail);
+                });
+                
+                // Safe zone events
+                window.addEventListener('safeZoneEvent', (event) => {
+                    this.handleSafeZoneEvent(event.detail);
+                });
+                
+                // Combat events
+                window.addEventListener('combatEvent', (event) => {
+                    this.handleCombatEvent(event.detail);
+                });
+                
+                // Movement events
+                window.addEventListener('movementCompleted', (event) => {
+                    this.handleMovementEvent(event.detail);
+                });
+                
+                // Difficulty scaling events
+                window.addEventListener('difficultyScalingEvent', (event) => {
+                    this.handleDifficultyEvent(event.detail);
+                });
+            }
+            
+            handleGameLoopEvent(eventData) {
+                this.logEvent(`GameLoop: ${eventData.type}`, 'event-movement');
+                
+                switch (eventData.type) {
+                    case 'initialized':
+                        this.updateStatus('gameloop-status', 'active');
+                        this.updateStatus('encounter-status', 'active');
+                        this.updateStatus('safezone-status', 'active');
+                        break;
+                    case 'encounterStarted':
+                        this.updateStatus('encounter-status', 'warning');
+                        document.getElementById('in-combat').textContent = 'Yes';
+                        break;
+                    case 'combatPhaseEnded':
+                        this.updateStatus('encounter-status', 'active');
+                        document.getElementById('in-combat').textContent = 'No';
+                        break;
+                    case 'safeZoneEntered':
+                        this.updateStatus('safezone-status', 'warning');
+                        document.getElementById('in-safezone').textContent = 'Yes';
+                        break;
+                    case 'safeZoneLeft':
+                        this.updateStatus('safezone-status', 'active');
+                        document.getElementById('in-safezone').textContent = 'No';
+                        break;
+                }
+            }
+            
+            handleEncounterEvent(eventData) {
+                this.logEvent(`Encounter: ${eventData.type}`, 'event-encounter');
+                
+                if (eventData.type === 'encounterTriggered') {
+                    this.encounterCount++;
+                    document.getElementById('encounter-count').textContent = this.encounterCount;
+                }
+            }
+            
+            handleSafeZoneEvent(eventData) {
+                this.logEvent(`SafeZone: ${eventData.type}`, 'event-safezone');
+            }
+            
+            handleCombatEvent(eventData) {
+                this.logEvent(`Combat: ${eventData.type}`, 'event-combat');
+            }
+            
+            handleMovementEvent(eventData) {
+                this.logEvent(`Movement: (${eventData.newPosition.x}, ${eventData.newPosition.z})`, 'event-movement');
+            }
+            
+            handleDifficultyEvent(eventData) {
+                this.logEvent(`Difficulty: ${eventData.type}`, 'event-encounter');
+                
+                if (eventData.type === 'difficultyChanged') {
+                    document.getElementById('difficulty-status').parentElement.textContent = 
+                        `Difficulty: ${eventData.data.newDifficulty}`;
+                }
+            }
+            
+            updateStatus(elementId, status) {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.className = `status-indicator status-${status}`;
+                }
+            }
+            
+            logEvent(message, className = '') {
+                const log = document.getElementById('event-log');
+                const entry = document.createElement('div');
+                entry.className = `event-entry ${className}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                
+                log.appendChild(entry);
+                log.scrollTop = log.scrollHeight;
+                
+                // Keep only last 50 entries
+                while (log.children.length > 50) {
+                    log.removeChild(log.firstChild);
+                }
+            }
+            
+            updateDisplay() {
+                // Update current state from engine if available
+                if (window.dungeonEngine && window.dungeonEngine.gameLoopManager) {
+                    const status = window.dungeonEngine.gameLoopManager.getGameLoopStatus();
+                    
+                    document.getElementById('current-floor').textContent = status.currentFloor || 1;
+                    document.getElementById('in-combat').textContent = status.inCombat ? 'Yes' : 'No';
+                    document.getElementById('in-safezone').textContent = status.inSafeZone ? 'Yes' : 'No';
+                }
+            }
+        }
+        
+        // Global test functions
+        window.testEncounterTrigger = function() {
+            if (window.dungeonEngine && window.dungeonEngine.gameLoopManager) {
+                const encounterSystem = window.dungeonEngine.gameLoopManager.encounterSystem;
+                if (encounterSystem) {
+                    // Force an encounter by setting chance to 100%
+                    encounterSystem.setEncounterChance(1.0);
+                    console.log('Forced encounter chance to 100% - move to trigger');
+                }
+            }
+        };
+        
+        window.testSafeZoneEntry = function() {
+            if (window.dungeonEngine && window.dungeonEngine.gameLoopManager) {
+                const safeZoneSystem = window.dungeonEngine.gameLoopManager.safeZoneSystem;
+                const movementController = window.dungeonEngine.movementController;
+                
+                if (safeZoneSystem && movementController) {
+                    const currentPos = movementController.getPosition();
+                    // Add a temporary safe zone at current position
+                    safeZoneSystem.registerSafeZone(currentPos.x, currentPos.z, 'altar');
+                    console.log('Added safe zone at current position');
+                }
+            }
+        };
+        
+        window.changeDifficulty = function() {
+            if (window.dungeonEngine && window.dungeonEngine.gameLoopManager) {
+                const difficulties = ['easy', 'normal', 'hard', 'nightmare'];
+                const current = window.dungeonEngine.gameLoopManager.difficultyScaling.currentDifficulty;
+                const currentIndex = difficulties.indexOf(current);
+                const nextIndex = (currentIndex + 1) % difficulties.length;
+                
+                window.dungeonEngine.gameLoopManager.setDifficulty(difficulties[nextIndex]);
+                console.log(`Changed difficulty to: ${difficulties[nextIndex]}`);
+            }
+        };
+        
+        window.clearEventLog = function() {
+            document.getElementById('event-log').innerHTML = '';
+        };
+        
+        // Initialize test when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                window.gameLoopTest = new GameLoopTest();
+                console.log('Game Loop Integration Test initialized');
+            }, 2000); // Wait for engine to initialize
+        });
+    </script>
+</body>
+</html>

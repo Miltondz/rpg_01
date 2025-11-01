@@ -1,0 +1,172 @@
+{
+  "id": "crypt-of-shadows-floor-2",
+  "name": "Crypt of Shadows - Floor 2",
+  "width": 12,
+  "height": 12,
+  "spawn": {
+    "x": 1,
+    "z": 1,
+    "direction": 0
+  },
+  "tiles": [
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2,
+    2, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2,
+    2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2,
+    2, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 2,
+    2, 2, 2, 1, 2, 1, 1, 2, 1, 2, 2, 2,
+    2, 2, 2, 1, 2, 1, 1, 2, 1, 2, 2, 2,
+    2, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 2,
+    2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2,
+    2, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2,
+    2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 3, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+  ],
+  "doors": [
+    {
+      "x": 5,
+      "z": 1,
+      "orientation": "vertical",
+      "locked": false,
+      "keyType": null
+    },
+    {
+      "x": 3,
+      "z": 4,
+      "orientation": "horizontal",
+      "locked": true,
+      "keyType": "silver"
+    },
+    {
+      "x": 8,
+      "z": 4,
+      "orientation": "horizontal",
+      "locked": true,
+      "keyType": "silver"
+    },
+    {
+      "x": 5,
+      "z": 7,
+      "orientation": "vertical",
+      "locked": true,
+      "keyType": "gold"
+    }
+  ],
+  "transitions": [
+    {
+      "x": 10,
+      "z": 10,
+      "type": "stairs",
+      "target": "crypt-of-shadows-floor-3",
+      "spawn": {
+        "x": 1,
+        "z": 1,
+        "direction": 0
+      }
+    }
+  ],
+  "safeZones": [
+    {
+      "x": 6,
+      "z": 6,
+      "type": "camp",
+      "name": "Abandoned Camp",
+      "description": "A makeshift camp with supplies left by previous adventurers",
+      "services": ["save", "heal", "rest", "shop"],
+      "healAmount": 100,
+      "cooldown": 0,
+      "shopInventory": [
+        { "itemId": "health_potion_small", "stock": 5, "price": 25 },
+        { "itemId": "ap_potion", "stock": 3, "price": 40 },
+        { "itemId": "leather_armor", "stock": 1, "price": 150 },
+        { "itemId": "iron_sword", "stock": 1, "price": 200 }
+      ]
+    }
+  ],
+  "scriptedEncounters": [
+    {
+      "x": 4,
+      "z": 8,
+      "id": "skeleton_patrol",
+      "type": "scripted",
+      "oneTime": true,
+      "enemies": [
+        { "type": "skeleton", "level": 2 },
+        { "type": "skeleton", "level": 2 }
+      ],
+      "rewards": {
+        "experience": 60,
+        "gold": { "min": 15, "max": 25 },
+        "loot": [
+          { "itemId": "silver_key", "chance": 1.0, "quantity": { "min": 1, "max": 1 } }
+        ]
+      }
+    },
+    {
+      "x": 9,
+      "z": 3,
+      "id": "orc_ambush",
+      "type": "scripted",
+      "oneTime": true,
+      "enemies": [
+        { "type": "orc", "level": 3 }
+      ],
+      "rewards": {
+        "experience": 45,
+        "gold": { "min": 20, "max": 30 }
+      }
+    }
+  ],
+  "keyItems": [
+    {
+      "x": 2,
+      "z": 9,
+      "itemId": "silver_key",
+      "respawn": false
+    }
+  ],
+  "lootChests": [
+    {
+      "x": 7,
+      "z": 2,
+      "loot": [
+        { "itemId": "health_potion_medium", "chance": 0.7, "quantity": { "min": 1, "max": 2 } },
+        { "itemId": "leather_armor", "chance": 0.5, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 3,
+      "z": 6,
+      "loot": [
+        { "itemId": "ap_potion", "chance": 0.6, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "iron_sword", "chance": 0.4, "quantity": { "min": 1, "max": 1 } }
+      ]
+    }
+  ],
+  "environmentalElements": [
+    {
+      "x": 2,
+      "z": 2,
+      "type": "inscription",
+      "message": "Ancient runes warn of the growing darkness below...",
+      "interactable": true
+    },
+    {
+      "x": 9,
+      "z": 9,
+      "type": "skeleton",
+      "message": "The remains of a previous adventurer. A warning of the dangers ahead.",
+      "interactable": true,
+      "loot": [
+        { "itemId": "health_potion_small", "chance": 0.5, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 5,
+      "z": 10,
+      "type": "altar_fragment",
+      "message": "A broken piece of an ancient altar. The magic still tingles with residual power.",
+      "interactable": true
+    }
+  ]
+}

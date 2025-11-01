@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .character-card {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: #f9f9f9;
+            min-width: 200px;
+        }
+        .warrior { border-color: #8B4513; }
+        .rogue { border-color: #228B22; }
+        .mage { border-color: #4169E1; }
+        .cleric { border-color: #FFD700; }
+        
+        .stats {
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .hp-bar {
+            width: 100%;
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ffaa44, #44ff44);
+            transition: width 0.3s ease;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Character System Test</h1>
+        
+        <div class="section">
+            <h2>Create Characters</h2>
+            <button onclick="createWarrior()">Create Warrior</button>
+            <button onclick="createRogue()">Create Rogue</button>
+            <button onclick="createMage()">Create Mage</button>
+            <button onclick="createCleric()">Create Cleric</button>
+            <button onclick="createTestParty()">Create Test Party</button>
+            <button onclick="showPartyCreationUI()">Party Creation UI</button>
+        </div>
+
+        <div class="section">
+            <h2>Party Management</h2>
+            <button onclick="addExperience()">Add 200 XP to Party</button>
+            <button onclick="healParty()">Heal Party</button>
+            <button onclick="showPartyStats()">Show Party Stats</button>
+            <button onclick="clearParty()">Clear Party</button>
+            <button onclick="showCharacterSheet()">Show Character Sheet</button>
+        </div>
+
+        <div class="section">
+            <h2>Current Party</h2>
+            <div id="party-display"></div>
+        </div>
+
+        <div class="section">
+            <h2>Available Characters</h2>
+            <div id="characters-display"></div>
+        </div>
+
+        <div class="log" id="log"></div>
+    </div>
+
+    <script type="module">
+        import { CharacterSystem } from './src/engine/character/CharacterSystem.js';
+        import { PartyCreationUI } from './src/engine/ui/PartyCreationUI.js';
+        import { CharacterSheetUI } from './src/engine/ui/CharacterSheetUI.js';
+
+        // Initialize character system
+        const characterSystem = new CharacterSystem();
+        characterSystem.initialize();
+        
+        // Initialize UI systems
+        const partyCreationUI = new PartyCreationUI(characterSystem);
+        const characterSheetUI = new CharacterSheetUI(characterSystem);
+
+        // Make functions global for button access
+        window.characterSystem = characterSystem;
+        window.partyCreationUI = partyCreationUI;
+        window.characterSheetUI = characterSheetUI;
+        window.log = function(message) {
+            const logElement = document.getElementById('log');
+            logElement.innerHTML += message + '\n';
+            logElement.scrollTop = logElement.scrollHeight;
+        };
+
+        window.createWarrior = function() {
+            const character = characterSystem.createCharacter('warrior');
+            log(`Created Warrior: ${character.name} (Level ${character.level})`);
+            updateDisplay();
+        };
+
+        window.createRogue = function() {
+            const character = characterSystem.createCharacter('rogue');
+            log(`Created Rogue: ${character.name} (Level ${character.level})`);
+            updateDisplay();
+        };
+
+        window.createMage = function() {
+            const character = characterSystem.createCharacter('mage');
+            log(`Created Mage: ${character.name} (Level ${character.level})`);
+            updateDisplay();
+        };
+
+        window.createCleric = function() {
+            const character = characterSystem.createCharacter('cleric');
+            log(`Created Cleric: ${character.name} (Level ${character.level})`);
+            updateDisplay();
+        };
+
+        window.createTestParty = function() {
+            const party = characterSystem.createTestParty('balanced');
+            log(`Created balanced test party with ${party.length} characters`);
+            updateDisplay();
+        };
+
+        window.addExperience = function() {
+            const result = characterSystem.addExperienceToParty(200);
+            log(`Distributed ${result.distributed} XP to party`);
+            if (result.levelUps.length > 0) {
+                result.levelUps.forEach(levelUp => {
+                    log(`${levelUp.character.name} leveled up to ${levelUp.newLevel}!`);
+                });
+            }
+            updateDisplay();
+        };
+
+        window.healParty = function() {
+            const result = characterSystem.partyManager.healParty(0.5, true); // 50% heal
+            log(`Healed party: ${result.totalHealing} HP to ${result.membersHealed} members`);
+            updateDisplay();
+        };
+
+        window.showPartyStats = function() {
+            const party = characterSystem.getParty();
+            log(`Party Stats: ${party.stats.aliveMembers}/${party.size} alive, Avg Level: ${party.stats.averageLevel.toFixed(1)}`);
+            log(`HP: ${party.stats.currentHP}/${party.stats.totalHP}`);
+        };
+
+        window.clearParty = function() {
+            characterSystem.partyManager.party = [];
+            characterSystem.partyManager.updateFormation();
+            characterSystem.partyManager.updatePartyStats();
+            log('Party cleared');
+            updateDisplay();
+        };
+
+        function updateDisplay() {
+            updatePartyDisplay();
+            updateCharactersDisplay();
+        }
+
+        function updatePartyDisplay() {
+            const partyElement = document.getElementById('party-display');
+            const party = characterSystem.getParty();
+            
+            if (party.size === 0) {
+                partyElement.innerHTML = '<p>No characters in party</p>';
+                return;
+            }
+
+            let html = '<h3>Formation</h3>';
+            
+            // Front Row
+            html += '<div><strong>Front Row:</strong><br>';
+            party.formation.frontRow.forEach(char => {
+                html += createCharacterCard(char);
+            });
+            html += '</div>';
+
+            // Back Row
+            html += '<div><strong>Back Row:</strong><br>';
+            party.formation.backRow.forEach(char => {
+                html += createCharacterCard(char);
+            });
+            html += '</div>';
+
+            partyElement.innerHTML = html;
+        }
+
+        function updateCharactersDisplay() {
+            const charactersElement = document.getElementById('characters-display');
+            const characters = characterSystem.getAllCharacters();
+            
+            if (characters.length === 0) {
+                charactersElement.innerHTML = '<p>No characters created</p>';
+                return;
+            }
+
+            let html = '';
+            characters.forEach(char => {
+                const inParty = characterSystem.partyManager.hasCharacter(char.id);
+                if (!inParty) {
+                    html += createCharacterCard(char, true);
+                }
+            });
+
+            charactersElement.innerHTML = html || '<p>All characters are in party</p>';
+        }
+
+        function createCharacterCard(char, showAddButton = false) {
+            const hpPercent = (char.currentHP / char.maxHP) * 100;
+            
+            let html = `
+                <div class="character-card ${char.class}">
+                    <h4>${char.name}</h4>
+                    <p><strong>Class:</strong> ${char.class.charAt(0).toUpperCase() + char.class.slice(1)}</p>
+                    <p><strong>Level:</strong> ${char.level}</p>
+                    <div class="hp-bar">
+                        <div class="hp-fill" style="width: ${hpPercent}%"></div>
+                    </div>
+                    <p><strong>HP:</strong> ${char.currentHP}/${char.maxHP}</p>
+                    <div class="stats">
+                        <div>ATK: ${char.stats.ATK} | DEF: ${char.stats.DEF}</div>
+                        <div>SPD: ${char.stats.SPD} | Element: ${char.stats.element}</div>
+                        <div>Skills: ${char.skills.length}</div>
+                    </div>
+            `;
+            
+            if (showAddButton && characterSystem.partyManager.getPartySize() < 4) {
+                html += `<button onclick="addToParty('${char.id}')">Add to Party</button>`;
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        window.addToParty = function(characterId) {
+            const success = characterSystem.addToParty(characterId);
+            if (success) {
+                const character = characterSystem.getCharacter(characterId);
+                log(`${character.name} added to party`);
+                updateDisplay();
+            } else {
+                log('Failed to add character to party');
+            }
+        };
+
+        window.showPartyCreationUI = function() {
+            partyCreationUI.show();
+        };
+
+        window.showCharacterSheet = function() {
+            const party = characterSystem.getParty();
+            if (party.size > 0) {
+                const firstCharacter = party.members[0];
+                characterSheetUI.show(firstCharacter.id);
+            } else {
+                log('No characters in party to show sheet for');
+            }
+        };
+
+        // Listen for game start events
+        window.addEventListener('gameStart', (e) => {
+            log('Game started! Party composition:');
+            e.detail.party.members.forEach((member, index) => {
+                log(`  ${index + 1}. ${member.name} (${member.class}) - Level ${member.level}`);
+            });
+        });
+
+        // Initial display update
+        updateDisplay();
+        log('Character System Test initialized');
+        log('Create some characters and test the functionality!');
+    </script>
+</body>
+</html>

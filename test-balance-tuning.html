@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combat Balance Tuning Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .metric-label {
+            color: #666;
+            font-size: 14px;
+        }
+        .status-good { border-left-color: #28a745; }
+        .status-warning { border-left-color: #ffc107; }
+        .status-danger { border-left-color: #dc3545; }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
+        .recommendations {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .recommendation-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #ffc107;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Combat Balance Tuning System Test</h1>
+        <p>This test validates the combat balance and tuning system for achieving target combat durations and resource economy.</p>
+        
+        <div class="controls">
+            <button class="btn-primary" onclick="simulateCombat('random')">Simulate Random Combat</button>
+            <button class="btn-warning" onclick="simulateCombat('mini_boss')">Simulate Mini-Boss</button>
+            <button class="btn-danger" onclick="simulateCombat('boss')">Simulate Boss Combat</button>
+            <button class="btn-success" onclick="generateBalanceReport()">Generate Report</button>
+            <button onclick="toggleAutoTuning()">Toggle Auto-Tuning</button>
+            <button onclick="resetMetrics()">Reset Metrics</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Combat Metrics</h2>
+        <div class="metrics-grid">
+            <div class="metric-card" id="total-combats">
+                <div class="metric-value">0</div>
+                <div class="metric-label">Total Combats</div>
+            </div>
+            <div class="metric-card" id="avg-duration">
+                <div class="metric-value">0s</div>
+                <div class="metric-label">Average Duration</div>
+            </div>
+            <div class="metric-card" id="xp-rate">
+                <div class="metric-value">0</div>
+                <div class="metric-label">XP per Minute</div>
+            </div>
+            <div class="metric-card" id="potion-usage">
+                <div class="metric-value">0</div>
+                <div class="metric-label">Potions per Combat</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Combat Duration Targets</h2>
+        <div id="duration-targets">
+            <div class="metric-card">
+                <div class="metric-label">Random Encounters</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="random-progress" style="width: 0%"></div>
+                </div>
+                <div>Target: 2-4 minutes | Current: <span id="random-current">N/A</span></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Mini-Boss Encounters</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="mini-boss-progress" style="width: 0%"></div>
+                </div>
+                <div>Target: 4-6 minutes | Current: <span id="mini-boss-current">N/A</span></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Boss Encounters</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="boss-progress" style="width: 0%"></div>
+                </div>
+                <div>Target: 8-12 minutes | Current: <span id="boss-current">N/A</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Balance Recommendations</h2>
+        <div id="recommendations" class="recommendations">
+            <p>No recommendations yet. Run some combat simulations to generate balance analysis.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>System Log</h2>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script type="module">
+        import { combatBalanceConfig } from './src/engine/balance/CombatBalanceConfig.js';
+        import { balanceTuningSystem } from './src/engine/balance/BalanceTuningSystem.js';
+
+        // Global references for button handlers
+        window.combatBalanceConfig = combatBalanceConfig;
+        window.balanceTuningSystem = balanceTuningSystem;
+
+        let autoTuningEnabled = false;
+
+        // Logging function
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Simulate combat encounter
+        window.simulateCombat = function(encounterType) {
+            log(`Simulating ${encounterType} combat encounter...`);
+            
+            // Simulate combat data
+            const targetDuration = combatBalanceConfig.getCombatDurationTarget(encounterType);
+            const baseDuration = (targetDuration.min + targetDuration.max) / 2;
+            
+            // Add some variance to simulate real combat
+            const variance = 0.7 + Math.random() * 0.6; // 70% to 130% of target
+            const duration = Math.floor(baseDuration * variance);
+            
+            const combatData = {
+                duration: duration,
+                encounterType: encounterType,
+                enemyCount: encounterType === 'boss' ? 1 : Math.floor(Math.random() * 3) + 2,
+                partyLevel: Math.floor(Math.random() * 10) + 1,
+                xpGained: Math.floor(Math.random() * 100) + 50,
+                potionsUsed: {
+                    health: Math.floor(Math.random() * 3),
+                    ap: Math.floor(Math.random() * 2),
+                    buff: Math.random() < 0.3 ? 1 : 0
+                },
+                balanceRating: ['trivial', 'easy', 'moderate', 'hard'][Math.floor(Math.random() * 4)],
+                powerRatio: 0.5 + Math.random() * 1.5
+            };
+            
+            // Record metrics
+            balanceTuningSystem.recordCombatMetrics(combatData);
+            
+            log(`Combat completed in ${duration}s (target: ${targetDuration.min}-${targetDuration.max}s)`);
+            log(`XP gained: ${combatData.xpGained}, Potions used: ${JSON.stringify(combatData.potionsUsed)}`);
+            
+            updateMetricsDisplay();
+        };
+
+        // Generate balance report
+        window.generateBalanceReport = function() {
+            log('Generating comprehensive balance report...');
+            
+            const report = balanceTuningSystem.generateBalanceReport();
+            
+            log('=== BALANCE REPORT ===');
+            log(`Total combats analyzed: ${report.metrics.totalCombats}`);
+            log(`Average combat duration: ${report.metrics.averageDuration.toFixed(1)}s`);
+            log(`XP rate: ${report.metrics.xpRate.toFixed(1)} per minute`);
+            
+            // Display recommendations
+            displayRecommendations(report.recommendations);
+            
+            // Update duration analysis
+            updateDurationAnalysis(report.combatDuration);
+            
+            log('Balance report generated successfully');
+        };
+
+        // Toggle auto-tuning
+        window.toggleAutoTuning = function() {
+            autoTuningEnabled = !autoTuningEnabled;
+            balanceTuningSystem.setAutoTuning(autoTuningEnabled);
+            log(`Auto-tuning ${autoTuningEnabled ? 'enabled' : 'disabled'}`);
+            
+            const button = event.target;
+            button.textContent = autoTuningEnabled ? 'Disable Auto-Tuning' : 'Enable Auto-Tuning';
+            button.className = autoTuningEnabled ? 'btn-success' : 'btn-primary';
+        };
+
+        // Reset metrics
+        window.resetMetrics = function() {
+            balanceTuningSystem.resetMetrics();
+            log('All metrics reset');
+            updateMetricsDisplay();
+            
+            // Clear recommendations
+            document.getElementById('recommendations').innerHTML = 
+                '<p>No recommendations yet. Run some combat simulations to generate balance analysis.</p>';
+        };
+
+        // Update metrics display
+        function updateMetricsDisplay() {
+            const metrics = balanceTuningSystem.combatMetrics;
+            
+            document.querySelector('#total-combats .metric-value').textContent = metrics.totalCombats;
+            document.querySelector('#avg-duration .metric-value').textContent = 
+                metrics.averageCombatDuration ? `${metrics.averageCombatDuration.toFixed(1)}s` : '0s';
+            document.querySelector('#xp-rate .metric-value').textContent = 
+                metrics.xpGainRate ? metrics.xpGainRate.toFixed(1) : '0';
+            
+            const totalPotions = metrics.potionUsage.health + metrics.potionUsage.ap + metrics.potionUsage.buff;
+            const potionsPerCombat = metrics.totalCombats > 0 ? (totalPotions / metrics.totalCombats).toFixed(1) : '0';
+            document.querySelector('#potion-usage .metric-value').textContent = potionsPerCombat;
+        }
+
+        // Display recommendations
+        function displayRecommendations(recommendations) {
+            const container = document.getElementById('recommendations');
+            
+            if (recommendations.length === 0) {
+                container.innerHTML = '<p>✅ All systems are well balanced! No adjustments needed.</p>';
+                return;
+            }
+            
+            let html = '<h3>Balance Recommendations:</h3>';
+            recommendations.forEach(rec => {
+                const priorityClass = rec.priority === 'high' ? 'status-danger' : 
+                                    rec.priority === 'medium' ? 'status-warning' : 'status-good';
+                
+                html += `
+                    <div class="recommendation-item ${priorityClass}">
+                        <strong>${rec.category.replace('_', ' ').toUpperCase()}</strong> (${rec.priority} priority)
+                        <br>Issue: ${rec.issue.replace('_', ' ')}
+                        <br>Recommendation: ${rec.recommendation}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Update duration analysis display
+        function updateDurationAnalysis(durationAnalysis) {
+            const types = ['random', 'mini_boss', 'boss'];
+            
+            types.forEach(type => {
+                const analysis = durationAnalysis[type];
+                const currentSpan = document.getElementById(`${type.replace('_', '-')}-current`);
+                const progressBar = document.getElementById(`${type.replace('_', '-')}-progress`);
+                
+                if (analysis.status === 'insufficient_data') {
+                    currentSpan.textContent = 'N/A';
+                    progressBar.style.width = '0%';
+                    return;
+                }
+                
+                const minutes = (analysis.averageDuration / 60).toFixed(1);
+                currentSpan.textContent = `${minutes} min`;
+                
+                // Calculate progress bar (100% = perfect target)
+                const targetAverage = analysis.targetDuration / 60;
+                const currentAverage = analysis.averageDuration / 60;
+                const percentage = Math.min(100, (currentAverage / targetAverage) * 100);
+                
+                progressBar.style.width = `${percentage}%`;
+                
+                // Color code based on status
+                if (analysis.status === 'balanced') {
+                    progressBar.style.background = '#28a745';
+                } else if (analysis.status === 'too_long' || analysis.status === 'too_short') {
+                    progressBar.style.background = '#ffc107';
+                } else {
+                    progressBar.style.background = '#dc3545';
+                }
+            });
+        }
+
+        // Initialize display
+        updateMetricsDisplay();
+        log('Balance tuning system test initialized');
+        log('Click buttons above to simulate combats and test balance tuning');
+    </script>
+</body>
+</html>

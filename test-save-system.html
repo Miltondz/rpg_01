@@ -1,0 +1,751 @@
+=1.0">
+    <title>Save System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        
+        .test-section h2 {
+            color: #4a90e2;
+            margin-top: 0;
+        }
+        
+        button {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #357abd;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .success { color: #4caf50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        
+        .save-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .save-slot {
+            background: #333;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #555;
+        }
+        
+        .save-slot.occupied {
+            border-color: #4a90e2;
+        }
+        
+        .save-slot.empty {
+            opacity: 0.6;
+        }
+        
+        .slot-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #4a90e2;
+        }
+        
+        .slot-info {
+            font-size: 12px;
+            color: #ccc;
+            margin: 5px 0;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Save System Test</h1>
+    
+    <div class="test-section">
+        <h2>Save System Controls</h2>
+        <div class="controls">
+            <button onclick="initializeSaveSystem()">Initialize Save System</button>
+            <button onclick="createMockGameState()">Create Mock Game State</button>
+            <button onclick="showSaveUI()">Show Save UI</button>
+            <button onclick="showLoadUI()">Show Load UI</button>
+            <button onclick="performAutoSave()">Trigger Auto-Save</button>
+            <button onclick="validateAllSaves()">Validate All Saves</button>
+            <button onclick="clearAllSaves()">Clear All Saves</button>
+        </div>
+        
+        <div class="status" id="status">
+            Ready to test save system...
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Save Slots Status</h2>
+        <div class="save-slots" id="saveSlots">
+            <!-- Save slots will be populated here -->
+        </div>
+        <button onclick="refreshSaveSlots()">Refresh Save Slots</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Auto-Save Status</h2>
+        <div id="autoSaveStatus" class="status">
+            Auto-save not initialized
+        </div>
+        <div class="controls">
+            <button onclick="toggleAutoSave()">Toggle Auto-Save</button>
+            <button onclick="setAutoSaveInterval(60000)">Set 1min Interval</button>
+            <button onclick="setAutoSaveInterval(300000)">Set 5min Interval</button>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Operations</h2>
+        <div class="controls">
+            <button onclick="testSaveLoad(1)">Test Save/Load Slot 1</button>
+            <button onclick="testSaveLoad(2)">Test Save/Load Slot 2</button>
+            <button onclick="testSaveLoad(3)">Test Save/Load Slot 3</button>
+            <button onclick="testCorruptionRecovery()">Test Corruption Recovery</button>
+            <button onclick="testValidation()">Test Validation</button>
+            <button onclick="performanceTest()">Performance Test</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { SaveSystem, SaveData, AutoSaveManager, SaveValidator } from './src/engine/save/index.js';
+        import { SaveLoadUI } from './src/engine/ui/SaveLoadUI.js';
+        import { PartyManager } from './src/engine/character/PartyManager.js';
+        import { InventorySystem } from './src/engine/inventory/InventorySystem.js';
+        import { Character } from './src/engine/character/Character.js';
+
+        // Global variables for testing
+        window.saveSystem = null;
+        window.autoSaveManager = null;
+        window.saveLoadUI = null;
+        window.mockGameState = null;
+        window.saveValidator = new SaveValidator();
+
+        // Initialize save system
+        window.initializeSaveSystem = function() {
+            try {
+                window.saveSystem = new SaveSystem();
+                window.autoSaveManager = new AutoSaveManager(window.saveSystem);
+                window.saveLoadUI = new SaveLoadUI(window.saveSystem);
+                
+                // Add event listeners
+                window.saveSystem.addEventListener((event) => {
+                    logStatus(`Save System Event: ${event.type}`, 'success');
+                    console.log('Save System Event:', event);
+                });
+                
+                window.autoSaveManager.addEventListener((event) => {
+                    logStatus(`Auto-Save Event: ${event.type}`, 'success');
+                    console.log('Auto-Save Event:', event);
+                });
+                
+                logStatus('Save system initialized successfully', 'success');
+                refreshAutoSaveStatus();
+                
+            } catch (error) {
+                logStatus(`Failed to initialize save system: ${error.message}`, 'error');
+                console.error(error);
+            }
+        };
+
+        // Create mock game state for testing
+        window.createMockGameState = function() {
+            try {
+                const partyManager = new PartyManager();
+                const inventorySystem = new InventorySystem();
+                
+                // Create mock characters
+                const warrior = new Character('warrior', 'Test Warrior');
+                warrior.level = 5;
+                warrior.experience = 1250;
+                warrior.currentHP = 80;
+                warrior.maxHP = 100;
+                
+                const mage = new Character('mage', 'Test Mage');
+                mage.level = 4;
+                mage.experience = 800;
+                mage.currentHP = 45;
+                mage.maxHP = 60;
+                
+                partyManager.addCharacter(warrior);
+                partyManager.addCharacter(mage);
+                partyManager.addGold(500);
+                
+                // Add some mock items to inventory
+                inventorySystem.addItem({
+                    id: 'health_potion',
+                    name: 'Health Potion',
+                    type: 'consumable',
+                    rarity: 'common',
+                    stackable: true
+                }, 5);
+                
+                inventorySystem.addItem({
+                    id: 'iron_sword',
+                    name: 'Iron Sword',
+                    type: 'weapon',
+                    rarity: 'common',
+                    stackable: false,
+                    stats: { ATK: 15 }
+                }, 1);
+                
+                // Create mock game state
+                window.mockGameState = {
+                    partyManager,
+                    inventorySystem,
+                    playtime: 3600000, // 1 hour
+                    currentLocation: 'Test Dungeon Floor 1',
+                    movementController: {
+                        getPosition: () => ({ x: 5, z: 3 }),
+                        getDirection: () => 1
+                    },
+                    dungeonLoader: {
+                        currentDungeon: 'test_dungeon',
+                        currentFloor: 1
+                    },
+                    worldState: {
+                        clearedEncounters: ['encounter_1', 'encounter_2'],
+                        openedDoors: ['door_1'],
+                        discoveredAreas: ['area_1', 'area_2'],
+                        visitedLocations: ['start', 'room_1']
+                    }
+                };
+                
+                // Initialize save system with mock game state
+                if (window.saveSystem) {
+                    window.saveSystem.initialize(window.mockGameState);
+                }
+                
+                if (window.autoSaveManager) {
+                    window.autoSaveManager.initialize(window.mockGameState);
+                }
+                
+                logStatus('Mock game state created successfully', 'success');
+                refreshAutoSaveStatus();
+                
+            } catch (error) {
+                logStatus(`Failed to create mock game state: ${error.message}`, 'error');
+                console.error(error);
+            }
+        };
+
+        // Show save UI
+        window.showSaveUI = function() {
+            if (window.saveLoadUI) {
+                window.saveLoadUI.show('save');
+                logStatus('Save UI opened', 'success');
+            } else {
+                logStatus('Save UI not initialized', 'error');
+            }
+        };
+
+        // Show load UI
+        window.showLoadUI = function() {
+            if (window.saveLoadUI) {
+                window.saveLoadUI.show('load');
+                logStatus('Load UI opened', 'success');
+            } else {
+                logStatus('Load UI not initialized', 'error');
+            }
+        };
+
+        // Perform auto-save
+        window.performAutoSave = async function() {
+            if (window.autoSaveManager) {
+                try {
+                    const result = await window.autoSaveManager.performAutoSave('manual_trigger');
+                    if (result) {
+                        logStatus('Auto-save completed successfully', 'success');
+                    } else {
+                        logStatus('Auto-save skipped (conditions not met)', 'warning');
+                    }
+                    refreshSaveSlots();
+                    refreshAutoSaveStatus();
+                } catch (error) {
+                    logStatus(`Auto-save failed: ${error.message}`, 'error');
+                }
+            } else {
+                logStatus('Auto-save manager not initialized', 'error');
+            }
+        };
+
+        // Validate all saves
+        window.validateAllSaves = async function() {
+            if (!window.saveSystem) {
+                logStatus('Save system not initialized', 'error');
+                return;
+            }
+            
+            try {
+                const metadata = window.saveSystem.getAllSaveMetadata();
+                let validCount = 0;
+                let totalCount = 0;
+                
+                // Check auto-save
+                if (metadata.auto) {
+                    totalCount++;
+                    const validation = await window.autoSaveManager.validateSave('auto');
+                    if (validation.isValid) {
+                        validCount++;
+                        logStatus('Auto-save: Valid', 'success');
+                    } else {
+                        logStatus(`Auto-save: Invalid - ${validation.error || validation.errors?.join(', ')}`, 'error');
+                    }
+                }
+                
+                // Check manual saves
+                for (let i = 1; i <= 3; i++) {
+                    if (metadata.manual[i]) {
+                        totalCount++;
+                        const validation = await window.autoSaveManager.validateSave(i);
+                        if (validation.isValid) {
+                            validCount++;
+                            logStatus(`Slot ${i}: Valid`, 'success');
+                        } else {
+                            logStatus(`Slot ${i}: Invalid - ${validation.error || validation.errors?.join(', ')}`, 'error');
+                        }
+                    }
+                }
+                
+                logStatus(`Validation complete: ${validCount}/${totalCount} saves valid`, validCount === totalCount ? 'success' : 'warning');
+                
+            } catch (error) {
+                logStatus(`Validation failed: ${error.message}`, 'error');
+            }
+        };
+
+        // Clear all saves
+        window.clearAllSaves = function() {
+            if (!window.saveSystem) {
+                logStatus('Save system not initialized', 'error');
+                return;
+            }
+            
+            try {
+                // Clear manual saves
+                for (let i = 1; i <= 3; i++) {
+                    window.saveSystem.deleteSave(i);
+                }
+                
+                // Clear auto-save
+                window.saveSystem.deleteSave('auto');
+                
+                // Clear auto-save backups
+                for (let i = 1; i <= 3; i++) {
+                    localStorage.removeItem(`dungeon_crawler_autosave_backup_${i}`);
+                }
+                
+                logStatus('All saves cleared', 'success');
+                refreshSaveSlots();
+                refreshAutoSaveStatus();
+                
+            } catch (error) {
+                logStatus(`Failed to clear saves: ${error.message}`, 'error');
+            }
+        };
+
+        // Refresh save slots display
+        window.refreshSaveSlots = function() {
+            if (!window.saveSystem) return;
+            
+            try {
+                const metadata = window.saveSystem.getAllSaveMetadata();
+                const container = document.getElementById('saveSlots');
+                container.innerHTML = '';
+                
+                // Auto-save slot
+                const autoSlot = createSlotElement('auto', metadata.auto);
+                container.appendChild(autoSlot);
+                
+                // Manual slots
+                for (let i = 1; i <= 3; i++) {
+                    const slot = createSlotElement(i, metadata.manual[i]);
+                    container.appendChild(slot);
+                }
+                
+            } catch (error) {
+                logStatus(`Failed to refresh save slots: ${error.message}`, 'error');
+            }
+        };
+
+        // Create slot element for display
+        function createSlotElement(slotId, metadata) {
+            const slot = document.createElement('div');
+            slot.className = `save-slot ${metadata ? 'occupied' : 'empty'}`;
+            
+            const header = document.createElement('div');
+            header.className = 'slot-header';
+            header.textContent = slotId === 'auto' ? 'Auto-Save' : `Slot ${slotId}`;
+            
+            const info = document.createElement('div');
+            
+            if (metadata && !metadata.corrupted) {
+                info.innerHTML = `
+                    <div class="slot-info">Location: ${metadata.location || 'Unknown'}</div>
+                    <div class="slot-info">Level: ${metadata.partyLevel} | Characters: ${metadata.partySize} | Gold: ${metadata.gold}</div>
+                    <div class="slot-info">Saved: ${new Date(metadata.timestamp).toLocaleString()}</div>
+                    <div class="slot-info">Version: ${metadata.version}</div>
+                `;
+            } else if (metadata && metadata.corrupted) {
+                info.innerHTML = `
+                    <div class="slot-info error">Corrupted Save</div>
+                    <div class="slot-info error">${metadata.error}</div>
+                `;
+            } else {
+                info.innerHTML = '<div class="slot-info">Empty Slot</div>';
+            }
+            
+            const controls = document.createElement('div');
+            controls.style.marginTop = '10px';
+            
+            if (metadata && !metadata.corrupted) {
+                controls.innerHTML = `
+                    <button onclick="testLoadSave('${slotId}')">Load</button>
+                    <button onclick="deleteSave('${slotId}')">Delete</button>
+                `;
+            }
+            
+            if (slotId !== 'auto') {
+                const saveBtn = document.createElement('button');
+                saveBtn.textContent = 'Save';
+                saveBtn.onclick = () => testSaveTo(slotId);
+                controls.appendChild(saveBtn);
+            }
+            
+            slot.appendChild(header);
+            slot.appendChild(info);
+            slot.appendChild(controls);
+            
+            return slot;
+        }
+
+        // Test save to specific slot
+        window.testSaveTo = async function(slotId) {
+            if (!window.saveSystem || !window.mockGameState) {
+                logStatus('Save system or game state not ready', 'error');
+                return;
+            }
+            
+            try {
+                const result = await window.saveSystem.saveGame(slotId, { includeScreenshot: false });
+                if (result.success) {
+                    logStatus(`Saved to slot ${slotId} successfully (${result.duration}ms)`, 'success');
+                    refreshSaveSlots();
+                } else {
+                    logStatus(`Save to slot ${slotId} failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                logStatus(`Save error: ${error.message}`, 'error');
+            }
+        };
+
+        // Test load from specific slot
+        window.testLoadSave = async function(slotId) {
+            if (!window.saveSystem) {
+                logStatus('Save system not ready', 'error');
+                return;
+            }
+            
+            try {
+                const result = await window.saveSystem.loadGame(slotId);
+                if (result.success) {
+                    logStatus(`Loaded from slot ${slotId} successfully (${result.duration}ms)`, 'success');
+                    console.log('Loaded save data:', result.saveData);
+                } else {
+                    logStatus(`Load from slot ${slotId} failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                logStatus(`Load error: ${error.message}`, 'error');
+            }
+        };
+
+        // Delete save
+        window.deleteSave = function(slotId) {
+            if (!window.saveSystem) {
+                logStatus('Save system not ready', 'error');
+                return;
+            }
+            
+            const success = window.saveSystem.deleteSave(slotId);
+            if (success) {
+                logStatus(`Deleted save from slot ${slotId}`, 'success');
+                refreshSaveSlots();
+            } else {
+                logStatus(`Failed to delete save from slot ${slotId}`, 'error');
+            }
+        };
+
+        // Test save/load cycle
+        window.testSaveLoad = async function(slotId) {
+            if (!window.saveSystem || !window.mockGameState) {
+                logStatus('Save system or game state not ready', 'error');
+                return;
+            }
+            
+            try {
+                logStatus(`Testing save/load cycle for slot ${slotId}...`, 'success');
+                
+                // Save
+                const saveResult = await window.saveSystem.saveGame(slotId, { includeScreenshot: false });
+                if (!saveResult.success) {
+                    throw new Error(`Save failed: ${saveResult.error}`);
+                }
+                
+                // Load
+                const loadResult = await window.saveSystem.loadGame(slotId);
+                if (!loadResult.success) {
+                    throw new Error(`Load failed: ${loadResult.error}`);
+                }
+                
+                // Validate
+                const validation = loadResult.saveData.validate();
+                if (!validation.isValid) {
+                    throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
+                }
+                
+                logStatus(`Save/load cycle for slot ${slotId} completed successfully`, 'success');
+                refreshSaveSlots();
+                
+            } catch (error) {
+                logStatus(`Save/load cycle failed: ${error.message}`, 'error');
+            }
+        };
+
+        // Toggle auto-save
+        window.toggleAutoSave = function() {
+            if (!window.autoSaveManager) {
+                logStatus('Auto-save manager not initialized', 'error');
+                return;
+            }
+            
+            const status = window.autoSaveManager.getStatus();
+            window.autoSaveManager.setEnabled(!status.enabled);
+            
+            logStatus(`Auto-save ${!status.enabled ? 'enabled' : 'disabled'}`, 'success');
+            refreshAutoSaveStatus();
+        };
+
+        // Set auto-save interval
+        window.setAutoSaveInterval = function(interval) {
+            if (!window.autoSaveManager) {
+                logStatus('Auto-save manager not initialized', 'error');
+                return;
+            }
+            
+            window.autoSaveManager.setInterval(interval);
+            logStatus(`Auto-save interval set to ${interval / 1000} seconds`, 'success');
+            refreshAutoSaveStatus();
+        };
+
+        // Refresh auto-save status
+        window.refreshAutoSaveStatus = function() {
+            if (!window.autoSaveManager) {
+                document.getElementById('autoSaveStatus').textContent = 'Auto-save not initialized';
+                return;
+            }
+            
+            const status = window.autoSaveManager.getStatus();
+            const statusEl = document.getElementById('autoSaveStatus');
+            
+            statusEl.innerHTML = `
+                <div>Enabled: ${status.enabled}</div>
+                <div>Interval: ${status.interval / 1000} seconds</div>
+                <div>Last Auto-Save: ${status.lastAutoSave ? new Date(status.lastAutoSave).toLocaleString() : 'Never'}</div>
+                <div>Time Since Last: ${Math.floor(status.timeSinceLastSave / 1000)} seconds</div>
+                <div>Time Until Next: ${Math.floor(status.timeUntilNextSave / 1000)} seconds</div>
+                <div>Has Auto-Save: ${status.hasAutoSave}</div>
+                <div>Backup Count: ${status.backupCount}</div>
+            `;
+        };
+
+        // Test corruption recovery
+        window.testCorruptionRecovery = async function() {
+            if (!window.saveSystem || !window.autoSaveManager) {
+                logStatus('Save system not ready', 'error');
+                return;
+            }
+            
+            try {
+                logStatus('Testing corruption recovery...', 'success');
+                
+                // First, create a valid auto-save
+                await window.autoSaveManager.performAutoSave('test');
+                
+                // Corrupt the auto-save
+                localStorage.setItem('dungeon_crawler_autosave', 'corrupted_data');
+                
+                // Try to validate (should fail)
+                const validation = await window.autoSaveManager.validateSave('auto');
+                if (validation.isValid) {
+                    throw new Error('Validation should have failed for corrupted save');
+                }
+                
+                logStatus('Corruption detected successfully', 'success');
+                
+                // Try to recover
+                const recovery = await window.autoSaveManager.recoverSave('auto');
+                if (recovery.success) {
+                    logStatus(`Recovery successful: ${recovery.message}`, 'success');
+                } else {
+                    logStatus(`Recovery failed: ${recovery.error}`, 'warning');
+                }
+                
+                refreshSaveSlots();
+                
+            } catch (error) {
+                logStatus(`Corruption recovery test failed: ${error.message}`, 'error');
+            }
+        };
+
+        // Test validation
+        window.testValidation = function() {
+            try {
+                logStatus('Testing save validation...', 'success');
+                
+                // Test valid save data
+                const validSave = SaveData.fromGameState(window.mockGameState || {});
+                const validResult = window.saveValidator.validate(validSave);
+                
+                logStatus(`Valid save test: ${validResult.isValid ? 'PASS' : 'FAIL'}`, validResult.isValid ? 'success' : 'error');
+                if (!validResult.isValid) {
+                    console.log('Validation errors:', validResult.errors);
+                }
+                
+                // Test invalid save data
+                const invalidSave = { invalid: 'data' };
+                const invalidResult = window.saveValidator.validate(invalidSave);
+                
+                logStatus(`Invalid save test: ${!invalidResult.isValid ? 'PASS' : 'FAIL'}`, !invalidResult.isValid ? 'success' : 'error');
+                
+                // Test quick validation
+                const quickValid = window.saveValidator.quickValidate(validSave);
+                const quickInvalid = window.saveValidator.quickValidate(invalidSave);
+                
+                logStatus(`Quick validation test: ${quickValid && !quickInvalid ? 'PASS' : 'FAIL'}`, quickValid && !quickInvalid ? 'success' : 'error');
+                
+            } catch (error) {
+                logStatus(`Validation test failed: ${error.message}`, 'error');
+            }
+        };
+
+        // Performance test
+        window.performanceTest = async function() {
+            if (!window.saveSystem || !window.mockGameState) {
+                logStatus('Save system or game state not ready', 'error');
+                return;
+            }
+            
+            try {
+                logStatus('Running performance test...', 'success');
+                
+                const iterations = 10;
+                const times = [];
+                
+                for (let i = 0; i < iterations; i++) {
+                    const start = performance.now();
+                    
+                    // Save
+                    const saveResult = await window.saveSystem.saveGame(1, { includeScreenshot: false });
+                    if (!saveResult.success) {
+                        throw new Error(`Save failed: ${saveResult.error}`);
+                    }
+                    
+                    // Load
+                    const loadResult = await window.saveSystem.loadGame(1);
+                    if (!loadResult.success) {
+                        throw new Error(`Load failed: ${loadResult.error}`);
+                    }
+                    
+                    const end = performance.now();
+                    times.push(end - start);
+                }
+                
+                const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+                const minTime = Math.min(...times);
+                const maxTime = Math.max(...times);
+                
+                logStatus(`Performance test complete:`, 'success');
+                logStatus(`Average: ${avgTime.toFixed(2)}ms | Min: ${minTime.toFixed(2)}ms | Max: ${maxTime.toFixed(2)}ms`, 'success');
+                
+                // Check if under 1 second requirement
+                if (avgTime < 1000) {
+                    logStatus('✓ Performance requirement met (< 1 second)', 'success');
+                } else {
+                    logStatus('✗ Performance requirement not met (> 1 second)', 'error');
+                }
+                
+            } catch (error) {
+                logStatus(`Performance test failed: ${error.message}`, 'error');
+            }
+        };
+
+        // Utility function to log status
+        function logStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : '';
+            
+            statusEl.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            statusEl.scrollTop = statusEl.scrollHeight;
+        }
+
+        // Auto-refresh save slots and auto-save status
+        setInterval(() => {
+            if (window.saveSystem) {
+                refreshSaveSlots();
+            }
+            if (window.autoSaveManager) {
+                refreshAutoSaveStatus();
+            }
+        }, 5000);
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            logStatus('Save System Test Page Loaded', 'success');
+            logStatus('Click "Initialize Save System" to begin testing', 'info');
+        });
+    </script>
+</body>
+</html>

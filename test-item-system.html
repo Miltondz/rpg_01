@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Item System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            background-color: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        .item-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .item-card {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 6px;
+            border: 2px solid;
+        }
+        .item-card.common { border-color: #FFFFFF; }
+        .item-card.uncommon { border-color: #00FF00; }
+        .item-card.rare { border-color: #0080FF; }
+        .item-card.epic { border-color: #8000FF; }
+        .item-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        .item-type {
+            color: #aaa;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        .item-stats {
+            margin: 10px 0;
+        }
+        .stat {
+            display: inline-block;
+            background-color: #444;
+            padding: 2px 6px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .test-results {
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .character-stats {
+            background-color: #2a2a2a;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Item System & Database Test</h1>
+        
+        <div class="section">
+            <h2>Test Character</h2>
+            <div id="characterStats" class="character-stats"></div>
+            <div class="controls">
+                <button onclick="resetCharacter()">Reset Character</button>
+                <button onclick="damageCharacter()">Damage Character (-30 HP)</button>
+                <button onclick="enterCombat()">Enter Combat Mode</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Item Database Overview</h2>
+            <div id="databaseStats"></div>
+            <div class="controls">
+                <button onclick="showAllItems()">Show All Items</button>
+                <button onclick="showWeapons()">Show Weapons</button>
+                <button onclick="showArmor()">Show Armor</button>
+                <button onclick="showConsumables()">Show Consumables</button>
+                <button onclick="generateRandomItems()">Generate Random Items</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Loot System Testing</h2>
+            <div class="controls">
+                <button onclick="testEnemyLoot()">Generate Enemy Loot</button>
+                <button onclick="testBossLoot()">Generate Boss Loot</button>
+                <button onclick="testLootTables()">Show Loot Tables</button>
+                <button onclick="testCombatLoot()">Simulate Combat Loot</button>
+            </div>
+            <div id="lootResults" class="test-results"></div>
+        </div>
+
+        <div class="section">
+            <h2>Shop System Testing</h2>
+            <div class="controls">
+                <button onclick="refreshShop()">Refresh Shop (Level 3)</button>
+                <button onclick="showShopInventory()">Show Shop Inventory</button>
+                <button onclick="testBuyItem()">Test Buy Item</button>
+                <button onclick="testSellItem()">Test Sell Item</button>
+                <button onclick="testShopPricing()">Test Shop Pricing</button>
+            </div>
+            <div id="shopResults" class="test-results"></div>
+        </div>
+
+        <div class="section">
+            <h2>Consumable Testing</h2>
+            <div class="controls">
+                <button onclick="testHealthPotions()">Test Health Potions</button>
+                <button onclick="testBuffPotions()">Test Buff Potions</button>
+                <button onclick="testAPPotions()">Test AP Potions</button>
+                <button onclick="testCuratives()">Test Curatives</button>
+                <button onclick="testSpecialItems()">Test Special Items</button>
+            </div>
+            <div id="consumableResults" class="test-results"></div>
+        </div>
+
+        <div class="section">
+            <h2>Items Display</h2>
+            <div id="itemsDisplay" class="item-grid"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { itemDatabase } from './src/engine/inventory/ItemDatabase.js';
+        import { ConsumableSystem } from './src/engine/inventory/ConsumableSystem.js';
+        import { ItemTypes, ItemRarity } from './src/engine/inventory/Item.js';
+        import { lootSystem } from './src/engine/loot/LootSystem.js';
+        import { shopSystem } from './src/engine/shop/ShopSystem.js';
+
+        // Initialize systems (using global instances)
+        const consumableSystem = new ConsumableSystem();
+
+        // Test character
+        let testCharacter = {
+            name: 'Test Hero',
+            class: 'warrior',
+            level: 3,
+            stats: {
+                HP: { current: 80, max: 100 },
+                ATK: 15,
+                DEF: 12,
+                SPD: 8
+            },
+            statusEffects: [],
+            currentAP: 3,
+            maxAP: 3
+        };
+
+        let inCombat = false;
+
+        // Make functions global
+        window.resetCharacter = resetCharacter;
+        window.damageCharacter = damageCharacter;
+        window.enterCombat = enterCombat;
+        window.showAllItems = showAllItems;
+        window.showWeapons = showWeapons;
+        window.showArmor = showArmor;
+        window.showConsumables = showConsumables;
+        window.generateRandomItems = generateRandomItems;
+        window.testHealthPotions = testHealthPotions;
+        window.testBuffPotions = testBuffPotions;
+        window.testAPPotions = testAPPotions;
+        window.testCuratives = testCuratives;
+        window.testSpecialItems = testSpecialItems;
+        // Loot system functions
+        window.testEnemyLoot = testEnemyLoot;
+        window.testBossLoot = testBossLoot;
+        window.testLootTables = testLootTables;
+        window.testCombatLoot = testCombatLoot;
+        // Shop system functions
+        window.refreshShop = refreshShop;
+        window.showShopInventory = showShopInventory;
+        window.testBuyItem = testBuyItem;
+        window.testSellItem = testSellItem;
+        window.testShopPricing = testShopPricing;
+
+        function resetCharacter() {
+            testCharacter = {
+                name: 'Test Hero',
+                class: 'warrior',
+                level: 3,
+                stats: {
+                    HP: { current: 80, max: 100 },
+                    ATK: 15,
+                    DEF: 12,
+                    SPD: 8
+                },
+                statusEffects: [],
+                currentAP: 3,
+                maxAP: 3
+            };
+            inCombat = false;
+            updateCharacterDisplay();
+        }
+
+        function damageCharacter() {
+            testCharacter.stats.HP.current = Math.max(0, testCharacter.stats.HP.current - 30);
+            testCharacter.currentAP = Math.max(0, testCharacter.currentAP - 1);
+            updateCharacterDisplay();
+        }
+
+        function enterCombat() {
+            inCombat = !inCombat;
+            updateCharacterDisplay();
+        }
+
+        function updateCharacterDisplay() {
+            const statsDiv = document.getElementById('characterStats');
+            const modifiers = consumableSystem.calculateEffectModifiers(testCharacter);
+            
+            statsDiv.innerHTML = `
+                <h3>${testCharacter.name} (Level ${testCharacter.level} ${testCharacter.class})</h3>
+                <p><strong>HP:</strong> ${testCharacter.stats.HP.current}/${testCharacter.stats.HP.max}</p>
+                <p><strong>ATK:</strong> ${testCharacter.stats.ATK} ${modifiers.ATK ? `(+${modifiers.ATK})` : ''}</p>
+                <p><strong>DEF:</strong> ${testCharacter.stats.DEF} ${modifiers.DEF ? `(+${modifiers.DEF})` : ''}</p>
+                <p><strong>SPD:</strong> ${testCharacter.stats.SPD} ${modifiers.SPD ? `(+${modifiers.SPD})` : ''}</p>
+                <p><strong>AP:</strong> ${testCharacter.currentAP}/${testCharacter.maxAP}</p>
+                <p><strong>Combat Mode:</strong> ${inCombat ? 'Yes' : 'No'}</p>
+                <p><strong>Status Effects:</strong> ${testCharacter.statusEffects.length > 0 ? 
+                    testCharacter.statusEffects.map(e => `${e.type} (+${e.value}) [${e.duration} turns]`).join(', ') : 
+                    'None'}</p>
+            `;
+        }
+
+        function updateDatabaseStats() {
+            const statsDiv = document.getElementById('databaseStats');
+            const allItems = itemDatabase.getAllItemIds();
+            const weapons = itemDatabase.getItemsByType(ItemTypes.WEAPON);
+            const armor = itemDatabase.getItemsByType(ItemTypes.ARMOR);
+            const accessories = itemDatabase.getItemsByType(ItemTypes.ACCESSORY);
+            const consumables = itemDatabase.getItemsByType(ItemTypes.CONSUMABLE);
+            
+            statsDiv.innerHTML = `
+                <p><strong>Total Items:</strong> ${allItems.length}</p>
+                <p><strong>Weapons:</strong> ${weapons.length}</p>
+                <p><strong>Armor:</strong> ${armor.length}</p>
+                <p><strong>Accessories:</strong> ${accessories.length}</p>
+                <p><strong>Consumables:</strong> ${consumables.length}</p>
+            `;
+        }
+
+        function displayItems(items) {
+            const displayDiv = document.getElementById('itemsDisplay');
+            displayDiv.innerHTML = '';
+
+            items.forEach(itemData => {
+                const item = itemDatabase.getItem(itemData.id);
+                if (!item) return;
+
+                const card = document.createElement('div');
+                card.className = `item-card ${item.rarity}`;
+                
+                const stats = item.getFinalStats();
+                const statsHtml = Object.entries(stats).map(([stat, value]) => 
+                    `<span class="stat">${stat}: ${value}</span>`
+                ).join('');
+
+                const effectsHtml = item.effects.map(effect => {
+                    if (effect.type === 'heal') return `Heal: ${effect.value}`;
+                    if (effect.type === 'buff') return `${effect.stat} +${effect.value} (${effect.duration}t)`;
+                    if (effect.type === 'restore_ap') return `AP +${effect.value}`;
+                    if (effect.type === 'cure') return `Cure: ${effect.conditions?.join(', ') || 'all'}`;
+                    return `${effect.type}: ${effect.value}`;
+                }).join(', ');
+
+                card.innerHTML = `
+                    <div class="item-name" style="color: ${item.getColor()}">${item.name}</div>
+                    <div class="item-type">${item.type} • Level ${item.level} • ${item.rarity}</div>
+                    <div class="item-description">${item.description}</div>
+                    ${statsHtml ? `<div class="item-stats">${statsHtml}</div>` : ''}
+                    ${effectsHtml ? `<div class="item-effects">Effects: ${effectsHtml}</div>` : ''}
+                    <div style="margin-top: 10px;">
+                        <small>Value: ${item.value} gold</small>
+                        ${item.type === ItemTypes.CONSUMABLE ? 
+                            `<button onclick="useItem('${itemData.id}')" style="margin-left: 10px; padding: 5px 10px; font-size: 0.8em;">Use Item</button>` : 
+                            ''}
+                    </div>
+                `;
+                
+                displayDiv.appendChild(card);
+            });
+        }
+
+        window.useItem = function(itemId) {
+            const item = itemDatabase.getItem(itemId);
+            if (!item) return;
+
+            const result = consumableSystem.useConsumable(item, testCharacter, { inCombat });
+            
+            let resultText = `Used ${item.name}:\n`;
+            result.effects.forEach(effect => {
+                resultText += `- ${effect.message}\n`;
+            });
+            
+            document.getElementById('consumableResults').textContent = resultText;
+            updateCharacterDisplay();
+        };
+
+        function showAllItems() {
+            const allItemIds = itemDatabase.getAllItemIds();
+            const allItems = allItemIds.map(id => ({ id }));
+            displayItems(allItems);
+        }
+
+        function showWeapons() {
+            displayItems(itemDatabase.getItemsByType(ItemTypes.WEAPON));
+        }
+
+        function showArmor() {
+            displayItems(itemDatabase.getItemsByType(ItemTypes.ARMOR));
+        }
+
+        function showConsumables() {
+            displayItems(itemDatabase.getItemsByType(ItemTypes.CONSUMABLE));
+        }
+
+        function generateRandomItems() {
+            const randomItems = [];
+            for (let i = 0; i < 10; i++) {
+                const level = Math.floor(Math.random() * 5) + 1;
+                const item = itemDatabase.generateRandomItem(level);
+                randomItems.push({ id: item.id, ...item });
+            }
+            displayItems(randomItems);
+        }
+
+        function testHealthPotions() {
+            let results = 'Testing Health Potions:\n\n';
+            
+            // Test each health potion
+            const healthPotions = ['small_health_potion', 'health_potion', 'large_health_potion', 'full_health_potion'];
+            
+            healthPotions.forEach(potionId => {
+                const potion = itemDatabase.getItem(potionId);
+                const oldHP = testCharacter.stats.HP.current;
+                
+                const result = consumableSystem.useConsumable(potion, testCharacter, { inCombat });
+                results += `${potion.name}: ${oldHP} -> ${testCharacter.stats.HP.current} HP\n`;
+                
+                // Reset for next test
+                testCharacter.stats.HP.current = 50;
+            });
+            
+            document.getElementById('consumableResults').textContent = results;
+            updateCharacterDisplay();
+        }
+
+        function testBuffPotions() {
+            let results = 'Testing Buff Potions:\n\n';
+            
+            const buffPotions = ['strength_elixir', 'defense_elixir', 'speed_elixir', 'berserker_elixir'];
+            
+            buffPotions.forEach(potionId => {
+                const potion = itemDatabase.getItem(potionId);
+                const result = consumableSystem.useConsumable(potion, testCharacter, { inCombat });
+                
+                results += `${potion.name}: Applied\n`;
+                result.effects.forEach(effect => {
+                    results += `  - ${effect.message}\n`;
+                });
+            });
+            
+            document.getElementById('consumableResults').textContent = results;
+            updateCharacterDisplay();
+        }
+
+        function testAPPotions() {
+            let results = 'Testing AP Potions:\n\n';
+            
+            // Reduce AP first
+            testCharacter.currentAP = 1;
+            
+            const apPotions = ['ap_potion', 'greater_ap_potion'];
+            
+            apPotions.forEach(potionId => {
+                const potion = itemDatabase.getItem(potionId);
+                const oldAP = testCharacter.currentAP;
+                
+                const result = consumableSystem.useConsumable(potion, testCharacter, { inCombat: true });
+                results += `${potion.name}: ${oldAP} -> ${testCharacter.currentAP} AP\n`;
+                
+                // Test without combat
+                const resultNoCombat = consumableSystem.useConsumable(potion, testCharacter, { inCombat: false });
+                results += `  Without combat: ${resultNoCombat.effects[0]?.message || 'Failed'}\n`;
+            });
+            
+            document.getElementById('consumableResults').textContent = results;
+            updateCharacterDisplay();
+        }
+
+        function testCuratives() {
+            let results = 'Testing Curative Items:\n\n';
+            
+            // Add some status effects
+            testCharacter.statusEffects = [
+                { type: 'poison', value: -2, duration: 3, source: 'enemy' },
+                { type: 'burn', value: -3, duration: 2, source: 'enemy' }
+            ];
+            
+            const curatives = ['antidote', 'panacea'];
+            
+            curatives.forEach(curativeId => {
+                const curative = itemDatabase.getItem(curativeId);
+                const beforeEffects = testCharacter.statusEffects.length;
+                
+                const result = consumableSystem.useConsumable(curative, testCharacter, { inCombat });
+                const afterEffects = testCharacter.statusEffects.length;
+                
+                results += `${curative.name}: Removed ${beforeEffects - afterEffects} effects\n`;
+                
+                // Re-add effects for next test
+                if (curativeId === 'antidote') {
+                    testCharacter.statusEffects = [
+                        { type: 'freeze', value: -1, duration: 2, source: 'enemy' },
+                        { type: 'paralysis', value: 0, duration: 1, source: 'enemy' }
+                    ];
+                }
+            });
+            
+            document.getElementById('consumableResults').textContent = results;
+            updateCharacterDisplay();
+        }
+
+        function testSpecialItems() {
+            let results = 'Testing Special Items:\n\n';
+            
+            // Test Phoenix Down (revive)
+            testCharacter.stats.HP.current = 0; // "Kill" character
+            const phoenixDown = itemDatabase.getItem('phoenix_down');
+            const reviveResult = consumableSystem.useConsumable(phoenixDown, testCharacter, { inCombat });
+            results += `Phoenix Down: Revived with ${testCharacter.stats.HP.current} HP\n`;
+            
+            // Test Elixir of Life
+            testCharacter.stats.HP.current = 30;
+            testCharacter.statusEffects = [{ type: 'poison', value: -2, duration: 3 }];
+            
+            const elixirOfLife = itemDatabase.getItem('elixir_of_life');
+            const elixirResult = consumableSystem.useConsumable(elixirOfLife, testCharacter, { inCombat });
+            results += `Elixir of Life: HP restored to ${testCharacter.stats.HP.current}, effects cleared\n`;
+            
+            document.getElementById('consumableResults').textContent = results;
+            updateCharacterDisplay();
+        }
+
+        // Loot System Testing Functions
+        function testEnemyLoot() {
+            let results = 'Testing Enemy Loot Generation:\n\n';
+            
+            const enemies = ['goblin', 'orc', 'skeleton', 'fire_elemental', 'ice_elemental'];
+            
+            enemies.forEach(enemyType => {
+                const loot = lootSystem.generateLoot(enemyType, 3, 3, false);
+                results += `${enemyType.toUpperCase()}:\n`;
+                results += `  Gold: ${loot.gold}\n`;
+                results += `  Items: ${loot.items.length}\n`;
+                loot.items.forEach(item => {
+                    results += `    - ${item.name} (${item.rarity}, Lv.${item.level})\n`;
+                });
+                results += '\n';
+            });
+            
+            document.getElementById('lootResults').textContent = results;
+        }
+
+        function testBossLoot() {
+            let results = 'Testing Boss Loot Generation:\n\n';
+            
+            const bossLevels = [3, 5, 8];
+            
+            bossLevels.forEach(level => {
+                const loot = lootSystem.generateLoot('boss_encounter', level, level, true);
+                results += `BOSS LEVEL ${level}:\n`;
+                results += `  Gold: ${loot.gold}\n`;
+                results += `  Items: ${loot.items.length}\n`;
+                loot.items.forEach(item => {
+                    results += `    - ${item.name} (${item.rarity}, Lv.${item.level})\n`;
+                    if (item.stats && Object.keys(item.stats).length > 0) {
+                        const statStr = Object.entries(item.stats).map(([stat, val]) => `${stat}:${val}`).join(', ');
+                        results += `      Stats: ${statStr}\n`;
+                    }
+                });
+                results += '\n';
+            });
+            
+            document.getElementById('lootResults').textContent = results;
+        }
+
+        function testLootTables() {
+            let results = 'Loot Table Information:\n\n';
+            
+            const enemies = ['goblin', 'orc', 'skeleton', 'fire_elemental', 'ice_elemental'];
+            
+            enemies.forEach(enemyType => {
+                const lootTable = lootSystem.getLootTable(enemyType);
+                results += `${enemyType.toUpperCase()}:\n`;
+                results += `  Gold Range: ${lootTable.goldRange.min}-${lootTable.goldRange.max}\n`;
+                results += `  Drop Chance: ${(lootTable.dropChance * 100).toFixed(1)}%\n`;
+                results += `  Item Types:\n`;
+                lootTable.items.forEach(item => {
+                    results += `    - ${item.type}: ${(item.chance * 100).toFixed(1)}% (${item.rarity})\n`;
+                });
+                results += '\n';
+            });
+            
+            document.getElementById('lootResults').textContent = results;
+        }
+
+        function testCombatLoot() {
+            let results = 'Simulating Combat Loot:\n\n';
+            
+            // Simulate different enemy groups
+            const encounters = [
+                [{ type: 'goblin', level: 2 }, { type: 'goblin', level: 2 }],
+                [{ type: 'orc', level: 4 }],
+                [{ type: 'fire_elemental', level: 5 }, { type: 'ice_elemental', level: 5 }],
+                [{ type: 'skeleton', level: 3, isBoss: true }]
+            ];
+            
+            encounters.forEach((enemies, index) => {
+                const loot = lootSystem.generateCombatLoot(enemies, 3);
+                results += `ENCOUNTER ${index + 1}:\n`;
+                results += `  Enemies: ${enemies.map(e => `${e.type}(${e.level})`).join(', ')}\n`;
+                results += `  Total Gold: ${loot.gold}\n`;
+                results += `  Total Items: ${loot.items.length}\n`;
+                loot.items.forEach(item => {
+                    results += `    - ${item.name} (${item.rarity})\n`;
+                });
+                results += '\n';
+            });
+            
+            document.getElementById('lootResults').textContent = results;
+        }
+
+        // Shop System Testing Functions
+        function refreshShop() {
+            shopSystem.refreshShop(3, true);
+            let results = 'Shop refreshed for party level 3\n\n';
+            results += `Shop inventory contains ${shopSystem.getShopInventory().length} items\n`;
+            document.getElementById('shopResults').textContent = results;
+        }
+
+        function showShopInventory() {
+            shopSystem.refreshShop(3, true);
+            const inventory = shopSystem.getShopInventory();
+            
+            let results = 'Current Shop Inventory:\n\n';
+            
+            const categories = {};
+            inventory.forEach(item => {
+                if (!categories[item.type]) categories[item.type] = [];
+                categories[item.type].push(item);
+            });
+            
+            Object.entries(categories).forEach(([type, items]) => {
+                results += `${type.toUpperCase()}:\n`;
+                items.forEach(item => {
+                    results += `  - ${item.name} (${item.rarity}) - ${item.price}g [Stock: ${item.stock}]\n`;
+                    if (item.stats) {
+                        const statStr = Object.entries(item.stats).map(([stat, val]) => `${stat}:+${val}`).join(', ');
+                        results += `    Stats: ${statStr}\n`;
+                    }
+                });
+                results += '\n';
+            });
+            
+            document.getElementById('shopResults').textContent = results;
+        }
+
+        function testBuyItem() {
+            shopSystem.refreshShop(3, true);
+            const inventory = shopSystem.getShopInventory();
+            
+            if (inventory.length === 0) {
+                document.getElementById('shopResults').textContent = 'No items in shop to buy';
+                return;
+            }
+            
+            const testItem = inventory[0];
+            const mockInventory = { addItem: () => ({ success: true }) };
+            const playerGold = 1000;
+            
+            const result = shopSystem.buyItem(testItem.id, 1, mockInventory, playerGold);
+            
+            let results = 'Buy Item Test:\n\n';
+            results += `Attempting to buy: ${testItem.name}\n`;
+            results += `Price: ${testItem.price}g\n`;
+            results += `Player Gold: ${playerGold}g\n`;
+            results += `Result: ${result.success ? 'SUCCESS' : 'FAILED'}\n`;
+            results += `Message: ${result.message}\n`;
+            if (result.success) {
+                results += `Cost: ${result.cost}g\n`;
+                results += `Items received: ${result.items.length}\n`;
+            }
+            
+            document.getElementById('shopResults').textContent = results;
+        }
+
+        function testSellItem() {
+            const testItem = itemDatabase.getItem('iron_sword');
+            const mockInventory = {};
+            
+            const result = shopSystem.sellItem(testItem, 1, mockInventory);
+            
+            let results = 'Sell Item Test:\n\n';
+            results += `Selling: ${testItem.name}\n`;
+            results += `Buy Price: ${shopSystem.getBuyPrice(testItem)}g\n`;
+            results += `Sell Price: ${shopSystem.getSellPrice(testItem)}g\n`;
+            results += `Result: ${result.success ? 'SUCCESS' : 'FAILED'}\n`;
+            results += `Message: ${result.message}\n`;
+            if (result.success) {
+                results += `Gold received: ${result.value}g\n`;
+            }
+            
+            document.getElementById('shopResults').textContent = results;
+        }
+
+        function testShopPricing() {
+            let results = 'Shop Pricing Test:\n\n';
+            
+            const testItems = [
+                'iron_sword', 'health_potion', 'leather_armor', 
+                'power_ring', 'magic_crystal', 'phoenix_down'
+            ];
+            
+            testItems.forEach(itemId => {
+                const item = itemDatabase.getItem(itemId);
+                if (item) {
+                    const buyPrice = shopSystem.getBuyPrice(item);
+                    const sellPrice = shopSystem.getSellPrice(item);
+                    
+                    results += `${item.name}:\n`;
+                    results += `  Base Value: ${item.value}g\n`;
+                    results += `  Buy Price: ${buyPrice}g\n`;
+                    results += `  Sell Price: ${sellPrice}g\n`;
+                    results += `  Markup: ${((buyPrice / item.value - 1) * 100).toFixed(1)}%\n`;
+                    results += `  Sell Ratio: ${((sellPrice / buyPrice) * 100).toFixed(1)}%\n\n`;
+                }
+            });
+            
+            document.getElementById('shopResults').textContent = results;
+        }
+
+        // Initialize display
+        updateCharacterDisplay();
+        updateDatabaseStats();
+        showConsumables(); // Show consumables by default
+    </script>
+</body>
+</html>

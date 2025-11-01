@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Integration Test - Dungeon Crawler</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            height: 100vh;
+        }
+        
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #game-canvas {
+            border: 2px solid #00ff00;
+            background: #111;
+        }
+        
+        .test-panel {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+        
+        .test-section {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+        
+        .test-section h3 {
+            margin: 0 0 10px 0;
+            color: #00ff00;
+            font-size: 14px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-pass { background-color: #00ff00; }
+        .status-fail { background-color: #ff0000; }
+        .status-running { background-color: #ffff00; }
+        .status-pending { background-color: #666; }
+        
+        .test-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        
+        .test-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin: 10px 0;
+        }
+        
+        button {
+            background: #000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        button:hover {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .log-area {
+            background: #111;
+            border: 1px solid #333;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px;
+        }
+        
+        .log-success { color: #00ff00; }
+        .log-error { color: #ff0000; }
+        .log-warning { color: #ffff00; }
+        .log-info { color: #00ffff; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #00aa00);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 11px;
+        }
+        
+        .metric-item {
+            background: #222;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        
+        .metric-label {
+            color: #888;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="game-area">
+            <h1>Comprehensive Integration Test</h1>
+            <canvas id="game-canvas" width="800" height="600"></canvas>
+            
+            <!-- Debug UI Elements -->
+            <div id="debug-ui">
+                <div id="debug-info"></div>
+                <div id="debug-messages"></div>
+            </div>
+            
+            <!-- Minimap -->
+            <div id="minimap">
+                <div id="minimap-grid"></div>
+            </div>
+            
+            <!-- Performance Display -->
+            <div id="performance-display">
+                <div id="fps-counter">FPS: --</div>
+                <div id="frame-time">Frame: --ms</div>
+                <div id="memory-usage">Memory: --MB</div>
+            </div>
+        </div>
+
+        <div class="test-panel">
+            <h2>Integration Test Suite</h2>
+            
+            <div class="test-controls">
+                <button onclick="runFullIntegrationTest()">Run Full Test</button>
+                <button onclick="runGameplayLoop()">Test Gameplay Loop</button>
+                <button onclick="runSaveLoadTest()">Test Save/Load</button>
+                <button onclick="runEdgeCaseTests()">Test Edge Cases</button>
+                <button onclick="clearResults()">Clear Results</button>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="test-progress"></div>
+            </div>
+            
+            <div class="test-section">
+                <h3>Test Progress</h3>
+                <div id="current-test-status">Ready to run tests...</div>
+                <div id="test-summary">0/0 tests completed</div>
+            </div>
+            
+            <div class="test-section">
+                <h3>System Integration Tests</h3>
+                <div id="system-tests">
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="engine-init-status"></span>
+                        Engine Initialization
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="character-creation-status"></span>
+                        Character Creation
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="party-management-status"></span>
+                        Party Management
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="inventory-system-status"></span>
+                        Inventory System
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="combat-system-status"></span>
+                        Combat System
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="exploration-status"></span>
+                        Exploration System
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="progression-status"></span>
+                        Progression System
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h3>Save/Load Tests</h3>
+                <div id="save-load-tests">
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="save-creation-status"></span>
+                        Save Creation
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="save-validation-status"></span>
+                        Save Validation
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="load-integrity-status"></span>
+                        Load Integrity
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="auto-save-status"></span>
+                        Auto-Save System
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h3>Edge Case Tests</h3>
+                <div id="edge-case-tests">
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="full-inventory-status"></span>
+                        Full Inventory Handling
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="party-death-status"></span>
+                        All Characters Dead
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="resource-depletion-status"></span>
+                        Resource Depletion
+                    </div>
+                    <div class="test-item">
+                        <span class="status-indicator status-pending" id="boundary-conditions-status"></span>
+                        Boundary Conditions
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h3>Performance Metrics</h3>
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-value" id="fps-metric">--</div>
+                        <div class="metric-label">FPS</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="memory-metric">--</div>
+                        <div class="metric-label">Memory (MB)</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="frame-time-metric">--</div>
+                        <div class="metric-label">Frame Time (ms)</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="test-duration-metric">--</div>
+                        <div class="metric-label">Test Duration (s)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h3>Test Log</h3>
+                <div class="log-area" id="test-log">
+                    <div class="log-entry log-info">Integration test system ready...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import './src/main.js';
+        
+        // Global test state
+        window.testState = {
+            engine: null,
+            testResults: {},
+            currentTest: null,
+            startTime: null,
+            totalTests: 0,
+            completedTests: 0,
+            mockGameState: null
+        };
+        
+        // Test framework
+        class IntegrationTestFramework {
+            constructor() {
+                this.tests = [];
+                this.results = {};
+                this.isRunning = false;
+                this.currentTestIndex = 0;
+            }
+            
+            addTest(name, testFunction, category = 'general') {
+                this.tests.push({
+                    name,
+                    testFunction,
+                    category,
+                    status: 'pending',
+                    error: null,
+                    duration: 0
+                });
+            }
+            
+            async runAllTests() {
+                if (this.isRunning) return;
+                
+                this.isRunning = true;
+                this.currentTestIndex = 0;
+                window.testState.startTime = performance.now();
+                window.testState.totalTests = this.tests.length;
+                window.testState.completedTests = 0;
+                
+                logMessage('Starting comprehensive integration test suite...', 'info');
+                updateTestStatus('Running integration tests...');
+                
+                for (let i = 0; i < this.tests.length; i++) {
+                    const test = this.tests[i];
+                    this.currentTestIndex = i;
+                    
+                    try {
+                        updateTestStatus(`Running: ${test.name}`);
+                        updateTestIndicator(test.name, 'running');
+                        
+                        const startTime = performance.now();
+                        await test.testFunction();
+                        const endTime = performance.now();
+                        
+                        test.status = 'pass';
+                        test.duration = endTime - startTime;
+                        updateTestIndicator(test.name, 'pass');
+                        logMessage(`✓ ${test.name} (${test.duration.toFixed(2)}ms)`, 'success');
+                        
+                    } catch (error) {
+                        test.status = 'fail';
+                        test.error = error;
+                        updateTestIndicator(test.name, 'fail');
+                        logMessage(`✗ ${test.name}: ${error.message}`, 'error');
+                        console.error(`Test failed: ${test.name}`, error);
+                    }
+                    
+                    window.testState.completedTests++;
+                    updateProgress();
+                    
+                    // Small delay between tests
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                this.isRunning = false;
+                const totalDuration = performance.now() - window.testState.startTime;
+                
+                const passedTests = this.tests.filter(t => t.status === 'pass').length;
+                const failedTests = this.tests.filter(t => t.status === 'fail').length;
+                
+                updateTestStatus(`Complete: ${passedTests}/${this.tests.length} passed`);
+                logMessage(`Integration test complete: ${passedTests} passed, ${failedTests} failed (${totalDuration.toFixed(2)}ms)`, 
+                          failedTests === 0 ? 'success' : 'warning');
+                
+                // Update duration metric
+                document.getElementById('test-duration-metric').textContent = (totalDuration / 1000).toFixed(1);
+            }
+            
+            getResults() {
+                return {
+                    tests: this.tests,
+                    summary: {
+                        total: this.tests.length,
+                        passed: this.tests.filter(t => t.status === 'pass').length,
+                        failed: this.tests.filter(t => t.status === 'fail').length,
+                        pending: this.tests.filter(t => t.status === 'pending').length
+                    }
+                };
+            }
+        }
+        
+        // Initialize test framework
+        const testFramework = new IntegrationTestFramework();
+        
+        // Test helper functions
+        function updateTestStatus(message) {
+            document.getElementById('current-test-status').textContent = message;
+        }
+        
+        function updateProgress() {
+            const progress = (window.testState.completedTests / window.testState.totalTests) * 100;
+            document.getElementById('test-progress').style.width = `${progress}%`;
+            document.getElementById('test-summary').textContent = 
+                `${window.testState.completedTests}/${window.testState.totalTests} tests completed`;
+        }
+        
+        function updateTestIndicator(testName, status) {
+            const statusMap = {
+                'Engine Initialization': 'engine-init-status',
+                'Character Creation': 'character-creation-status',
+                'Party Management': 'party-management-status',
+                'Inventory System': 'inventory-system-status',
+                'Combat System': 'combat-system-status',
+                'Exploration System': 'exploration-status',
+                'Progression System': 'progression-status',
+                'Save Creation': 'save-creation-status',
+                'Save Validation': 'save-validation-status',
+                'Load Integrity': 'load-integrity-status',
+                'Auto-Save System': 'auto-save-status',
+                'Full Inventory Handling': 'full-inventory-status',
+                'All Characters Dead': 'party-death-status',
+                'Resource Depletion': 'resource-depletion-status',
+                'Boundary Conditions': 'boundary-conditions-status'
+            };
+            
+            const elementId = statusMap[testName];
+            if (elementId) {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.className = `status-indicator status-${status}`;
+                }
+            }
+        }
+        
+        function logMessage(message, type = 'info') {
+            const log = document.getElementById('test-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            
+            // Keep only last 100 entries
+            while (log.children.length > 100) {
+                log.removeChild(log.firstChild);
+            }
+        }
+        
+        function waitForEngine() {
+            return new Promise((resolve, reject) => {
+                const checkEngine = () => {
+                    if (window.dungeonEngine && window.dungeonEngine.isInitialized) {
+                        window.testState.engine = window.dungeonEngine;
+                        resolve(window.dungeonEngine);
+                    } else {
+                        setTimeout(checkEngine, 100);
+                    }
+                };
+                checkEngine();
+                
+                // Timeout after 10 seconds
+                setTimeout(() => reject(new Error('Engine initialization timeout')), 10000);
+            });
+        }
+        
+        // Define integration tests
+        
+        // System Integration Tests
+        testFramework.addTest('Engine Initialization', async () => {
+            const engine = await waitForEngine();
+            
+            if (!engine.isInitialized) {
+                throw new Error('Engine not properly initialized');
+            }
+            
+            if (!engine.renderer || !engine.gridSystem || !engine.movementController) {
+                throw new Error('Core systems not initialized');
+            }
+            
+            if (!engine.combatSystem || !engine.partyManager || !engine.saveSystem) {
+                throw new Error('Game systems not initialized');
+            }
+        }, 'system');
+        
+        testFramework.addTest('Character Creation', async () => {
+            const engine = window.testState.engine;
+            if (!engine) throw new Error('Engine not available');
+            
+            // Import character system
+            const { Character } = await import('./src/engine/character/Character.js');
+            
+            // Test creating characters of each class
+            const classes = ['warrior', 'rogue', 'mage', 'cleric'];
+            const characters = [];
+            
+            for (const characterClass of classes) {
+                const character = new Character(characterClass, `Test ${characterClass}`);
+                
+                if (!character.stats || !character.skills) {
+                    throw new Error(`Character ${characterClass} not properly initialized`);
+                }
+                
+                if (character.level !== 1 || character.experience !== 0) {
+                    throw new Error(`Character ${characterClass} has incorrect initial values`);
+                }
+                
+                characters.push(character);
+            }
+            
+            // Store characters for later tests
+            window.testState.testCharacters = characters;
+        }, 'system');
+        
+        testFramework.addTest('Party Management', async () => {
+            const engine = window.testState.engine;
+            const characters = window.testState.testCharacters;
+            
+            if (!engine || !characters) {
+                throw new Error('Prerequisites not met');
+            }
+            
+            const partyManager = engine.partyManager;
+            
+            // Test adding characters to party
+            for (const character of characters) {
+                const success = partyManager.addCharacter(character);
+                if (!success) {
+                    throw new Error(`Failed to add ${character.name} to party`);
+                }
+            }
+            
+            // Test party composition
+            const party = partyManager.getParty();
+            if (party.length !== 4) {
+                throw new Error(`Expected 4 party members, got ${party.length}`);
+            }
+            
+            // Test formation system
+            partyManager.setFormation([0, 1], [2, 3]); // Front row, back row
+            const formation = partyManager.getFormation();
+            
+            if (!formation.frontRow || !formation.backRow) {
+                throw new Error('Formation not properly set');
+            }
+        }, 'system');
+        
+        testFramework.addTest('Inventory System', async () => {
+            const engine = window.testState.engine;
+            if (!engine) throw new Error('Engine not available');
+            
+            // Import inventory system
+            const { InventorySystem } = await import('./src/engine/inventory/InventorySystem.js');
+            const inventorySystem = new InventorySystem();
+            
+            // Test adding items
+            const testItem = {
+                id: 'test_sword',
+                name: 'Test Sword',
+                type: 'weapon',
+                rarity: 'common',
+                stackable: false,
+                stats: { ATK: 10 }
+            };
+            
+            const success = inventorySystem.addItem(testItem);
+            if (!success) {
+                throw new Error('Failed to add item to inventory');
+            }
+            
+            // Test inventory capacity
+            const items = inventorySystem.getItems();
+            if (items.length !== 1) {
+                throw new Error('Inventory item count incorrect');
+            }
+            
+            // Test item stacking
+            const stackableItem = {
+                id: 'health_potion',
+                name: 'Health Potion',
+                type: 'consumable',
+                stackable: true
+            };
+            
+            inventorySystem.addItem(stackableItem, 5);
+            const potions = inventorySystem.getItemsByType('consumable');
+            if (potions.length === 0 || potions[0].quantity !== 5) {
+                throw new Error('Item stacking not working correctly');
+            }
+            
+            // Store for later tests
+            window.testState.inventorySystem = inventorySystem;
+        }, 'system');
+        
+        testFramework.addTest('Combat System', async () => {
+            const engine = window.testState.engine;
+            const characters = window.testState.testCharacters;
+            
+            if (!engine || !characters) {
+                throw new Error('Prerequisites not met');
+            }
+            
+            const combatSystem = engine.combatSystem;
+            
+            // Create a test enemy
+            const { Enemy } = await import('./src/engine/combat/Enemy.js');
+            const testEnemy = new Enemy('goblin', 1);
+            
+            // Initialize combat encounter
+            const encounter = combatSystem.initializeCombat(characters, [testEnemy]);
+            
+            if (!encounter || !encounter.turnOrder) {
+                throw new Error('Combat encounter not properly initialized');
+            }
+            
+            // Test turn management
+            const currentTurn = combatSystem.getCurrentTurn();
+            if (currentTurn === null) {
+                throw new Error('Turn management not working');
+            }
+            
+            // Test action system
+            const character = characters[0];
+            const action = {
+                type: 'attack',
+                cost: 1,
+                target: testEnemy
+            };
+            
+            const actionResult = combatSystem.processAction(character, action);
+            if (!actionResult) {
+                throw new Error('Action processing failed');
+            }
+        }, 'system');
+        
+        testFramework.addTest('Exploration System', async () => {
+            const engine = window.testState.engine;
+            if (!engine) throw new Error('Engine not available');
+            
+            // Test movement system
+            const initialPos = engine.movementController.getPosition();
+            if (!initialPos || typeof initialPos.x !== 'number' || typeof initialPos.z !== 'number') {
+                throw new Error('Movement controller position invalid');
+            }
+            
+            // Test collision detection
+            const forwardPos = engine.movementController.calculateForwardPosition();
+            const collision = engine.collisionSystem.checkMovement(
+                initialPos.x, initialPos.z,
+                forwardPos.x, forwardPos.z
+            );
+            
+            if (typeof collision.blocked !== 'boolean') {
+                throw new Error('Collision detection not working');
+            }
+            
+            // Test encounter system
+            if (engine.gameLoopManager && engine.gameLoopManager.encounterSystem) {
+                const encounterChance = engine.gameLoopManager.encounterSystem.getEncounterChance();
+                if (typeof encounterChance !== 'number') {
+                    throw new Error('Encounter system not properly initialized');
+                }
+            }
+        }, 'system');
+        
+        testFramework.addTest('Progression System', async () => {
+            const characters = window.testState.testCharacters;
+            if (!characters) throw new Error('Characters not available');
+            
+            const character = characters[0]; // Test with warrior
+            const initialLevel = character.level;
+            const initialXP = character.experience;
+            
+            // Test XP gain
+            character.gainExperience(100);
+            
+            if (character.experience <= initialXP) {
+                throw new Error('Experience gain not working');
+            }
+            
+            // Test level up (give enough XP to level up)
+            const xpForLevel2 = 50 * Math.pow(2, 2); // XP = 50 × Level²
+            character.gainExperience(xpForLevel2);
+            
+            if (character.level <= initialLevel) {
+                throw new Error('Level up not working');
+            }
+            
+            // Test skill unlocking
+            const skills = character.getAvailableSkills();
+            if (!Array.isArray(skills)) {
+                throw new Error('Skill system not working');
+            }
+        }, 'system');
+        
+        // Save/Load Tests
+        testFramework.addTest('Save Creation', async () => {
+            const engine = window.testState.engine;
+            if (!engine) throw new Error('Engine not available');
+            
+            // Create mock game state
+            const mockState = {
+                partyManager: engine.partyManager,
+                inventorySystem: window.testState.inventorySystem || engine.inventorySystem,
+                playtime: 3600000,
+                currentLocation: 'Test Location',
+                movementController: engine.movementController,
+                dungeonLoader: engine.dungeonLoader
+            };
+            
+            window.testState.mockGameState = mockState;
+            
+            // Initialize save system with mock state
+            engine.saveSystem.initialize(mockState);
+            
+            // Test save creation
+            const saveResult = await engine.saveSystem.saveGame(1, { includeScreenshot: false });
+            
+            if (!saveResult.success) {
+                throw new Error(`Save creation failed: ${saveResult.error}`);
+            }
+            
+            if (saveResult.duration > 1000) {
+                throw new Error(`Save took too long: ${saveResult.duration}ms (requirement: <1000ms)`);
+            }
+        }, 'save-load');
+        
+        testFramework.addTest('Save Validation', async () => {
+            const engine = window.testState.engine;
+            if (!engine) throw new Error('Engine not available');
+            
+            // Import save validator
+            const { SaveValidator } = await import('./src/engine/save/SaveValidator.js');
+            const validator = new SaveValidator();
+            
+            // Get the save we just created
+            const metadata = engine.saveSystem.getAllSaveMetadata();
+            if (!metadata.manual[1]) {
+                throw new Error('No save found to validate');
+            }
+            
+            // Validate the save
+            const validation = await validator.validateSave(1, engine.saveSystem);
+            
+            if (!validation.isValid) {
+                throw new Error(`Save validation failed: ${validation.errors?.join(', ') || validation.error}`);
+            }
+        }, 'save-load');
+        
+        testFramework.addTest('Load Integrity', async () => {
+            const engine = window.testState.engine;
+            if (!engine) throw new Error('Engine not available');
+            
+            // Load the save we created
+            const loadResult = await engine.saveSystem.loadGame(1);
+            
+            if (!loadResult.success) {
+                throw new Error(`Load failed: ${loadResult.error}`);
+            }
+            
+            if (loadResult.duration > 1000) {
+                throw new Error(`Load took too long: ${loadResult.duration}ms (requirement: <1000ms)`);
+            }
+            
+            // Verify loaded data integrity
+            const saveData = loadResult.saveData;
+            if (!saveData || !saveData.party || !saveData.inventory) {
+                throw new Error('Loaded save data is incomplete');
+            }
+            
+            // Verify data matches what we saved
+            if (saveData.metadata.location !== 'Test Location') {
+                throw new Error('Loaded data does not match saved data');
+            }
+        }, 'save-load');
+        
+        testFramework.addTest('Auto-Save System', async () => {
+            const engine = window.testState.engine;
+            if (!engine) throw new Error('Engine not available');
+            
+            // Import auto-save manager
+            const { AutoSaveManager } = await import('./src/engine/save/AutoSaveManager.js');
+            const autoSaveManager = new AutoSaveManager(engine.saveSystem);
+            
+            // Initialize with mock game state
+            autoSaveManager.initialize(window.testState.mockGameState);
+            
+            // Test auto-save functionality
+            const autoSaveResult = await autoSaveManager.performAutoSave('test_trigger');
+            
+            if (!autoSaveResult) {
+                throw new Error('Auto-save failed to execute');
+            }
+            
+            // Verify auto-save exists
+            const metadata = engine.saveSystem.getAllSaveMetadata();
+            if (!metadata.auto) {
+                throw new Error('Auto-save was not created');
+            }
+        }, 'save-load');
+        
+        // Edge Case Tests
+        testFramework.addTest('Full Inventory Handling', async () => {
+            const inventorySystem = window.testState.inventorySystem;
+            if (!inventorySystem) throw new Error('Inventory system not available');
+            
+            // Fill inventory to capacity (40 slots)
+            for (let i = 0; i < 40; i++) {
+                const item = {
+                    id: `test_item_${i}`,
+                    name: `Test Item ${i}`,
+                    type: 'material',
+                    stackable: false
+                };
+                
+                const success = inventorySystem.addItem(item);
+                if (i < 40 && !success) {
+                    throw new Error(`Failed to add item ${i} to inventory`);
+                }
+            }
+            
+            // Try to add one more item (should fail gracefully)
+            const overflowItem = {
+                id: 'overflow_item',
+                name: 'Overflow Item',
+                type: 'material',
+                stackable: false
+            };
+            
+            const overflowResult = inventorySystem.addItem(overflowItem);
+            if (overflowResult) {
+                throw new Error('Inventory allowed overflow beyond capacity');
+            }
+            
+            // Verify inventory is at capacity
+            const items = inventorySystem.getItems();
+            if (items.length !== 40) {
+                throw new Error(`Expected 40 items, got ${items.length}`);
+            }
+        }, 'edge-case');
+        
+        testFramework.addTest('All Characters Dead', async () => {
+            const characters = window.testState.testCharacters;
+            if (!characters) throw new Error('Characters not available');
+            
+            // Simulate all characters dying
+            const originalHP = characters.map(char => char.currentHP);
+            
+            try {
+                characters.forEach(character => {
+                    character.currentHP = 0;
+                });
+                
+                // Test party death detection
+                const engine = window.testState.engine;
+                const partyManager = engine.partyManager;
+                
+                const isPartyDead = partyManager.isPartyDefeated();
+                if (!isPartyDead) {
+                    throw new Error('Party death not detected when all characters have 0 HP');
+                }
+                
+                // Test game over handling
+                const gameOverState = partyManager.getGameOverState();
+                if (!gameOverState || !gameOverState.isGameOver) {
+                    throw new Error('Game over state not properly set');
+                }
+                
+            } finally {
+                // Restore original HP values
+                characters.forEach((character, index) => {
+                    character.currentHP = originalHP[index];
+                });
+            }
+        }, 'edge-case');
+        
+        testFramework.addTest('Resource Depletion', async () => {
+            const engine = window.testState.engine;
+            const characters = window.testState.testCharacters;
+            
+            if (!engine || !characters) {
+                throw new Error('Prerequisites not met');
+            }
+            
+            // Test zero gold handling
+            const partyManager = engine.partyManager;
+            partyManager.setGold(0);
+            
+            if (partyManager.getGold() !== 0) {
+                throw new Error('Gold not properly set to zero');
+            }
+            
+            // Test purchasing with no gold
+            const { shopSystem } = await import('./src/engine/shop/ShopSystem.js');
+            const purchaseResult = shopSystem.attemptPurchase('health_potion', 1, partyManager);
+            
+            if (purchaseResult.success) {
+                throw new Error('Purchase succeeded with no gold');
+            }
+            
+            // Test zero AP in combat
+            const character = characters[0];
+            const originalAP = character.currentAP;
+            
+            try {
+                character.currentAP = 0;
+                
+                const combatSystem = engine.combatSystem;
+                const action = { type: 'attack', cost: 1 };
+                
+                const actionResult = combatSystem.canPerformAction(character, action);
+                if (actionResult) {
+                    throw new Error('Action allowed with insufficient AP');
+                }
+                
+            } finally {
+                character.currentAP = originalAP;
+            }
+        }, 'edge-case');
+        
+        testFramework.addTest('Boundary Conditions', async () => {
+            const engine = window.testState.engine;
+            if (!engine) throw new Error('Engine not available');
+            
+            // Test movement at level boundaries
+            const currentLevel = engine.dungeonLoader.getCurrentLevel();
+            if (!currentLevel) {
+                throw new Error('No current level loaded');
+            }
+            
+            const gridSystem = engine.gridSystem;
+            const movementController = engine.movementController;
+            
+            // Test out-of-bounds positions
+            const outOfBounds = [
+                { x: -1, z: -1 },
+                { x: currentLevel.width, z: currentLevel.height },
+                { x: -1, z: 0 },
+                { x: 0, z: -1 }
+            ];
+            
+            outOfBounds.forEach(pos => {
+                const isValid = gridSystem.isValidPosition(pos.x, pos.z);
+                if (isValid) {
+                    throw new Error(`Position (${pos.x}, ${pos.z}) should be invalid but was marked as valid`);
+                }
+            });
+            
+            // Test valid boundary positions
+            const validBoundaries = [
+                { x: 0, z: 0 },
+                { x: currentLevel.width - 1, z: 0 },
+                { x: 0, z: currentLevel.height - 1 },
+                { x: currentLevel.width - 1, z: currentLevel.height - 1 }
+            ];
+            
+            validBoundaries.forEach(pos => {
+                const isValid = gridSystem.isValidPosition(pos.x, pos.z);
+                if (!isValid) {
+                    throw new Error(`Position (${pos.x}, ${pos.z}) should be valid but was marked as invalid`);
+                }
+            });
+        }, 'edge-case');
+        
+        // Global test functions
+        window.runFullIntegrationTest = async () => {
+            await testFramework.runAllTests();
+        };
+        
+        window.runGameplayLoop = async () => {
+            // Run only system integration tests
+            const systemTests = testFramework.tests.filter(t => t.category === 'system');
+            const originalTests = testFramework.tests;
+            testFramework.tests = systemTests;
+            
+            await testFramework.runAllTests();
+            testFramework.tests = originalTests;
+        };
+        
+        window.runSaveLoadTest = async () => {
+            // Run only save/load tests
+            const saveLoadTests = testFramework.tests.filter(t => t.category === 'save-load');
+            const originalTests = testFramework.tests;
+            testFramework.tests = saveLoadTests;
+            
+            await testFramework.runAllTests();
+            testFramework.tests = originalTests;
+        };
+        
+        window.runEdgeCaseTests = async () => {
+            // Run only edge case tests
+            const edgeCaseTests = testFramework.tests.filter(t => t.category === 'edge-case');
+            const originalTests = testFramework.tests;
+            testFramework.tests = edgeCaseTests;
+            
+            await testFramework.runAllTests();
+            testFramework.tests = originalTests;
+        };
+        
+        window.clearResults = () => {
+            // Reset all test indicators
+            const indicators = document.querySelectorAll('.status-indicator');
+            indicators.forEach(indicator => {
+                indicator.className = 'status-indicator status-pending';
+            });
+            
+            // Clear log
+            document.getElementById('test-log').innerHTML = 
+                '<div class="log-entry log-info">Integration test system ready...</div>';
+            
+            // Reset progress
+            document.getElementById('test-progress').style.width = '0%';
+            document.getElementById('test-summary').textContent = '0/0 tests completed';
+            updateTestStatus('Ready to run tests...');
+            
+            // Reset test framework
+            testFramework.tests.forEach(test => {
+                test.status = 'pending';
+                test.error = null;
+                test.duration = 0;
+            });
+            
+            logMessage('Test results cleared', 'info');
+        };
+        
+        // Performance monitoring
+        function startPerformanceMonitoring() {
+            setInterval(() => {
+                if (window.dungeonEngine && window.dungeonEngine.performanceManager) {
+                    const metrics = window.dungeonEngine.performanceManager.getPerformanceMetrics();
+                    
+                    document.getElementById('fps-metric').textContent = metrics.fps.toFixed(1);
+                    document.getElementById('memory-metric').textContent = metrics.memoryUsage.toFixed(1);
+                    document.getElementById('frame-time-metric').textContent = metrics.frameTime.toFixed(1);
+                } else if (window.dungeonEngine) {
+                    const stats = window.dungeonEngine.getPerformanceStats();
+                    
+                    document.getElementById('fps-metric').textContent = stats.currentFPS;
+                    document.getElementById('frame-time-metric').textContent = stats.averageFrameTime.toFixed(1);
+                    
+                    if (performance.memory) {
+                        const memoryMB = performance.memory.usedJSHeapSize / 1024 / 1024;
+                        document.getElementById('memory-metric').textContent = memoryMB.toFixed(1);
+                    }
+                }
+            }, 1000);
+        }
+        
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            logMessage('Comprehensive integration test system initialized', 'success');
+            startPerformanceMonitoring();
+            
+            // Wait for engine to be ready, then show ready message
+            setTimeout(() => {
+                if (window.dungeonEngine && window.dungeonEngine.isInitialized) {
+                    logMessage('Game engine ready for testing', 'success');
+                    updateTestStatus('Engine ready - click "Run Full Test" to begin');
+                } else {
+                    logMessage('Waiting for game engine to initialize...', 'warning');
+                }
+            }, 3000);
+        });
+    </script>
+</body>
+</html>

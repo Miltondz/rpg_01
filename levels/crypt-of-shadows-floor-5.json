@@ -1,0 +1,247 @@
+{
+  "id": "crypt-of-shadows-floor-5",
+  "name": "Crypt of Shadows - Floor 5 (Final)",
+  "width": 20,
+  "height": 20,
+  "spawn": {
+    "x": 1,
+    "z": 1,
+    "direction": 0
+  },
+  "tiles": [
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2,
+    2, 1, 2, 2, 2, 2, 2, 1, 2, 1, 1, 2, 1, 2, 2, 2, 2, 2, 1, 2,
+    2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2,
+    2, 1, 2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 1, 2,
+    2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2,
+    2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2,
+    2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2,
+    2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2,
+    2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,
+    2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2,
+    2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2,
+    2, 1, 2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 1, 2,
+    2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2,
+    2, 1, 2, 2, 2, 2, 2, 1, 2, 1, 1, 2, 1, 2, 2, 2, 2, 2, 1, 2,
+    2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 3, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+  ],
+  "doors": [
+    {
+      "x": 8,
+      "z": 1,
+      "orientation": "vertical",
+      "locked": false,
+      "keyType": null
+    },
+    {
+      "x": 11,
+      "z": 1,
+      "orientation": "vertical",
+      "locked": false,
+      "keyType": null
+    },
+    {
+      "x": 6,
+      "z": 6,
+      "orientation": "horizontal",
+      "locked": true,
+      "keyType": "shadow"
+    },
+    {
+      "x": 13,
+      "z": 6,
+      "orientation": "horizontal",
+      "locked": true,
+      "keyType": "shadow"
+    },
+    {
+      "x": 8,
+      "z": 8,
+      "orientation": "vertical",
+      "locked": true,
+      "keyType": "final"
+    },
+    {
+      "x": 11,
+      "z": 8,
+      "orientation": "vertical",
+      "locked": true,
+      "keyType": "final"
+    }
+  ],
+  "transitions": [
+    {
+      "x": 18,
+      "z": 18,
+      "type": "exit",
+      "target": "victory",
+      "spawn": {
+        "x": 1,
+        "z": 1,
+        "direction": 0
+      }
+    }
+  ],
+  "safeZones": [
+    {
+      "x": 10,
+      "z": 2,
+      "type": "altar",
+      "name": "Final Altar",
+      "description": "The last sanctuary before facing the Shadow Lord - prepare well",
+      "services": ["save", "heal", "shop", "upgrade", "enchant", "blessing"],
+      "healAmount": 100,
+      "cooldown": 0,
+      "shopInventory": [
+        { "itemId": "health_potion_full", "stock": 5, "price": 200 },
+        { "itemId": "ultimate_elixir", "stock": 3, "price": 500 },
+        { "itemId": "phoenix_down", "stock": 2, "price": 400 },
+        { "itemId": "elixir_of_power", "stock": 3, "price": 150 },
+        { "itemId": "legendary_weapon", "stock": 1, "price": 2000 },
+        { "itemId": "legendary_armor", "stock": 1, "price": 1800 },
+        { "itemId": "artifact_ring", "stock": 1, "price": 1200 }
+      ]
+    }
+  ],
+  "scriptedEncounters": [
+    {
+      "x": 10,
+      "z": 10,
+      "id": "shadow_lord_boss",
+      "type": "boss",
+      "oneTime": true,
+      "enemies": [
+        { "type": "shadow_lord", "level": 12 }
+      ],
+      "rewards": {
+        "experience": 500,
+        "gold": { "min": 200, "max": 300 },
+        "loot": [
+          { "itemId": "shadow_crown", "chance": 1.0, "quantity": { "min": 1, "max": 1 } },
+          { "itemId": "final_key", "chance": 1.0, "quantity": { "min": 2, "max": 2 } },
+          { "itemId": "legendary_weapon", "chance": 0.8, "quantity": { "min": 1, "max": 1 } }
+        ]
+      }
+    },
+    {
+      "x": 5,
+      "z": 15,
+      "id": "shadow_generals",
+      "type": "mini_boss",
+      "oneTime": true,
+      "enemies": [
+        { "type": "shadow_general", "level": 10 },
+        { "type": "shadow_general", "level": 10 }
+      ],
+      "rewards": {
+        "experience": 300,
+        "gold": { "min": 120, "max": 180 },
+        "loot": [
+          { "itemId": "shadow_key", "chance": 1.0, "quantity": { "min": 2, "max": 2 } }
+        ]
+      }
+    },
+    {
+      "x": 14,
+      "z": 15,
+      "id": "ancient_lich",
+      "type": "mini_boss",
+      "oneTime": true,
+      "enemies": [
+        { "type": "ancient_lich", "level": 11 }
+      ],
+      "rewards": {
+        "experience": 250,
+        "gold": { "min": 100, "max": 150 },
+        "loot": [
+          { "itemId": "lich_phylactery", "chance": 0.9, "quantity": { "min": 1, "max": 1 } }
+        ]
+      }
+    }
+  ],
+  "keyItems": [
+    {
+      "x": 3,
+      "z": 17,
+      "itemId": "shadow_key",
+      "respawn": false
+    },
+    {
+      "x": 16,
+      "z": 3,
+      "itemId": "shadow_key",
+      "respawn": false
+    }
+  ],
+  "lootChests": [
+    {
+      "x": 5,
+      "z": 5,
+      "loot": [
+        { "itemId": "ultimate_elixir", "chance": 1.0, "quantity": { "min": 2, "max": 3 } },
+        { "itemId": "legendary_armor", "chance": 0.8, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 14,
+      "z": 5,
+      "loot": [
+        { "itemId": "phoenix_down", "chance": 0.9, "quantity": { "min": 1, "max": 2 } },
+        { "itemId": "artifact_ring", "chance": 0.7, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 10,
+      "z": 15,
+      "loot": [
+        { "itemId": "master_scroll", "chance": 0.8, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "eternal_crystal", "chance": 0.6, "quantity": { "min": 1, "max": 1 } }
+      ]
+    }
+  ],
+  "bossArena": {
+    "center": { "x": 10, "z": 10 },
+    "radius": 4,
+    "type": "shadow_realm",
+    "description": "The Shadow Lord's domain - reality bends to his will here",
+    "mechanics": [
+      {
+        "type": "phase_transition",
+        "trigger": "boss_health_50_percent",
+        "effect": "summon_shadow_minions"
+      },
+      {
+        "type": "environmental_hazard",
+        "trigger": "boss_health_25_percent",
+        "effect": "shadow_spikes_random_tiles"
+      }
+    ]
+  },
+  "finalChallenges": [
+    {
+      "x": 5,
+      "z": 10,
+      "type": "gauntlet_chamber",
+      "description": "Face waves of enemies before the final confrontation",
+      "waves": [
+        { "enemies": [{ "type": "shadow_beast", "level": 9 }], "reward": "shadow_key" },
+        { "enemies": [{ "type": "undead_knight", "level": 10 }, { "type": "skeleton", "level": 8 }], "reward": "health_potion_full" },
+        { "enemies": [{ "type": "lich_lieutenant", "level": 11 }], "reward": "final_key" }
+      ]
+    }
+  ],
+  "victoryConditions": {
+    "primary": "defeat_shadow_lord",
+    "secondary": [
+      "collect_shadow_crown",
+      "survive_without_phoenix_down",
+      "complete_under_time_limit"
+    ]
+  }
+}

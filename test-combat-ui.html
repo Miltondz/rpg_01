@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combat UI Test - Task 5.1</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 2100;
+            max-width: 300px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        
+        .test-btn {
+            background: rgba(0, 100, 200, 0.8);
+            border: 2px solid #0088ff;
+            color: #fff;
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .test-btn:hover {
+            background: rgba(0, 150, 255, 0.9);
+        }
+        
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 50, 0, 0.3);
+            border: 1px solid #00aa00;
+            border-radius: 3px;
+            font-size: 12px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        
+        /* Enhanced combat log visibility */
+        .combat-log-content {
+            background: rgba(0, 0, 0, 0.8) !important;
+            border: 2px solid #00aa00 !important;
+            color: #00ff00 !important;
+        }
+        
+        .log-entry {
+            padding: 3px 0 !important;
+            border-bottom: 1px solid rgba(0, 170, 0, 0.2) !important;
+        }
+        
+        .log-entry.system {
+            color: #00aaff !important;
+        }
+        
+        .log-entry.action {
+            color: #ffff00 !important;
+        }
+        
+        .log-entry.damage {
+            color: #ff6666 !important;
+            font-weight: bold !important;
+        }
+        
+        .log-entry.healing {
+            color: #66ff66 !important;
+            font-weight: bold !important;
+        }
+        
+        .log-entry.error {
+            color: #ff0000 !important;
+            font-weight: bold !important;
+        }
+        
+        .log-entry.warning {
+            color: #ff8800 !important;
+        }
+        
+        /* Enhanced turn indicator styling */
+        .turn-indicator.player-turn {
+            border-color: #00ff00 !important;
+            background: rgba(0, 100, 0, 0.2) !important;
+        }
+        
+        .turn-indicator.enemy-turn {
+            border-color: #ff6600 !important;
+            background: rgba(100, 50, 0, 0.2) !important;
+        }
+        
+        /* Enhanced action button styling */
+        .action-btn.skill-btn {
+            background: rgba(100, 0, 200, 0.8) !important;
+            border-color: #6600ff !important;
+        }
+        
+        .action-btn.item-btn {
+            background: rgba(200, 100, 0, 0.8) !important;
+            border-color: #ff6600 !important;
+        }
+        
+        .ap-available {
+            color: #00ff00 !important;
+        }
+        
+        .ap-insufficient {
+            color: #ff6666 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-controls">
+        <h3>Combat UI Test - Task 5.1</h3>
+        <button class="test-btn" onclick="showCombatUI()">Show Combat UI</button>
+        <button class="test-btn" onclick="hideCombatUI()">Hide Combat UI</button>
+        <button class="test-btn" onclick="updateTestData()">Update Test Data</button>
+        <button class="test-btn" onclick="testTurnIndicator()">Test Turn Indicator</button>
+        <button class="test-btn" onclick="testCombatLog()">Test Combat Log</button>
+        <button class="test-btn" onclick="testLogMessages()">Add Log Messages</button>
+        <button class="test-btn" onclick="runFullTest()">Run Full Task 5.1 Test</button>
+        <div class="status" id="status">Combat UI not initialized</div>
+    </div>
+
+    <script type="module">
+        import { CombatUI } from './src/engine/ui/CombatUI.js';
+
+        let combatUI = null;
+        let testTurnNumber = 1;
+
+        // Initialize combat UI
+        async function initializeCombatUI() {
+            try {
+                combatUI = new CombatUI();
+                const success = combatUI.initialize();
+                
+                if (success) {
+                    updateStatus('Combat UI initialized successfully', 'success');
+                    
+                    // Listen for combat UI actions
+                    window.addEventListener('combatUIAction', (event) => {
+                        const { type, data } = event.detail;
+                        updateStatus(`Action: ${type} - ${JSON.stringify(data)}`, 'info');
+                    });
+                    
+                } else {
+                    updateStatus('Failed to initialize Combat UI', 'error');
+                }
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Show combat UI with test data
+        window.showCombatUI = function() {
+            if (!combatUI) {
+                updateStatus('Combat UI not initialized', 'error');
+                return;
+            }
+
+            const testCombatData = {
+                playerParty: [
+                    {
+                        id: 'warrior-1',
+                        name: 'Test Warrior',
+                        level: 3,
+                        currentHP: 45,
+                        maxHP: 60,
+                        currentAP: 2,
+                        maxAP: 3
+                    },
+                    {
+                        id: 'mage-1',
+                        name: 'Test Mage',
+                        level: 2,
+                        currentHP: 20,
+                        maxHP: 35,
+                        currentAP: 3,
+                        maxAP: 3
+                    }
+                ],
+                enemies: [
+                    {
+                        id: 'goblin-1',
+                        name: 'Goblin Warrior',
+                        level: 2,
+                        currentHP: 25,
+                        maxHP: 30,
+                        currentAP: 1,
+                        maxAP: 3
+                    },
+                    {
+                        id: 'orc-1',
+                        name: 'Orc Brute',
+                        level: 3,
+                        currentHP: 5,
+                        maxHP: 50,
+                        currentAP: 0,
+                        maxAP: 3
+                    }
+                ],
+                turnOrder: [
+                    {
+                        id: 'warrior-1',
+                        name: 'Test Warrior',
+                        type: 'player'
+                    }
+                ]
+            };
+
+            combatUI.showCombat(testCombatData);
+            updateStatus('Combat UI shown with test data', 'success');
+        };
+
+        // Hide combat UI
+        window.hideCombatUI = function() {
+            if (!combatUI) {
+                updateStatus('Combat UI not initialized', 'error');
+                return;
+            }
+
+            combatUI.hideCombat();
+            updateStatus('Combat UI hidden', 'info');
+        };
+
+        // Update test data
+        window.updateTestData = function() {
+            if (!combatUI || !combatUI.isActive) {
+                updateStatus('Combat UI not active', 'error');
+                return;
+            }
+
+            // Test updating party display with different HP/AP values
+            const updatedParty = [
+                {
+                    id: 'warrior-1',
+                    name: 'Test Warrior',
+                    level: 3,
+                    currentHP: Math.floor(Math.random() * 60),
+                    maxHP: 60,
+                    currentAP: Math.floor(Math.random() * 4),
+                    maxAP: 3
+                },
+                {
+                    id: 'mage-1',
+                    name: 'Test Mage',
+                    level: 2,
+                    currentHP: Math.floor(Math.random() * 35),
+                    maxHP: 35,
+                    currentAP: Math.floor(Math.random() * 4),
+                    maxAP: 3
+                }
+            ];
+
+            const updatedEnemies = [
+                {
+                    id: 'goblin-1',
+                    name: 'Goblin Warrior',
+                    level: 2,
+                    currentHP: Math.floor(Math.random() * 30),
+                    maxHP: 30,
+                    currentAP: Math.floor(Math.random() * 4),
+                    maxAP: 3
+                },
+                {
+                    id: 'orc-1',
+                    name: 'Orc Brute',
+                    level: 3,
+                    currentHP: Math.floor(Math.random() * 50),
+                    maxHP: 50,
+                    currentAP: Math.floor(Math.random() * 4),
+                    maxAP: 3
+                }
+            ];
+
+            combatUI.updatePartyDisplay(updatedParty);
+            combatUI.updateEnemyDisplay(updatedEnemies);
+            
+            // Test action updates
+            const testCharacter = {
+                id: 'warrior-1',
+                name: 'Test Warrior',
+                currentAP: Math.floor(Math.random() * 4),
+                maxAP: 3
+            };
+
+            combatUI.updateActions([], testCharacter);
+            
+            updateStatus('Test data updated with random values', 'success');
+        };
+
+        // Test turn indicator with enhanced data
+        window.testTurnIndicator = function() {
+            if (!combatUI || !combatUI.isActive) {
+                updateStatus('Combat UI not active', 'error');
+                return;
+            }
+
+            const characters = [
+                { name: 'Test Warrior', type: 'player', currentAP: 2, maxAP: 3 },
+                { name: 'Test Mage', type: 'player', currentAP: 1, maxAP: 3 },
+                { name: 'Goblin Warrior', type: 'enemy', currentAP: 3, maxAP: 3 },
+                { name: 'Orc Brute', type: 'enemy', currentAP: 0, maxAP: 3 }
+            ];
+            const randomIndex = Math.floor(Math.random() * characters.length);
+            const selectedChar = characters[randomIndex];
+
+            const turnData = {
+                turnNumber: testTurnNumber++,
+                currentCharacter: {
+                    id: `char-${randomIndex}`,
+                    name: selectedChar.name,
+                    type: selectedChar.type,
+                    currentAP: selectedChar.currentAP,
+                    maxAP: selectedChar.maxAP
+                }
+            };
+
+            combatUI.updateTurnDisplay(turnData);
+            
+            // Also update actions for player characters
+            if (selectedChar.type === 'player') {
+                combatUI.updateActions([], turnData.currentCharacter);
+            }
+            
+            updateStatus(`Turn indicator updated: ${turnData.currentCharacter.name} (${selectedChar.type})`, 'success');
+        };
+
+        // Test combat log with diagnostics
+        window.testCombatLog = function() {
+            if (!combatUI || !combatUI.isActive) {
+                updateStatus('Combat UI not active', 'error');
+                return;
+            }
+
+            // Diagnostic: Check if combat log element exists
+            const logElement = document.querySelector('.combat-log-content');
+            console.log('Combat log element found:', logElement);
+            console.log('Combat log element in combatUI:', combatUI.elements.combatLog);
+            
+            if (!logElement) {
+                updateStatus('❌ Combat log element not found in DOM', 'error');
+                return;
+            }
+
+            // Clear log first
+            combatUI.clearCombatLog();
+            
+            // Add test messages with delays to show the log updating
+            setTimeout(() => {
+                combatUI.addLogMessage('Combat begins!', 'system');
+                console.log('Added system message');
+            }, 100);
+            
+            setTimeout(() => {
+                combatUI.addLogMessage('Test Warrior attacks Goblin Warrior', 'action');
+                console.log('Added action message');
+            }, 300);
+            
+            setTimeout(() => {
+                combatUI.addLogMessage('Goblin Warrior takes 15 damage', 'damage');
+                console.log('Added damage message');
+            }, 500);
+            
+            setTimeout(() => {
+                combatUI.addLogMessage('Test Mage casts Fireball', 'action');
+                console.log('Added fireball action');
+            }, 700);
+            
+            setTimeout(() => {
+                combatUI.addLogMessage('Orc Brute takes 25 damage (CRITICAL!)', 'damage');
+                console.log('Added critical damage');
+            }, 900);
+            
+            setTimeout(() => {
+                combatUI.addLogMessage('Test Warrior heals 10 HP', 'healing');
+                console.log('Added healing message');
+            }, 1100);
+            
+            setTimeout(() => {
+                combatUI.addLogMessage('Turn 2 begins', 'system');
+                console.log('Added turn message');
+            }, 1300);
+            
+            setTimeout(() => {
+                combatUI.addLogMessage('Not enough AP for this action!', 'warning');
+                console.log('Added warning message');
+            }, 1500);
+            
+            setTimeout(() => {
+                combatUI.addLogMessage('Action failed!', 'error');
+                console.log('Added error message');
+                
+                // Final diagnostic
+                const entries = document.querySelectorAll('.log-entry');
+                console.log(`Total log entries in DOM: ${entries.length}`);
+                updateStatus(`✅ Combat log tested - ${entries.length} messages added`, 'success');
+            }, 1700);
+        };
+
+        // Test adding random log messages
+        window.testLogMessages = function() {
+            if (!combatUI || !combatUI.isActive) {
+                updateStatus('Combat UI not active', 'error');
+                return;
+            }
+
+            const messages = [
+                { text: 'Warrior uses Power Strike!', type: 'action' },
+                { text: 'Enemy takes 32 damage!', type: 'damage' },
+                { text: 'Mage casts Ice Shard', type: 'action' },
+                { text: 'Critical hit for 45 damage!', type: 'damage' },
+                { text: 'Cleric heals party for 20 HP', type: 'healing' },
+                { text: 'Rogue uses Stealth', type: 'action' },
+                { text: 'Attack missed!', type: 'warning' },
+                { text: 'Not enough AP!', type: 'error' },
+                { text: 'Enemy defeated!', type: 'system' }
+            ];
+
+            const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+            combatUI.addLogMessage(randomMessage.text, randomMessage.type);
+            
+            updateStatus(`Added log message: ${randomMessage.text}`, 'success');
+        };
+
+        // Update status display
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            // Color coding
+            switch (type) {
+                case 'success':
+                    statusEl.style.color = '#00ff00';
+                    break;
+                case 'error':
+                    statusEl.style.color = '#ff0000';
+                    break;
+                case 'warning':
+                    statusEl.style.color = '#ff8800';
+                    break;
+                default:
+                    statusEl.style.color = '#00aaff';
+            }
+        }
+
+        // Run comprehensive test for Task 5.1 requirements
+        window.runFullTest = async function() {
+            updateStatus('Running comprehensive Task 5.1 test...', 'info');
+            
+            // Test 1: Show combat UI
+            showCombatUI();
+            await delay(1000);
+            
+            // Test 2: Verify HP/AP bars with color coding
+            updateStatus('Testing HP/AP bars with color coding...', 'info');
+            updateTestData();
+            await delay(1500);
+            
+            // Test 3: Test turn indicator for both player and enemy
+            updateStatus('Testing turn indicator for player turn...', 'info');
+            testTurnIndicator();
+            await delay(1000);
+            
+            // Test 4: Test action menu with different AP levels
+            updateStatus('Testing action menu with AP constraints...', 'info');
+            const lowAPCharacter = {
+                id: 'test-char',
+                name: 'Low AP Character',
+                currentAP: 1,
+                maxAP: 3
+            };
+            combatUI.updateActions([], lowAPCharacter);
+            await delay(1000);
+            
+            // Test 5: Test combat log
+            updateStatus('Testing combat log functionality...', 'info');
+            testCombatLog();
+            await delay(1000);
+            
+            // Test 6: Test enemy turn indicator
+            updateStatus('Testing enemy turn indicator...', 'info');
+            const enemyTurnData = {
+                turnNumber: 5,
+                currentCharacter: {
+                    id: 'enemy-test',
+                    name: 'Test Enemy',
+                    type: 'enemy',
+                    currentAP: 2,
+                    maxAP: 3
+                }
+            };
+            combatUI.updateTurnDisplay(enemyTurnData);
+            combatUI.updateActions([], null); // Clear actions for enemy turn
+            await delay(1500);
+            
+            updateStatus('Task 5.1 comprehensive test completed successfully!', 'success');
+        };
+
+        // Utility delay function
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            updateStatus('Initializing Combat UI Test...', 'info');
+            await initializeCombatUI();
+        });
+    </script>
+</body>
+</html>

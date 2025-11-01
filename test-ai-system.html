@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background-color: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        .ai-info {
+            background-color: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .action-log {
+            background-color: #1e1e1e;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-card {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .hp-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #555;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        .hp-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 0.3s ease;
+        }
+        .enemy-card {
+            background-color: #4a2a2a;
+            border-left: 4px solid #f44336;
+        }
+        .player-card {
+            background-color: #2a2a4a;
+            border-left: 4px solid #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enemy AI System Test</h1>
+        
+        <div class="test-section">
+            <h2>AI Behavior Test</h2>
+            <p>This test demonstrates the 4 AI archetypes: Aggressive, Defensive, Tactical, and Berserker</p>
+            
+            <button onclick="initializeTest()">Initialize Test</button>
+            <button onclick="runAIDecisionTest()" id="testBtn" disabled>Test AI Decisions</button>
+            <button onclick="simulateCombatTurn()" id="combatBtn" disabled>Simulate Combat Turn</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div class="test-section">
+            <h3>Combat Participants</h3>
+            <div id="participants" class="stats"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>AI Decision Log</h3>
+            <div id="actionLog" class="action-log"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { EnemyAI } from './src/engine/combat/EnemyAI.js';
+        import { Enemy } from './src/engine/combat/Enemy.js';
+        import { CharacterSystem } from './src/engine/character/CharacterSystem.js';
+        import { PartyManager } from './src/engine/character/PartyManager.js';
+        import { CombatSystem } from './src/engine/combat/CombatSystem.js';
+
+        let testEnemies = [];
+        let testParty = null;
+        let combatSystem = null;
+
+        window.initializeTest = function() {
+            log('Initializing AI System Test...');
+            
+            // Create test party
+            const characterSystem = new CharacterSystem();
+            testParty = new PartyManager(characterSystem);
+            
+            // Create test characters
+            const warrior = characterSystem.createCharacter('warrior', 'Test Warrior');
+            const mage = characterSystem.createCharacter('mage', 'Test Mage');
+            const cleric = characterSystem.createCharacter('cleric', 'Test Cleric');
+            
+            testParty.addCharacter(warrior);
+            testParty.addCharacter(mage);
+            testParty.addCharacter(cleric);
+            
+            // Create test enemies with different AI types
+            testEnemies = [
+                Enemy.create('goblin', 2),    // Aggressive AI
+                Enemy.create('orc', 2),       // Berserker AI
+                Enemy.create('skeleton', 2),  // Defensive AI
+                Enemy.create('fire_elemental', 2) // Tactical AI
+            ];
+            
+            // Initialize AI for each enemy
+            testEnemies.forEach(enemy => {
+                const ai = EnemyAI.createForEnemyType(enemy.type);
+                enemy.setAI(ai);
+                log(`Created ${enemy.name} with ${ai.archetype} AI`);
+            });
+            
+            // Initialize combat system
+            combatSystem = new CombatSystem();
+            
+            updateParticipantsDisplay();
+            
+            document.getElementById('testBtn').disabled = false;
+            document.getElementById('combatBtn').disabled = false;
+            
+            log('Test initialized successfully!');
+        };
+
+        window.runAIDecisionTest = function() {
+            if (!testEnemies.length || !testParty) {
+                log('ERROR: Test not initialized');
+                return;
+            }
+            
+            log('\n=== AI Decision Test ===');
+            
+            testEnemies.forEach(enemy => {
+                if (!enemy.isAlive()) return;
+                
+                log(`\n--- ${enemy.name} (${enemy.ai.archetype} AI) ---`);
+                
+                // Get AI decision
+                const decision = enemy.getAIDecision(testParty, testEnemies);
+                
+                if (decision) {
+                    log(`Action: ${decision.action.name}`);
+                    log(`Target: ${decision.target.name}`);
+                    log(`Score: ${decision.score.toFixed(3)}`);
+                    log(`AP Cost: ${decision.action.apCost}`);
+                } else {
+                    log('No valid decision found');
+                }
+            });
+        };
+
+        window.simulateCombatTurn = function() {
+            if (!testEnemies.length || !testParty || !combatSystem) {
+                log('ERROR: Test not initialized');
+                return;
+            }
+            
+            log('\n=== Combat Turn Simulation ===');
+            
+            // Initialize combat if not already active
+            if (!combatSystem.isActive) {
+                const success = combatSystem.initializeCombat(testParty, testEnemies);
+                if (!success) {
+                    log('ERROR: Failed to initialize combat');
+                    return;
+                }
+                log('Combat initialized');
+            }
+            
+            // Get current character
+            const currentChar = combatSystem.currentCharacter;
+            if (!currentChar) {
+                log('No current character');
+                return;
+            }
+            
+            log(`Current turn: ${currentChar.name}`);
+            
+            if (combatSystem.combatState === 'ENEMY_TURN') {
+                log('Executing AI turn...');
+                // The AI turn will be handled automatically by the combat system
+            } else {
+                log('Player turn - skipping to next turn');
+                combatSystem.nextTurn();
+            }
+            
+            updateParticipantsDisplay();
+        };
+
+        window.clearLog = function() {
+            document.getElementById('actionLog').innerHTML = '';
+        };
+
+        function log(message) {
+            const logElement = document.getElementById('actionLog');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateParticipantsDisplay() {
+            const container = document.getElementById('participants');
+            container.innerHTML = '';
+            
+            if (testParty) {
+                testParty.getAliveMembers().forEach(character => {
+                    const card = createCharacterCard(character, 'player');
+                    container.appendChild(card);
+                });
+            }
+            
+            testEnemies.forEach(enemy => {
+                if (enemy.isAlive()) {
+                    const card = createCharacterCard(enemy, 'enemy');
+                    container.appendChild(card);
+                }
+            });
+        }
+
+        function createCharacterCard(character, type) {
+            const card = document.createElement('div');
+            card.className = `stat-card ${type}-card`;
+            
+            const hpPercent = (character.currentHP / character.maxHP) * 100;
+            const aiInfo = character.ai ? `AI: ${character.ai.archetype}` : '';
+            
+            card.innerHTML = `
+                <h4>${character.name}</h4>
+                <div class="hp-bar">
+                    <div class="hp-fill" style="width: ${hpPercent}%"></div>
+                </div>
+                <div>HP: ${character.currentHP}/${character.maxHP}</div>
+                <div>AP: ${character.currentAP || 0}/${character.maxAP || 3}</div>
+                <div>Level: ${character.level || 1}</div>
+                ${aiInfo ? `<div>${aiInfo}</div>` : ''}
+            `;
+            
+            return card;
+        }
+
+        // Listen for combat events
+        window.addEventListener('combatEvent', (event) => {
+            const { type, data } = event.detail;
+            
+            switch (type) {
+                case 'aiActionStarted':
+                    log(`${data.enemy.name} is using ${data.action.name} on ${data.target.name}`);
+                    break;
+                
+                case 'aiActionCompleted':
+                    if (data.result.success) {
+                        log(`Action completed successfully`);
+                        if (data.result.damage && data.result.damage.length > 0) {
+                            data.result.damage.forEach(dmg => {
+                                log(`  ${dmg.target.name} takes ${dmg.damage} damage${dmg.isCritical ? ' (CRITICAL!)' : ''}`);
+                            });
+                        }
+                    } else {
+                        log(`Action failed: ${data.result.error}`);
+                    }
+                    updateParticipantsDisplay();
+                    break;
+                
+                case 'turnStarted':
+                    log(`\n--- Turn ${data.turnNumber}: ${data.currentCharacter.name} ---`);
+                    break;
+            }
+        });
+
+        // Initialize on page load
+        log('AI System Test loaded. Click "Initialize Test" to begin.');
+    </script>
+</body>
+</html>

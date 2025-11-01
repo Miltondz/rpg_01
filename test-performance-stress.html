@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Stress Testing - Dungeon Crawler</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .test-section {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .test-button:hover {
+            background: #45a049;
+        }
+        
+        .test-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .stop-button {
+            background: #f44336;
+        }
+        
+        .stop-button:hover {
+            background: #da190b;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background: #333;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #ccc;
+            text-transform: uppercase;
+        }
+        
+        .metric-warning {
+            color: #ff9800;
+        }
+        
+        .metric-error {
+            color: #f44336;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .log-container {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-info { color: #4CAF50; }
+        .log-warning { color: #ff9800; }
+        .log-error { color: #f44336; }
+        .log-debug { color: #2196F3; }
+        
+        .results-summary {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .test-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-running {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .status-passed {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .status-failed {
+            background: #f44336;
+            color: white;
+        }
+        
+        .status-idle {
+            background: #666;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Performance Stress Testing</h1>
+        <p>Comprehensive performance testing for combat, save/load operations, and extended gameplay sessions.</p>
+        
+        <!-- Performance Metrics -->
+        <div class="test-section">
+            <h2>Real-time Performance Metrics</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="fps-value">0</div>
+                    <div class="metric-label">FPS</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="memory-value">0</div>
+                    <div class="metric-label">Memory (MB)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="combat-time">0</div>
+                    <div class="metric-label">Avg Combat (ms)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="save-time">0</div>
+                    <div class="metric-label">Save Time (ms)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="load-time">0</div>
+                    <div class="metric-label">Load Time (ms)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="session-time">0</div>
+                    <div class="metric-label">Session (min)</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Combat Stress Test -->
+        <div class="test-section">
+            <h2>Combat Performance Test</h2>
+            <p>Test combat performance with 6 enemies and visual effects (Target: 60fps)</p>
+            
+            <div class="test-controls">
+                <button class="test-button" id="start-combat-test">Start Combat Test</button>
+                <button class="test-button stop-button" id="stop-combat-test" disabled>Stop Test</button>
+                <select id="combat-enemy-count">
+                    <option value="4">4 Enemies</option>
+                    <option value="6" selected>6 Enemies</option>
+                    <option value="8">8 Enemies (Stress)</option>
+                </select>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="combat-progress"></div>
+            </div>
+            <div>Combat Test: <span class="test-status status-idle" id="combat-status">Idle</span></div>
+            <div>Combats Completed: <span id="combat-count">0</span> / 100</div>
+        </div>
+        
+        <!-- Save/Load Performance Test -->
+        <div class="test-section">
+            <h2>Save/Load Performance Test</h2>
+            <p>Test save and load operations (Target: <1 second)</p>
+            
+            <div class="test-controls">
+                <button class="test-button" id="start-save-test">Start Save/Load Test</button>
+                <button class="test-button stop-button" id="stop-save-test" disabled>Stop Test</button>
+                <select id="save-test-type">
+                    <option value="basic">Basic Save/Load</option>
+                    <option value="stress">Stress Test (Large Data)</option>
+                    <option value="concurrent">Concurrent Operations</option>
+                </select>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="save-progress"></div>
+            </div>
+            <div>Save/Load Test: <span class="test-status status-idle" id="save-status">Idle</span></div>
+            <div>Operations Completed: <span id="save-count">0</span> / 50</div>
+        </div>
+        
+        <!-- Memory Stress Test -->
+        <div class="test-section">
+            <h2>Extended Gameplay Session Test</h2>
+            <p>Simulate extended gameplay to test memory usage and performance degradation</p>
+            
+            <div class="test-controls">
+                <button class="test-button" id="start-session-test">Start Session Test</button>
+                <button class="test-button stop-button" id="stop-session-test" disabled>Stop Test</button>
+                <select id="session-duration">
+                    <option value="5">5 Minutes (Quick)</option>
+                    <option value="30">30 Minutes (Standard)</option>
+                    <option value="120">2 Hours (Full Test)</option>
+                </select>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="session-progress"></div>
+            </div>
+            <div>Session Test: <span class="test-status status-idle" id="session-status">Idle</span></div>
+            <div>Session Time: <span id="session-elapsed">0</span> minutes</div>
+        </div>
+        
+        <!-- Test Results -->
+        <div class="test-section">
+            <h2>Test Results Summary</h2>
+            <div class="results-summary" id="results-summary">
+                <p>No tests completed yet. Run tests to see performance results.</p>
+            </div>
+        </div>
+        
+        <!-- Test Log -->
+        <div class="test-section">
+            <h2>Test Log</h2>
+            <div class="log-container" id="test-log"></div>
+            <button class="test-button" id="clear-log">Clear Log</button>
+        </div>
+    </div>
+
+    <!-- Game Engine Scripts -->
+    <script type="module" src="src/main.js"></script>
+    
+    <script type="module">
+        // Import the main engine class from main.js
+        // Note: We'll access the engine through the global window.dungeonEngine
+        
+        class PerformanceStressTester {
+            constructor() {
+                this.gameEngine = null;
+                this.isInitialized = false;
+                
+                // Performance monitoring
+                this.fpsCounter = new FPSCounter();
+                this.memoryMonitor = new MemoryMonitor();
+                this.performanceLogger = new PerformanceLogger();
+                
+                // Test states
+                this.tests = {
+                    combat: { running: false, count: 0, target: 100 },
+                    save: { running: false, count: 0, target: 50 },
+                    session: { running: false, startTime: 0, duration: 0 }
+                };
+                
+                // Test results
+                this.results = {
+                    combat: [],
+                    save: [],
+                    session: null
+                };
+                
+                this.setupEventListeners();
+                this.startPerformanceMonitoring();
+            }
+            
+            async initialize() {
+                try {
+                    this.log('Waiting for game engine to initialize...', 'info');
+                    
+                    // Wait for the global engine to be available
+                    let attempts = 0;
+                    while (!window.dungeonEngine && attempts < 50) {
+                        await this.delay(100);
+                        attempts++;
+                    }
+                    
+                    if (!window.dungeonEngine) {
+                        throw new Error('Game engine not available after 5 seconds');
+                    }
+                    
+                    this.gameEngine = window.dungeonEngine;
+                    
+                    // Create a test party for combat testing
+                    await this.setupTestParty();
+                    
+                    this.isInitialized = true;
+                    this.log('Performance testing environment initialized', 'info');
+                    
+                } catch (error) {
+                    this.log(`Failed to initialize: ${error.message}`, 'error');
+                    throw error;
+                }
+            }
+            
+            async setupTestParty() {
+                // Create a balanced party for testing
+                const partyManager = this.gameEngine.partyManager;
+                
+                // Create test characters
+                const warrior = partyManager.createCharacter('Test Warrior', 'warrior');
+                const mage = partyManager.createCharacter('Test Mage', 'mage');
+                const rogue = partyManager.createCharacter('Test Rogue', 'rogue');
+                const cleric = partyManager.createCharacter('Test Cleric', 'cleric');
+                
+                // Add to party
+                partyManager.addToParty(warrior);
+                partyManager.addToParty(mage);
+                partyManager.addToParty(rogue);
+                partyManager.addToParty(cleric);
+                
+                // Level up characters for better testing
+                for (let i = 0; i < 5; i++) {
+                    partyManager.distributeExperience(1000);
+                }
+                
+                this.log('Test party created and leveled', 'info');
+            }
+            
+            setupEventListeners() {
+                // Combat test controls
+                document.getElementById('start-combat-test').addEventListener('click', () => {
+                    this.startCombatTest();
+                });
+                
+                document.getElementById('stop-combat-test').addEventListener('click', () => {
+                    this.stopCombatTest();
+                });
+                
+                // Save/Load test controls
+                document.getElementById('start-save-test').addEventListener('click', () => {
+                    this.startSaveTest();
+                });
+                
+                document.getElementById('stop-save-test').addEventListener('click', () => {
+                    this.stopSaveTest();
+                });
+                
+                // Session test controls
+                document.getElementById('start-session-test').addEventListener('click', () => {
+                    this.startSessionTest();
+                });
+                
+                document.getElementById('stop-session-test').addEventListener('click', () => {
+                    this.stopSessionTest();
+                });
+                
+                // Utility controls
+                document.getElementById('clear-log').addEventListener('click', () => {
+                    this.clearLog();
+                });
+            }
+            
+            startPerformanceMonitoring() {
+                // Update performance metrics every second
+                setInterval(() => {
+                    this.updatePerformanceMetrics();
+                }, 1000);
+            }
+            
+            updatePerformanceMetrics() {
+                // Update FPS
+                const fps = this.fpsCounter.getFPS();
+                const fpsElement = document.getElementById('fps-value');
+                fpsElement.textContent = fps.toFixed(1);
+                fpsElement.className = 'metric-value ' + this.getFPSClass(fps);
+                
+                // Update Memory
+                const memory = this.memoryMonitor.getMemoryUsage();
+                const memoryElement = document.getElementById('memory-value');
+                memoryElement.textContent = memory.toFixed(1);
+                memoryElement.className = 'metric-value ' + this.getMemoryClass(memory);
+                
+                // Update session time
+                if (this.tests.session.running) {
+                    const elapsed = (Date.now() - this.tests.session.startTime) / 60000;
+                    document.getElementById('session-time').textContent = elapsed.toFixed(1);
+                    document.getElementById('session-elapsed').textContent = elapsed.toFixed(1);
+                }
+            }
+            
+            getFPSClass(fps) {
+                if (fps >= 55) return '';
+                if (fps >= 30) return 'metric-warning';
+                return 'metric-error';
+            }
+            
+            getMemoryClass(memory) {
+                if (memory < 300) return '';
+                if (memory < 500) return 'metric-warning';
+                return 'metric-error';
+            }
+            
+            async startCombatTest() {
+                if (!this.isInitialized) {
+                    await this.initialize();
+                }
+                
+                this.tests.combat.running = true;
+                this.tests.combat.count = 0;
+                this.results.combat = [];
+                
+                this.updateTestStatus('combat', 'running');
+                this.log('Starting combat performance test...', 'info');
+                
+                document.getElementById('start-combat-test').disabled = true;
+                document.getElementById('stop-combat-test').disabled = false;
+                
+                this.runCombatTestLoop();
+            }
+            
+            async runCombatTestLoop() {
+                while (this.tests.combat.running && this.tests.combat.count < this.tests.combat.target) {
+                    const enemyCount = parseInt(document.getElementById('combat-enemy-count').value);
+                    
+                    try {
+                        const result = await this.runSingleCombatTest(enemyCount);
+                        this.results.combat.push(result);
+                        
+                        this.tests.combat.count++;
+                        this.updateCombatProgress();
+                        
+                        // Log every 10 combats
+                        if (this.tests.combat.count % 10 === 0) {
+                            this.log(`Combat test progress: ${this.tests.combat.count}/100`, 'info');
+                        }
+                        
+                        // Brief pause between combats
+                        await this.delay(100);
+                        
+                    } catch (error) {
+                        this.log(`Combat test error: ${error.message}`, 'error');
+                        break;
+                    }
+                }
+                
+                if (this.tests.combat.running) {
+                    this.completeCombatTest();
+                }
+            }
+            
+            async runSingleCombatTest(enemyCount) {
+                const startTime = performance.now();
+                const startFPS = this.fpsCounter.getFPS();
+                
+                // Create test enemies
+                const enemies = this.createTestEnemies(enemyCount);
+                
+                // Initialize combat
+                const combatSystem = this.gameEngine.combatSystem;
+                const success = combatSystem.initializeCombat(
+                    this.gameEngine.partyManager,
+                    enemies
+                );
+                
+                if (!success) {
+                    throw new Error('Failed to initialize combat');
+                }
+                
+                // Simulate combat with performance monitoring
+                const combatResult = await this.simulateCombat(combatSystem);
+                
+                const endTime = performance.now();
+                const endFPS = this.fpsCounter.getFPS();
+                const duration = endTime - startTime;
+                
+                return {
+                    duration,
+                    enemyCount,
+                    startFPS,
+                    endFPS,
+                    avgFPS: (startFPS + endFPS) / 2,
+                    result: combatResult
+                };
+            }
+            
+            createTestEnemies(count) {
+                const enemies = [];
+                const enemyTypes = ['goblin', 'orc', 'skeleton', 'spider'];
+                
+                for (let i = 0; i < count; i++) {
+                    const type = enemyTypes[i % enemyTypes.length];
+                    const enemy = this.gameEngine.enemyDatabase.createEnemy(type, 5);
+                    enemies.push(enemy);
+                }
+                
+                return enemies;
+            }
+            
+            async simulateCombat(combatSystem) {
+                let turnCount = 0;
+                const maxTurns = 50; // Prevent infinite combat
+                
+                while (combatSystem.isActive && turnCount < maxTurns) {
+                    const currentChar = combatSystem.currentCharacter;
+                    
+                    if (currentChar) {
+                        // Simulate player or AI action
+                        if (combatSystem.combatState === 'PLAYER_TURN') {
+                            await this.simulatePlayerAction(combatSystem, currentChar);
+                        }
+                        // AI actions are handled automatically
+                    }
+                    
+                    turnCount++;
+                    await this.delay(50); // Small delay for animation
+                }
+                
+                return combatSystem.combatResults || { result: 'timeout' };
+            }
+            
+            async simulatePlayerAction(combatSystem, character) {
+                const actions = combatSystem.getAvailableActions(character);
+                if (actions.length === 0) return;
+                
+                // Choose a random action (usually attack)
+                const action = actions[Math.floor(Math.random() * actions.length)];
+                
+                // Get valid targets
+                const targetInfo = combatSystem.getTargetingInfo(action, character);
+                if (targetInfo.validTargets.length === 0) return;
+                
+                const target = targetInfo.validTargets[Math.floor(Math.random() * targetInfo.validTargets.length)];
+                
+                // Execute action
+                await combatSystem.processAction(character, action, target);
+            }
+            
+            updateCombatProgress() {
+                const progress = (this.tests.combat.count / this.tests.combat.target) * 100;
+                document.getElementById('combat-progress').style.width = `${progress}%`;
+                document.getElementById('combat-count').textContent = this.tests.combat.count;
+            }
+            
+            completeCombatTest() {
+                this.tests.combat.running = false;
+                this.updateTestStatus('combat', 'passed');
+                
+                document.getElementById('start-combat-test').disabled = false;
+                document.getElementById('stop-combat-test').disabled = true;
+                
+                // Calculate results
+                const avgDuration = this.results.combat.reduce((sum, r) => sum + r.duration, 0) / this.results.combat.length;
+                const avgFPS = this.results.combat.reduce((sum, r) => sum + r.avgFPS, 0) / this.results.combat.length;
+                
+                document.getElementById('combat-time').textContent = avgDuration.toFixed(0);
+                
+                this.log(`Combat test completed: ${this.tests.combat.count} combats, avg ${avgDuration.toFixed(0)}ms, avg ${avgFPS.toFixed(1)} FPS`, 'info');
+                this.updateResultsSummary();
+            }
+            
+            stopCombatTest() {
+                this.tests.combat.running = false;
+                this.updateTestStatus('combat', 'idle');
+                
+                document.getElementById('start-combat-test').disabled = false;
+                document.getElementById('stop-combat-test').disabled = true;
+                
+                this.log('Combat test stopped by user', 'warning');
+            }
+            
+            async startSaveTest() {
+                if (!this.isInitialized) {
+                    await this.initialize();
+                }
+                
+                this.tests.save.running = true;
+                this.tests.save.count = 0;
+                this.results.save = [];
+                
+                this.updateTestStatus('save', 'running');
+                this.log('Starting save/load performance test...', 'info');
+                
+                document.getElementById('start-save-test').disabled = true;
+                document.getElementById('stop-save-test').disabled = false;
+                
+                this.runSaveTestLoop();
+            }
+            
+            async runSaveTestLoop() {
+                const testType = document.getElementById('save-test-type').value;
+                
+                while (this.tests.save.running && this.tests.save.count < this.tests.save.target) {
+                    try {
+                        const result = await this.runSingleSaveTest(testType);
+                        this.results.save.push(result);
+                        
+                        this.tests.save.count++;
+                        this.updateSaveProgress();
+                        
+                        // Log every 10 operations
+                        if (this.tests.save.count % 10 === 0) {
+                            this.log(`Save/Load test progress: ${this.tests.save.count}/50`, 'info');
+                        }
+                        
+                        await this.delay(100);
+                        
+                    } catch (error) {
+                        this.log(`Save/Load test error: ${error.message}`, 'error');
+                        break;
+                    }
+                }
+                
+                if (this.tests.save.running) {
+                    this.completeSaveTest();
+                }
+            }
+            
+            async runSingleSaveTest(testType) {
+                const saveSystem = this.gameEngine.saveSystem;
+                
+                // Prepare test data based on type
+                if (testType === 'stress') {
+                    await this.createLargeGameState();
+                }
+                
+                // Test save operation
+                const saveStart = performance.now();
+                const saveResult = await saveSystem.saveGame(1);
+                const saveEnd = performance.now();
+                const saveDuration = saveEnd - saveStart;
+                
+                if (!saveResult.success) {
+                    throw new Error(`Save failed: ${saveResult.error}`);
+                }
+                
+                // Test load operation
+                const loadStart = performance.now();
+                const loadResult = await saveSystem.loadGame(1);
+                const loadEnd = performance.now();
+                const loadDuration = loadEnd - loadStart;
+                
+                if (!loadResult.success) {
+                    throw new Error(`Load failed: ${loadResult.error}`);
+                }
+                
+                return {
+                    testType,
+                    saveDuration,
+                    loadDuration,
+                    totalDuration: saveDuration + loadDuration,
+                    saveSize: saveResult.size
+                };
+            }
+            
+            async createLargeGameState() {
+                // Add lots of items to inventory for stress testing
+                const inventory = this.gameEngine.inventorySystem;
+                
+                for (let i = 0; i < 30; i++) {
+                    const item = this.gameEngine.itemDatabase.getRandomItem();
+                    inventory.addItem(item, Math.floor(Math.random() * 10) + 1);
+                }
+            }
+            
+            updateSaveProgress() {
+                const progress = (this.tests.save.count / this.tests.save.target) * 100;
+                document.getElementById('save-progress').style.width = `${progress}%`;
+                document.getElementById('save-count').textContent = this.tests.save.count;
+            }
+            
+            completeSaveTest() {
+                this.tests.save.running = false;
+                this.updateTestStatus('save', 'passed');
+                
+                document.getElementById('start-save-test').disabled = false;
+                document.getElementById('stop-save-test').disabled = true;
+                
+                // Calculate results
+                const avgSave = this.results.save.reduce((sum, r) => sum + r.saveDuration, 0) / this.results.save.length;
+                const avgLoad = this.results.save.reduce((sum, r) => sum + r.loadDuration, 0) / this.results.save.length;
+                
+                document.getElementById('save-time').textContent = avgSave.toFixed(0);
+                document.getElementById('load-time').textContent = avgLoad.toFixed(0);
+                
+                this.log(`Save/Load test completed: avg save ${avgSave.toFixed(0)}ms, avg load ${avgLoad.toFixed(0)}ms`, 'info');
+                this.updateResultsSummary();
+            }
+            
+            stopSaveTest() {
+                this.tests.save.running = false;
+                this.updateTestStatus('save', 'idle');
+                
+                document.getElementById('start-save-test').disabled = false;
+                document.getElementById('stop-save-test').disabled = true;
+                
+                this.log('Save/Load test stopped by user', 'warning');
+            }
+            
+            async startSessionTest() {
+                if (!this.isInitialized) {
+                    await this.initialize();
+                }
+                
+                const duration = parseInt(document.getElementById('session-duration').value);
+                
+                this.tests.session.running = true;
+                this.tests.session.startTime = Date.now();
+                this.tests.session.duration = duration * 60000; // Convert to milliseconds
+                
+                this.updateTestStatus('session', 'running');
+                this.log(`Starting ${duration}-minute session test...`, 'info');
+                
+                document.getElementById('start-session-test').disabled = true;
+                document.getElementById('stop-session-test').disabled = false;
+                
+                this.runSessionTest();
+            }
+            
+            async runSessionTest() {
+                const startMemory = this.memoryMonitor.getMemoryUsage();
+                let peakMemory = startMemory;
+                let minFPS = 60;
+                let combatCount = 0;
+                
+                while (this.tests.session.running) {
+                    const elapsed = Date.now() - this.tests.session.startTime;
+                    
+                    if (elapsed >= this.tests.session.duration) {
+                        break;
+                    }
+                    
+                    // Update progress
+                    const progress = (elapsed / this.tests.session.duration) * 100;
+                    document.getElementById('session-progress').style.width = `${progress}%`;
+                    
+                    // Monitor performance
+                    const currentMemory = this.memoryMonitor.getMemoryUsage();
+                    const currentFPS = this.fpsCounter.getFPS();
+                    
+                    peakMemory = Math.max(peakMemory, currentMemory);
+                    minFPS = Math.min(minFPS, currentFPS);
+                    
+                    // Simulate gameplay activities
+                    if (Math.random() < 0.1) { // 10% chance per cycle
+                        await this.simulateGameplayActivity();
+                        combatCount++;
+                    }
+                    
+                    await this.delay(1000); // Check every second
+                }
+                
+                if (this.tests.session.running) {
+                    this.completeSessionTest(startMemory, peakMemory, minFPS, combatCount);
+                }
+            }
+            
+            async simulateGameplayActivity() {
+                // Simulate various gameplay activities
+                const activities = [
+                    () => this.simulateMovement(),
+                    () => this.simulateInventoryManagement(),
+                    () => this.simulateCombat(),
+                    () => this.simulateSaveLoad()
+                ];
+                
+                const activity = activities[Math.floor(Math.random() * activities.length)];
+                await activity();
+            }
+            
+            async simulateMovement() {
+                // Simulate player movement
+                for (let i = 0; i < 5; i++) {
+                    // Trigger movement events
+                    await this.delay(100);
+                }
+            }
+            
+            async simulateInventoryManagement() {
+                // Simulate inventory operations
+                const inventory = this.gameEngine.inventorySystem;
+                const item = this.gameEngine.itemDatabase.getRandomItem();
+                inventory.addItem(item);
+                await this.delay(50);
+            }
+            
+            async simulateCombat() {
+                // Run a quick combat simulation
+                try {
+                    await this.runSingleCombatTest(4);
+                } catch (error) {
+                    // Ignore combat errors during session test
+                }
+            }
+            
+            async simulateSaveLoad() {
+                // Perform save/load operation
+                try {
+                    const saveSystem = this.gameEngine.saveSystem;
+                    await saveSystem.saveGame(2);
+                    await saveSystem.loadGame(2);
+                } catch (error) {
+                    // Ignore save/load errors during session test
+                }
+            }
+            
+            completeSessionTest(startMemory, peakMemory, minFPS, combatCount) {
+                this.tests.session.running = false;
+                this.updateTestStatus('session', 'passed');
+                
+                document.getElementById('start-session-test').disabled = false;
+                document.getElementById('stop-session-test').disabled = true;
+                
+                const duration = (Date.now() - this.tests.session.startTime) / 60000;
+                const memoryIncrease = peakMemory - startMemory;
+                
+                this.results.session = {
+                    duration,
+                    startMemory,
+                    peakMemory,
+                    memoryIncrease,
+                    minFPS,
+                    combatCount
+                };
+                
+                this.log(`Session test completed: ${duration.toFixed(1)} minutes, memory increase: ${memoryIncrease.toFixed(1)}MB, min FPS: ${minFPS.toFixed(1)}`, 'info');
+                this.updateResultsSummary();
+            }
+            
+            stopSessionTest() {
+                this.tests.session.running = false;
+                this.updateTestStatus('session', 'idle');
+                
+                document.getElementById('start-session-test').disabled = false;
+                document.getElementById('stop-session-test').disabled = true;
+                
+                this.log('Session test stopped by user', 'warning');
+            }
+            
+            updateTestStatus(testType, status) {
+                const element = document.getElementById(`${testType}-status`);
+                element.className = `test-status status-${status}`;
+                element.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            }
+            
+            updateResultsSummary() {
+                const summary = document.getElementById('results-summary');
+                let html = '<h3>Performance Test Results</h3>';
+                
+                // Combat results
+                if (this.results.combat.length > 0) {
+                    const avgDuration = this.results.combat.reduce((sum, r) => sum + r.duration, 0) / this.results.combat.length;
+                    const avgFPS = this.results.combat.reduce((sum, r) => sum + r.avgFPS, 0) / this.results.combat.length;
+                    
+                    html += `<div><strong>Combat Performance:</strong> ${this.results.combat.length} tests, avg ${avgDuration.toFixed(0)}ms duration, avg ${avgFPS.toFixed(1)} FPS</div>`;
+                    html += `<div>Target: 60 FPS - ${avgFPS >= 55 ? '✅ PASSED' : '❌ FAILED'}</div>`;
+                }
+                
+                // Save/Load results
+                if (this.results.save.length > 0) {
+                    const avgSave = this.results.save.reduce((sum, r) => sum + r.saveDuration, 0) / this.results.save.length;
+                    const avgLoad = this.results.save.reduce((sum, r) => sum + r.loadDuration, 0) / this.results.save.length;
+                    
+                    html += `<div><strong>Save/Load Performance:</strong> ${this.results.save.length} tests, avg save ${avgSave.toFixed(0)}ms, avg load ${avgLoad.toFixed(0)}ms</div>`;
+                    html += `<div>Target: <1000ms - Save: ${avgSave < 1000 ? '✅ PASSED' : '❌ FAILED'}, Load: ${avgLoad < 1000 ? '✅ PASSED' : '❌ FAILED'}</div>`;
+                }
+                
+                // Session results
+                if (this.results.session) {
+                    const session = this.results.session;
+                    html += `<div><strong>Session Test:</strong> ${session.duration.toFixed(1)} minutes, memory increase: ${session.memoryIncrease.toFixed(1)}MB, min FPS: ${session.minFPS.toFixed(1)}</div>`;
+                    html += `<div>Memory Target: <200MB increase - ${session.memoryIncrease < 200 ? '✅ PASSED' : '❌ FAILED'}</div>`;
+                    html += `<div>FPS Target: >30 FPS minimum - ${session.minFPS > 30 ? '✅ PASSED' : '❌ FAILED'}</div>`;
+                }
+                
+                summary.innerHTML = html;
+            }
+            
+            log(message, level = 'info') {
+                const logContainer = document.getElementById('test-log');
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${level}`;
+                
+                const timestamp = new Date().toLocaleTimeString();
+                entry.textContent = `[${timestamp}] ${message}`;
+                
+                logContainer.appendChild(entry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+                
+                // Also log to console
+                console.log(`[PerformanceTest] ${message}`);
+            }
+            
+            clearLog() {
+                document.getElementById('test-log').innerHTML = '';
+            }
+            
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+        
+        // Performance monitoring utilities
+        class FPSCounter {
+            constructor() {
+                this.fps = 0;
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                
+                this.startCounting();
+            }
+            
+            startCounting() {
+                const updateFPS = () => {
+                    this.frameCount++;
+                    const currentTime = performance.now();
+                    
+                    if (currentTime - this.lastTime >= 1000) {
+                        this.fps = this.frameCount;
+                        this.frameCount = 0;
+                        this.lastTime = currentTime;
+                    }
+                    
+                    requestAnimationFrame(updateFPS);
+                };
+                
+                requestAnimationFrame(updateFPS);
+            }
+            
+            getFPS() {
+                return this.fps;
+            }
+        }
+        
+        class MemoryMonitor {
+            getMemoryUsage() {
+                if (performance.memory) {
+                    return performance.memory.usedJSHeapSize / 1024 / 1024; // Convert to MB
+                }
+                return 0; // Fallback if memory API not available
+            }
+        }
+        
+        class PerformanceLogger {
+            constructor() {
+                this.logs = [];
+            }
+            
+            log(event, data) {
+                this.logs.push({
+                    timestamp: Date.now(),
+                    event,
+                    data
+                });
+            }
+            
+            getLogs() {
+                return this.logs;
+            }
+            
+            clear() {
+                this.logs = [];
+            }
+        }
+        
+        // Initialize the performance tester
+        const tester = new PerformanceStressTester();
+        
+        // Make it globally available for debugging
+        window.performanceTester = tester;
+    </script>
+</body>
+</html>

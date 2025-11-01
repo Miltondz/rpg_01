@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resource Economy System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .metric-label {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .status-good { border-left-color: #28a745; }
+        .status-warning { border-left-color: #ffc107; }
+        .status-danger { border-left-color: #dc3545; }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .economy-chart {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .potion-tracker {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .potion-bar {
+            display: flex;
+            height: 20px;
+            background: #dee2e6;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        .drops-bar {
+            background: #28a745;
+            transition: width 0.3s ease;
+        }
+        .usage-bar {
+            background: #dc3545;
+            transition: width 0.3s ease;
+        }
+        .recommendations {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+        }
+        .recommendation-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #ffc107;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .economy-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-balanced { background: #d4edda; color: #155724; }
+        .status-imbalanced { background: #f8d7da; color: #721c24; }
+        .status-minor-issues { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Resource Economy System Test</h1>
+        <p>This test validates the resource economy balance including potion drops, gold flow, and progression pacing.</p>
+        
+        <div class="controls">
+            <button class="btn-primary" onclick="simulateFloorCompletion()">Simulate Floor Completion</button>
+            <button class="btn-success" onclick="simulatePotionUsage()">Use Random Potions</button>
+            <button class="btn-warning" onclick="simulateShopTransaction()">Shop Transaction</button>
+            <button class="btn-info" onclick="simulateLevelUp()">Level Up</button>
+            <button class="btn-danger" onclick="analyzeEconomy()">Analyze Economy</button>
+            <button onclick="toggleDynamicPricing()">Toggle Dynamic Pricing</button>
+            <button onclick="resetEconomy()">Reset Economy</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Economy Overview</h2>
+        <div class="metrics-grid">
+            <div class="metric-card" id="gold-balance">
+                <div class="metric-value">0</div>
+                <div class="metric-label">Gold Balance</div>
+            </div>
+            <div class="metric-card" id="gold-earned">
+                <div class="metric-value">0</div>
+                <div class="metric-label">Total Gold Earned</div>
+            </div>
+            <div class="metric-card" id="gold-spent">
+                <div class="metric-value">0</div>
+                <div class="metric-label">Total Gold Spent</div>
+            </div>
+            <div class="metric-card" id="shop-transactions">
+                <div class="metric-value">0</div>
+                <div class="metric-label">Shop Transactions</div>
+            </div>
+            <div class="metric-card" id="levels-gained">
+                <div class="metric-value">0</div>
+                <div class="metric-label">Levels Gained</div>
+            </div>
+            <div class="metric-card" id="time-per-level">
+                <div class="metric-value">N/A</div>
+                <div class="metric-label">Minutes per Level</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Potion Economy</h2>
+        <div class="economy-chart" id="potion-economy">
+            <!-- Potion trackers will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Economy Analysis</h2>
+        <div id="economy-status">
+            <p>Run economy analysis to see current balance status.</p>
+        </div>
+        
+        <div id="recommendations" class="recommendations" style="display: none;">
+            <h3>Recommendations:</h3>
+            <div id="recommendation-list"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>System Log</h2>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script type="module">
+        import { resourceEconomySystem } from './src/engine/balance/ResourceEconomySystem.js';
+        import { combatBalanceConfig } from './src/engine/balance/CombatBalanceConfig.js';
+
+        // Global references
+        window.resourceEconomySystem = resourceEconomySystem;
+        window.combatBalanceConfig = combatBalanceConfig;
+
+        let gameTime = 0; // Simulated game time in minutes
+        let dynamicPricingEnabled = false;
+
+        // Logging function
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Initialize potion economy display
+        function initializePotionDisplay() {
+            const potionTypes = ['health_small', 'health_medium', 'health_large', 'ap_potion', 'buff_potion'];
+            const container = document.getElementById('potion-economy');
+            
+            potionTypes.forEach(potionType => {
+                const tracker = document.createElement('div');
+                tracker.className = 'potion-tracker';
+                tracker.innerHTML = `
+                    <div><strong>${potionType.replace('_', ' ').toUpperCase()}</strong></div>
+                    <div>Drops: <span id="${potionType}-drops">0</span></div>
+                    <div>Usage: <span id="${potionType}-usage">0</span></div>
+                    <div class="potion-bar">
+                        <div class="drops-bar" id="${potionType}-drops-bar" style="width: 0%"></div>
+                    </div>
+                    <div class="potion-bar">
+                        <div class="usage-bar" id="${potionType}-usage-bar" style="width: 0%"></div>
+                    </div>
+                    <div>Ratio: <span id="${potionType}-ratio">0.0</span></div>
+                `;
+                container.appendChild(tracker);
+            });
+        }
+
+        // Simulate floor completion with loot drops
+        window.simulateFloorCompletion = function() {
+            log('Simulating floor completion...');
+            
+            // Simulate multiple combat encounters
+            const encounters = Math.floor(Math.random() * 5) + 3; // 3-7 encounters
+            let totalGold = 0;
+            
+            for (let i = 0; i < encounters; i++) {
+                // Simulate potion drops
+                const potionTypes = ['health_small', 'health_medium', 'health_large', 'ap_potion', 'buff_potion'];
+                potionTypes.forEach(potionType => {
+                    const dropRate = combatBalanceConfig.getPotionDropRate(potionType);
+                    if (Math.random() < dropRate) {
+                        resourceEconomySystem.recordPotionDrop(potionType, 1);
+                        log(`Found ${potionType.replace('_', ' ')}`);
+                    }
+                });
+                
+                // Simulate gold drops
+                const goldAmount = Math.floor(Math.random() * 50) + 20;
+                resourceEconomySystem.recordGoldTransaction(goldAmount, 'combat_loot');
+                totalGold += goldAmount;
+            }
+            
+            // Simulate time passage
+            gameTime += Math.floor(Math.random() * 30) + 15; // 15-45 minutes
+            resourceEconomySystem.recordProgressionEvent('time_update', { totalTime: gameTime });
+            resourceEconomySystem.recordProgressionEvent('combat_completed', {});
+            
+            log(`Floor completed! ${encounters} encounters, ${totalGold} gold earned, ${gameTime} minutes total`);
+            updateDisplay();
+        };
+
+        // Simulate potion usage
+        window.simulatePotionUsage = function() {
+            const potionTypes = ['health_small', 'health_medium', 'health_large', 'ap_potion', 'buff_potion'];
+            const usageWeights = [0.4, 0.3, 0.15, 0.1, 0.05]; // Health potions used more often
+            
+            // Use 1-3 potions
+            const potionsToUse = Math.floor(Math.random() * 3) + 1;
+            
+            for (let i = 0; i < potionsToUse; i++) {
+                const randomValue = Math.random();
+                let cumulativeWeight = 0;
+                
+                for (let j = 0; j < potionTypes.length; j++) {
+                    cumulativeWeight += usageWeights[j];
+                    if (randomValue <= cumulativeWeight) {
+                        resourceEconomySystem.recordPotionUsage(potionTypes[j], 1);
+                        log(`Used ${potionTypes[j].replace('_', ' ')}`);
+                        break;
+                    }
+                }
+            }
+            
+            updateDisplay();
+        };
+
+        // Simulate shop transaction
+        window.simulateShopTransaction = function() {
+            const transactionType = Math.random() < 0.7 ? 'purchase' : 'sale';
+            const value = Math.floor(Math.random() * 200) + 50;
+            const itemType = ['weapon', 'armor', 'accessory', 'consumable'][Math.floor(Math.random() * 4)];
+            
+            resourceEconomySystem.recordShopTransaction(transactionType, value, itemType);
+            log(`Shop ${transactionType}: ${itemType} for ${value} gold`);
+            
+            updateDisplay();
+        };
+
+        // Simulate level up
+        window.simulateLevelUp = function() {
+            resourceEconomySystem.recordProgressionEvent('level_up', {});
+            log('Level up! Character gained a level');
+            
+            updateDisplay();
+        };
+
+        // Analyze economy balance
+        window.analyzeEconomy = function() {
+            log('Analyzing economy balance...');
+            
+            const analysis = resourceEconomySystem.analyzeEconomyBalance();
+            
+            // Update economy status display
+            updateEconomyStatus(analysis);
+            
+            // Show recommendations if any
+            if (analysis.recommendations.length > 0) {
+                showRecommendations(analysis.recommendations);
+            }
+            
+            log('Economy analysis completed');
+        };
+
+        // Toggle dynamic pricing
+        window.toggleDynamicPricing = function() {
+            dynamicPricingEnabled = !dynamicPricingEnabled;
+            resourceEconomySystem.setDynamicPricing(dynamicPricingEnabled);
+            
+            const button = event.target;
+            button.textContent = dynamicPricingEnabled ? 'Disable Dynamic Pricing' : 'Enable Dynamic Pricing';
+            button.className = dynamicPricingEnabled ? 'btn-success' : 'btn-primary';
+            
+            log(`Dynamic pricing ${dynamicPricingEnabled ? 'enabled' : 'disabled'}`);
+        };
+
+        // Reset economy
+        window.resetEconomy = function() {
+            resourceEconomySystem.resetEconomyMetrics();
+            gameTime = 0;
+            log('Economy metrics reset');
+            updateDisplay();
+            
+            // Hide recommendations
+            document.getElementById('recommendations').style.display = 'none';
+            document.getElementById('economy-status').innerHTML = '<p>Run economy analysis to see current balance status.</p>';
+        };
+
+        // Update display
+        function updateDisplay() {
+            updateMetricsDisplay();
+            updatePotionDisplay();
+        }
+
+        // Update metrics display
+        function updateMetricsDisplay() {
+            const metrics = resourceEconomySystem.economyMetrics;
+            
+            document.querySelector('#gold-balance .metric-value').textContent = metrics.goldFlow.balance;
+            document.querySelector('#gold-earned .metric-value').textContent = metrics.goldFlow.earned;
+            document.querySelector('#gold-spent .metric-value').textContent = metrics.goldFlow.spent;
+            document.querySelector('#shop-transactions .metric-value').textContent = 
+                metrics.shopTransactions.purchases + metrics.shopTransactions.sales;
+            document.querySelector('#levels-gained .metric-value').textContent = metrics.progressionMetrics.levelsGained;
+            
+            // Calculate time per level
+            if (metrics.progressionMetrics.levelsGained > 0 && gameTime > 0) {
+                const timePerLevel = gameTime / metrics.progressionMetrics.levelsGained;
+                document.querySelector('#time-per-level .metric-value').textContent = timePerLevel.toFixed(1);
+            } else {
+                document.querySelector('#time-per-level .metric-value').textContent = 'N/A';
+            }
+        }
+
+        // Update potion display
+        function updatePotionDisplay() {
+            const metrics = resourceEconomySystem.economyMetrics;
+            const potionTypes = ['health_small', 'health_medium', 'health_large', 'ap_potion', 'buff_potion'];
+            
+            // Find max values for scaling bars
+            let maxDrops = 0;
+            let maxUsage = 0;
+            
+            potionTypes.forEach(potionType => {
+                maxDrops = Math.max(maxDrops, metrics.potionDrops[potionType]);
+                maxUsage = Math.max(maxUsage, metrics.potionUsage[potionType]);
+            });
+            
+            const maxValue = Math.max(maxDrops, maxUsage, 1);
+            
+            potionTypes.forEach(potionType => {
+                const drops = metrics.potionDrops[potionType];
+                const usage = metrics.potionUsage[potionType];
+                const ratio = drops > 0 ? (usage / drops).toFixed(2) : '0.00';
+                
+                document.getElementById(`${potionType}-drops`).textContent = drops;
+                document.getElementById(`${potionType}-usage`).textContent = usage;
+                document.getElementById(`${potionType}-ratio`).textContent = ratio;
+                
+                // Update bars
+                const dropsPercentage = (drops / maxValue) * 100;
+                const usagePercentage = (usage / maxValue) * 100;
+                
+                document.getElementById(`${potionType}-drops-bar`).style.width = `${dropsPercentage}%`;
+                document.getElementById(`${potionType}-usage-bar`).style.width = `${usagePercentage}%`;
+            });
+        }
+
+        // Update economy status display
+        function updateEconomyStatus(analysis) {
+            const statusContainer = document.getElementById('economy-status');
+            
+            let html = '<h3>Economy Status</h3>';
+            
+            // Potion economy status
+            html += `<div class="metric-card">
+                <strong>Potion Economy:</strong> 
+                <span class="economy-status status-${analysis.potionEconomy.overallStatus.replace('_', '-')}">${analysis.potionEconomy.overallStatus.replace('_', ' ').toUpperCase()}</span>
+            </div>`;
+            
+            // Gold economy status
+            html += `<div class="metric-card">
+                <strong>Gold Economy:</strong> 
+                <span class="economy-status status-${analysis.goldEconomy.status}">${analysis.goldEconomy.status.toUpperCase()}</span>
+                <br><small>Spending Ratio: ${(analysis.goldEconomy.spendingRatio * 100).toFixed(1)}%</small>
+            </div>`;
+            
+            // Progression pacing status
+            if (analysis.progressionPacing.pacingStatus !== 'insufficient_data') {
+                html += `<div class="metric-card">
+                    <strong>Progression Pacing:</strong> 
+                    <span class="economy-status status-${analysis.progressionPacing.pacingStatus.replace('_', '-')}">${analysis.progressionPacing.pacingStatus.replace('_', ' ').toUpperCase()}</span>
+                    <br><small>Time per Level: ${analysis.progressionPacing.timePerLevel?.toFixed(1) || 'N/A'} min (Target: ${analysis.progressionPacing.targetTimePerLevel?.toFixed(1) || 'N/A'} min)</small>
+                </div>`;
+            }
+            
+            statusContainer.innerHTML = html;
+        }
+
+        // Show recommendations
+        function showRecommendations(recommendations) {
+            const container = document.getElementById('recommendations');
+            const listContainer = document.getElementById('recommendation-list');
+            
+            let html = '';
+            recommendations.forEach(rec => {
+                const priorityClass = rec.priority === 'high' ? 'status-danger' : 
+                                    rec.priority === 'medium' ? 'status-warning' : 'status-good';
+                
+                html += `
+                    <div class="recommendation-item ${priorityClass}">
+                        <strong>${rec.category.replace('_', ' ').toUpperCase()}</strong> (${rec.priority} priority)
+                        <br>Issue: ${rec.issue}
+                        <br>Recommendation: ${rec.recommendation}
+                    </div>
+                `;
+            });
+            
+            listContainer.innerHTML = html;
+            container.style.display = 'block';
+        }
+
+        // Initialize display
+        initializePotionDisplay();
+        updateDisplay();
+        log('Resource Economy System test initialized');
+        log('Simulate gameplay events to test economy balance');
+    </script>
+</body>
+</html>

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combat Log Test</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 2100;
+            max-width: 400px;
+        }
+        
+        .test-btn {
+            background: rgba(0, 100, 200, 0.8);
+            border: 2px solid #0088ff;
+            color: #fff;
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            display: block;
+            width: 100%;
+        }
+        
+        .test-btn:hover {
+            background: rgba(0, 150, 255, 0.9);
+        }
+        
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 50, 0, 0.3);
+            border: 1px solid #00aa00;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        /* Force combat log visibility */
+        .combat-log-content {
+            background: rgba(0, 0, 0, 0.9) !important;
+            border: 2px solid #00ff00 !important;
+            color: #00ff00 !important;
+            font-size: 14px !important;
+        }
+        
+        .log-entry {
+            margin: 5px 0 !important;
+            padding: 5px !important;
+            border-bottom: 1px solid rgba(0, 255, 0, 0.3) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-panel">
+        <h3>Combat Log Test</h3>
+        <button class="test-btn" onclick="initializeTest()">1. Initialize Combat UI</button>
+        <button class="test-btn" onclick="showCombat()">2. Show Combat Interface</button>
+        <button class="test-btn" onclick="testLogMessages()">3. Test Log Messages</button>
+        <button class="test-btn" onclick="clearLog()">4. Clear Log</button>
+        <button class="test-btn" onclick="addRandomMessage()">5. Add Random Message</button>
+        <button class="test-btn" onclick="stressTestLog()">6. Stress Test (50 messages)</button>
+        <div class="status" id="status">Ready to test combat log</div>
+    </div>
+
+    <script type="module">
+        import { CombatUI } from './src/engine/ui/CombatUI.js';
+
+        let combatUI = null;
+
+        // Initialize combat UI
+        window.initializeTest = async function() {
+            try {
+                combatUI = new CombatUI();
+                const success = combatUI.initialize();
+                
+                if (success) {
+                    updateStatus('✅ Combat UI initialized successfully', 'success');
+                } else {
+                    updateStatus('❌ Failed to initialize Combat UI', 'error');
+                }
+            } catch (error) {
+                updateStatus(`❌ Error: ${error.message}`, 'error');
+                console.error('Initialization error:', error);
+            }
+        };
+
+        // Show combat interface
+        window.showCombat = function() {
+            if (!combatUI) {
+                updateStatus('❌ Combat UI not initialized', 'error');
+                return;
+            }
+
+            const testData = {
+                playerParty: [
+                    {
+                        id: 'warrior-1',
+                        name: 'Test Warrior',
+                        level: 3,
+                        currentHP: 45,
+                        maxHP: 60,
+                        currentAP: 2,
+                        maxAP: 3
+                    }
+                ],
+                enemies: [
+                    {
+                        id: 'goblin-1',
+                        name: 'Goblin',
+                        level: 2,
+                        currentHP: 25,
+                        maxHP: 30,
+                        currentAP: 1,
+                        maxAP: 3
+                    }
+                ],
+                turnOrder: []
+            };
+
+            combatUI.showCombat(testData);
+            updateStatus('✅ Combat interface shown', 'success');
+        };
+
+        // Test log messages
+        window.testLogMessages = function() {
+            if (!combatUI || !combatUI.isActive) {
+                updateStatus('❌ Combat UI not active', 'error');
+                return;
+            }
+
+            console.log('Testing log messages...');
+            
+            // Test each message type
+            combatUI.addLogMessage('System message: Combat begins!', 'system');
+            combatUI.addLogMessage('Action message: Warrior attacks!', 'action');
+            combatUI.addLogMessage('Damage message: 15 damage dealt!', 'damage');
+            combatUI.addLogMessage('Healing message: 10 HP restored!', 'healing');
+            combatUI.addLogMessage('Warning message: Low AP!', 'warning');
+            combatUI.addLogMessage('Error message: Action failed!', 'error');
+            
+            updateStatus('✅ Test messages added to log', 'success');
+        };
+
+        // Clear log
+        window.clearLog = function() {
+            if (!combatUI) {
+                updateStatus('❌ Combat UI not initialized', 'error');
+                return;
+            }
+
+            combatUI.clearCombatLog();
+            updateStatus('✅ Combat log cleared', 'success');
+        };
+
+        // Add random message
+        window.addRandomMessage = function() {
+            if (!combatUI || !combatUI.isActive) {
+                updateStatus('❌ Combat UI not active', 'error');
+                return;
+            }
+
+            const messages = [
+                { text: 'Warrior uses Power Strike!', type: 'action' },
+                { text: 'Critical hit for 32 damage!', type: 'damage' },
+                { text: 'Mage casts Fireball', type: 'action' },
+                { text: 'Enemy heals 15 HP', type: 'healing' },
+                { text: 'Turn 5 begins', type: 'system' },
+                { text: 'Not enough mana!', type: 'warning' },
+                { text: 'Spell fizzled!', type: 'error' }
+            ];
+
+            const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+            combatUI.addLogMessage(randomMsg.text, randomMsg.type);
+            
+            updateStatus(`✅ Added: ${randomMsg.text}`, 'success');
+        };
+
+        // Stress test with many messages
+        window.stressTestLog = function() {
+            if (!combatUI || !combatUI.isActive) {
+                updateStatus('❌ Combat UI not active', 'error');
+                return;
+            }
+
+            updateStatus('🔄 Running stress test...', 'info');
+            
+            for (let i = 1; i <= 50; i++) {
+                setTimeout(() => {
+                    const types = ['system', 'action', 'damage', 'healing', 'warning', 'error'];
+                    const type = types[i % types.length];
+                    combatUI.addLogMessage(`Stress test message ${i}/50`, type);
+                    
+                    if (i === 50) {
+                        updateStatus('✅ Stress test completed (50 messages)', 'success');
+                    }
+                }, i * 50); // 50ms delay between messages
+            }
+        };
+
+        // Update status display
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            switch (type) {
+                case 'success':
+                    statusEl.style.color = '#00ff00';
+                    break;
+                case 'error':
+                    statusEl.style.color = '#ff0000';
+                    break;
+                case 'warning':
+                    statusEl.style.color = '#ff8800';
+                    break;
+                default:
+                    statusEl.style.color = '#00aaff';
+            }
+        }
+
+        // Auto-initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatus('Combat Log Test loaded - Click "1. Initialize Combat UI" to start', 'info');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+{
+  "id": "crypt-of-shadows-floor-3",
+  "name": "Crypt of Shadows - Floor 3",
+  "width": 15,
+  "height": 15,
+  "spawn": {
+    "x": 1,
+    "z": 1,
+    "direction": 0
+  },
+  "tiles": [
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2,
+    2, 1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 2, 2, 1, 2,
+    2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2,
+    2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2,
+    2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2,
+    2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2,
+    2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2,
+    2, 2, 2, 2, 2, 1, 2, 1, 2, 1, 2, 2, 2, 2, 2,
+    2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2,
+    2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2,
+    2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2,
+    2, 1, 2, 2, 2, 1, 2, 1, 2, 1, 2, 2, 2, 1, 2,
+    2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 3, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+  ],
+  "doors": [
+    {
+      "x": 6,
+      "z": 1,
+      "orientation": "vertical",
+      "locked": false,
+      "keyType": null
+    },
+    {
+      "x": 3,
+      "z": 4,
+      "orientation": "horizontal",
+      "locked": true,
+      "keyType": "gold"
+    },
+    {
+      "x": 11,
+      "z": 4,
+      "orientation": "horizontal",
+      "locked": true,
+      "keyType": "gold"
+    },
+    {
+      "x": 7,
+      "z": 6,
+      "orientation": "vertical",
+      "locked": false,
+      "keyType": null
+    },
+    {
+      "x": 7,
+      "z": 8,
+      "orientation": "vertical",
+      "locked": true,
+      "keyType": "master"
+    }
+  ],
+  "transitions": [
+    {
+      "x": 13,
+      "z": 13,
+      "type": "stairs",
+      "target": "crypt-of-shadows-floor-4",
+      "spawn": {
+        "x": 1,
+        "z": 1,
+        "direction": 0
+      }
+    }
+  ],
+  "safeZones": [
+    {
+      "x": 7,
+      "z": 7,
+      "type": "shrine",
+      "name": "Shadow Shrine",
+      "description": "An ancient shrine emanating protective energy against the growing darkness",
+      "services": ["save", "heal", "shop", "upgrade"],
+      "healAmount": 100,
+      "cooldown": 0,
+      "shopInventory": [
+        { "itemId": "health_potion_medium", "stock": 4, "price": 50 },
+        { "itemId": "health_potion_large", "stock": 2, "price": 100 },
+        { "itemId": "ap_potion", "stock": 4, "price": 40 },
+        { "itemId": "strength_potion", "stock": 2, "price": 75 },
+        { "itemId": "steel_sword", "stock": 1, "price": 400 },
+        { "itemId": "chain_mail", "stock": 1, "price": 350 }
+      ]
+    }
+  ],
+  "scriptedEncounters": [
+    {
+      "x": 5,
+      "z": 5,
+      "id": "shadow_beast_guardian",
+      "type": "mini_boss",
+      "oneTime": true,
+      "enemies": [
+        { "type": "shadow_beast", "level": 5 }
+      ],
+      "rewards": {
+        "experience": 120,
+        "gold": { "min": 50, "max": 75 },
+        "loot": [
+          { "itemId": "gold_key", "chance": 1.0, "quantity": { "min": 1, "max": 1 } },
+          { "itemId": "shadow_cloak", "chance": 0.8, "quantity": { "min": 1, "max": 1 } }
+        ]
+      }
+    },
+    {
+      "x": 11,
+      "z": 9,
+      "id": "undead_patrol",
+      "type": "scripted",
+      "oneTime": true,
+      "enemies": [
+        { "type": "undead_knight", "level": 6 },
+        { "type": "skeleton", "level": 4 }
+      ],
+      "rewards": {
+        "experience": 100,
+        "gold": { "min": 40, "max": 60 }
+      }
+    }
+  ],
+  "keyItems": [
+    {
+      "x": 3,
+      "z": 11,
+      "itemId": "gold_key",
+      "respawn": false
+    },
+    {
+      "x": 11,
+      "z": 3,
+      "itemId": "master_key",
+      "respawn": false
+    }
+  ],
+  "lootChests": [
+    {
+      "x": 5,
+      "z": 9,
+      "loot": [
+        { "itemId": "health_potion_large", "chance": 0.8, "quantity": { "min": 1, "max": 2 } },
+        { "itemId": "steel_sword", "chance": 0.6, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 9,
+      "z": 5,
+      "loot": [
+        { "itemId": "mana_crystal", "chance": 0.7, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "chain_mail", "chance": 0.5, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 1,
+      "z": 13,
+      "loot": [
+        { "itemId": "strength_potion", "chance": 0.6, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "defense_ring", "chance": 0.4, "quantity": { "min": 1, "max": 1 } }
+      ]
+    }
+  ],
+  "secretAreas": [
+    {
+      "x": 1,
+      "z": 5,
+      "type": "hidden_chamber",
+      "revealCondition": "defeat_shadow_beast_guardian",
+      "description": "A hidden chamber revealed after defeating the Shadow Beast Guardian",
+      "loot": [
+        { "itemId": "rare_gem", "chance": 1.0, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "master_key", "chance": 0.8, "quantity": { "min": 1, "max": 1 } }
+      ]
+    }
+  ],
+  "puzzleElements": [
+    {
+      "x": 7,
+      "z": 3,
+      "type": "pressure_plate",
+      "description": "A stone pressure plate that opens the path to the shrine",
+      "requirement": "party_weight_threshold",
+      "effect": "unlock_door_7_6"
+    }
+  ]
+}

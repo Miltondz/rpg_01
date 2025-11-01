@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loot System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .stat-card {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .rarity-common { color: #6c757d; }
+        .rarity-uncommon { color: #28a745; }
+        .rarity-rare { color: #007bff; }
+        .rarity-epic { color: #6f42c1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Loot System Test Suite</h1>
+        <p>Testing loot generation, drop rates, level scaling, and boss encounters.</p>
+
+        <div class="test-section">
+            <h3>1. Basic Enemy Loot Generation</h3>
+            <p>Test loot generation for different enemy types with appropriate drop rates.</p>
+            <button onclick="testBasicEnemyLoot()">Test Enemy Loot</button>
+            <div id="basicLootResults" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Level-Scaled Loot Generation</h3>
+            <p>Test that items are generated within ±2 levels of party average.</p>
+            <button onclick="testLevelScaling()">Test Level Scaling</button>
+            <div id="levelScalingResults" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Boss Loot with Guaranteed Rare/Epic Items</h3>
+            <p>Test that boss encounters always generate rare or epic items.</p>
+            <button onclick="testBossLoot()">Test Boss Loot</button>
+            <div id="bossLootResults" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Rarity Distribution Analysis</h3>
+            <p>Analyze rarity distribution across multiple loot generations.</p>
+            <button onclick="testRarityDistribution()">Test Rarity Distribution</button>
+            <div id="rarityResults" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>5. Combat Loot Integration</h3>
+            <p>Test loot generation for multiple enemies in combat scenarios.</p>
+            <button onclick="testCombatLoot()">Test Combat Loot</button>
+            <div id="combatLootResults" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>6. Loot Statistics</h3>
+            <p>Generate detailed statistics for balancing purposes.</p>
+            <button onclick="generateLootStats()">Generate Statistics</button>
+            <div id="statsResults" class="results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { lootSystem } from './src/engine/loot/LootSystem.js';
+        import { ItemRarity, ItemTypes } from './src/engine/inventory/Item.js';
+        import { Enemy } from './src/engine/combat/Enemy.js';
+
+        // Make functions available globally
+        window.lootSystem = lootSystem;
+        window.ItemRarity = ItemRarity;
+        window.ItemTypes = ItemTypes;
+        window.Enemy = Enemy;
+
+        window.testBasicEnemyLoot = function() {
+            let results = 'BASIC ENEMY LOOT GENERATION TEST\n';
+            results += '='.repeat(50) + '\n\n';
+
+            const enemyTypes = lootSystem.getAvailableEnemyTypes().filter(type => 
+                !type.includes('boss') && type !== 'default'
+            );
+            
+            enemyTypes.forEach(enemyType => {
+                results += `${enemyType.toUpperCase()}:\n`;
+                
+                // Test multiple generations
+                for (let i = 0; i < 3; i++) {
+                    const loot = lootSystem.generateLoot(enemyType, 3, 3, false);
+                    results += `  Generation ${i + 1}:\n`;
+                    results += `    Gold: ${loot.gold}\n`;
+                    results += `    Items (${loot.items.length}):\n`;
+                    
+                    loot.items.forEach(item => {
+                        results += `      - ${item.name} (${item.rarity}, Lv.${item.level}, ${item.type})\n`;
+                    });
+                    
+                    if (loot.items.length === 0) {
+                        results += `      - No items dropped\n`;
+                    }
+                }
+                results += '\n';
+            });
+
+            document.getElementById('basicLootResults').textContent = results;
+        };
+
+        window.testLevelScaling = function() {
+            let results = 'LEVEL SCALING TEST (±2 LEVELS FROM PARTY)\n';
+            results += '='.repeat(50) + '\n\n';
+
+            const testCases = [
+                { partyLevel: 1, enemyLevel: 1 },
+                { partyLevel: 3, enemyLevel: 3 },
+                { partyLevel: 5, enemyLevel: 5 },
+                { partyLevel: 8, enemyLevel: 8 }
+            ];
+
+            testCases.forEach(testCase => {
+                results += `Party Level ${testCase.partyLevel}, Enemy Level ${testCase.enemyLevel}:\n`;
+                
+                const itemLevels = [];
+                
+                // Generate multiple items to test level distribution
+                for (let i = 0; i < 20; i++) {
+                    const loot = lootSystem.generateLoot('orc', testCase.enemyLevel, testCase.partyLevel, false);
+                    loot.items.forEach(item => {
+                        itemLevels.push(item.level);
+                    });
+                }
+                
+                if (itemLevels.length > 0) {
+                    const minLevel = Math.min(...itemLevels);
+                    const maxLevel = Math.max(...itemLevels);
+                    const avgLevel = itemLevels.reduce((a, b) => a + b, 0) / itemLevels.length;
+                    
+                    results += `  Generated ${itemLevels.length} items\n`;
+                    results += `  Level Range: ${minLevel} - ${maxLevel}\n`;
+                    results += `  Average Level: ${avgLevel.toFixed(1)}\n`;
+                    results += `  Expected Range: ${testCase.partyLevel - 2} - ${testCase.partyLevel + 2}\n`;
+                    
+                    const withinRange = itemLevels.filter(level => 
+                        level >= Math.max(1, testCase.partyLevel - 2) && 
+                        level <= testCase.partyLevel + 2
+                    ).length;
+                    
+                    results += `  Items within ±2 levels: ${withinRange}/${itemLevels.length} (${(withinRange/itemLevels.length*100).toFixed(1)}%)\n`;
+                } else {
+                    results += `  No items generated for testing\n`;
+                }
+                
+                results += '\n';
+            });
+
+            document.getElementById('levelScalingResults').textContent = results;
+        };
+
+        window.testBossLoot = function() {
+            let results = 'BOSS LOOT TEST (GUARANTEED RARE/EPIC)\n';
+            results += '='.repeat(50) + '\n\n';
+
+            const bossLevels = [2, 4, 6, 8];
+            
+            bossLevels.forEach(level => {
+                results += `BOSS LEVEL ${level}:\n`;
+                
+                let totalRareEpic = 0;
+                let totalItems = 0;
+                
+                // Test multiple boss encounters
+                for (let i = 0; i < 5; i++) {
+                    const loot = lootSystem.generateLoot('boss_encounter', level, level, true);
+                    results += `  Encounter ${i + 1}:\n`;
+                    results += `    Gold: ${loot.gold}\n`;
+                    results += `    Items (${loot.items.length}):\n`;
+                    
+                    let encounterRareEpic = 0;
+                    
+                    loot.items.forEach(item => {
+                        const isRareEpic = item.rarity === ItemRarity.RARE.name || item.rarity === ItemRarity.EPIC.name;
+                        if (isRareEpic) encounterRareEpic++;
+                        
+                        results += `      - ${item.name} (${item.rarity}, Lv.${item.level})\n`;
+                    });
+                    
+                    totalRareEpic += encounterRareEpic;
+                    totalItems += loot.items.length;
+                    
+                    results += `    Rare/Epic items: ${encounterRareEpic}/${loot.items.length}\n`;
+                }
+                
+                results += `  Summary: ${totalRareEpic}/${totalItems} items were Rare/Epic (${(totalRareEpic/totalItems*100).toFixed(1)}%)\n`;
+                results += '\n';
+            });
+
+            document.getElementById('bossLootResults').textContent = results;
+        };
+
+        window.testRarityDistribution = function() {
+            let results = 'RARITY DISTRIBUTION ANALYSIS\n';
+            results += '='.repeat(50) + '\n\n';
+
+            const testIterations = 1000;
+            const enemyType = 'orc';
+            const level = 3;
+
+            results += `Testing ${testIterations} loot generations for ${enemyType} (Level ${level})\n\n`;
+
+            const stats = lootSystem.testLootGeneration(enemyType, level, level, testIterations, false);
+            
+            results += `RESULTS:\n`;
+            results += `  Total Gold: ${stats.totalGold}\n`;
+            results += `  Average Gold per Drop: ${stats.averageGold.toFixed(1)}\n`;
+            results += `  Total Items: ${stats.totalItems}\n`;
+            results += `  Average Items per Drop: ${stats.averageItemsPerDrop.toFixed(2)}\n`;
+            results += `  Item Level Range: ${stats.levelRange.min} - ${stats.levelRange.max}\n\n`;
+
+            results += `RARITY DISTRIBUTION:\n`;
+            Object.entries(stats.rarityCount).forEach(([rarity, count]) => {
+                const percentage = stats.totalItems > 0 ? (count / stats.totalItems * 100).toFixed(1) : '0.0';
+                results += `  ${rarity}: ${count} items (${percentage}%)\n`;
+            });
+
+            results += `\nITEM TYPE DISTRIBUTION:\n`;
+            Object.entries(stats.typeCount).forEach(([type, count]) => {
+                const percentage = stats.totalItems > 0 ? (count / stats.totalItems * 100).toFixed(1) : '0.0';
+                results += `  ${type}: ${count} items (${percentage}%)\n`;
+            });
+
+            document.getElementById('rarityResults').textContent = results;
+        };
+
+        window.testCombatLoot = function() {
+            let results = 'COMBAT LOOT INTEGRATION TEST\n';
+            results += '='.repeat(50) + '\n\n';
+
+            const combatScenarios = [
+                [
+                    { type: 'goblin', level: 2 },
+                    { type: 'goblin', level: 2 }
+                ],
+                [
+                    { type: 'orc', level: 4 },
+                    { type: 'skeleton', level: 3 },
+                    { type: 'goblin', level: 3 }
+                ],
+                [
+                    { type: 'fire_elemental', level: 5 },
+                    { type: 'ice_elemental', level: 5 }
+                ]
+            ];
+
+            combatScenarios.forEach((enemies, index) => {
+                results += `COMBAT SCENARIO ${index + 1}:\n`;
+                results += `  Enemies: ${enemies.map(e => `${e.type}(Lv.${e.level})`).join(', ')}\n`;
+                
+                const partyLevel = 3;
+                const loot = lootSystem.generateCombatLoot(enemies, partyLevel);
+                
+                results += `  Combined Loot:\n`;
+                results += `    Gold: ${loot.gold}\n`;
+                results += `    Items (${loot.items.length}):\n`;
+                
+                loot.items.forEach(item => {
+                    results += `      - ${item.name} (${item.rarity}, Lv.${item.level}, ${item.type})\n`;
+                });
+                
+                if (loot.items.length === 0) {
+                    results += `      - No items dropped\n`;
+                }
+                
+                results += '\n';
+            });
+
+            document.getElementById('combatLootResults').textContent = results;
+        };
+
+        window.generateLootStats = function() {
+            let results = 'COMPREHENSIVE LOOT STATISTICS\n';
+            results += '='.repeat(50) + '\n\n';
+
+            const enemyTypes = ['goblin', 'orc', 'skeleton', 'fire_elemental'];
+            const testIterations = 500;
+
+            enemyTypes.forEach(enemyType => {
+                results += `${enemyType.toUpperCase()} STATISTICS (${testIterations} iterations):\n`;
+                
+                const stats = lootSystem.testLootGeneration(enemyType, 3, 3, testIterations, false);
+                
+                results += `  Average Gold: ${stats.averageGold.toFixed(1)}\n`;
+                results += `  Average Items: ${stats.averageItemsPerDrop.toFixed(2)}\n`;
+                results += `  Level Range: ${stats.levelRange.min}-${stats.levelRange.max}\n`;
+                
+                results += `  Rarity Distribution:\n`;
+                Object.entries(stats.rarityCount).forEach(([rarity, count]) => {
+                    const percentage = stats.totalItems > 0 ? (count / stats.totalItems * 100).toFixed(1) : '0.0';
+                    results += `    ${rarity}: ${percentage}%\n`;
+                });
+                
+                results += '\n';
+            });
+
+            // Boss statistics
+            results += 'BOSS STATISTICS:\n';
+            const bossStats = lootSystem.testLootGeneration('boss_encounter', 5, 5, 100, true);
+            results += `  Average Gold: ${bossStats.averageGold.toFixed(1)}\n`;
+            results += `  Average Items: ${bossStats.averageItemsPerDrop.toFixed(2)}\n`;
+            results += `  Rare/Epic Rate: ${((bossStats.rarityCount[ItemRarity.RARE.name] + bossStats.rarityCount[ItemRarity.EPIC.name]) / bossStats.totalItems * 100).toFixed(1)}%\n`;
+
+            document.getElementById('statsResults').textContent = results;
+        };
+
+        // Auto-run basic test on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Loot System Test Suite loaded');
+            console.log('Available enemy types:', lootSystem.getAvailableEnemyTypes());
+        });
+    </script>
+</body>
+</html>

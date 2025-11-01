@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boss Phase Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #2a2a2a;
+            border-radius: 10px;
+            border-left: 5px solid #8B4513;
+        }
+        
+        .success { color: #32CD32; }
+        .error { color: #FF6347; }
+        .warning { color: #FFD700; }
+        
+        button {
+            background-color: #8B4513;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #A0522D;
+        }
+        
+        .combat-log {
+            background-color: #1a1a1a;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9em;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐉 Boss Phase Integration Test</h1>
+    <p>Testing boss phase transitions during actual combat</p>
+
+    <div class="test-section">
+        <h3>Combat System Integration</h3>
+        <button onclick="testBossPhaseInCombat()">Test Boss Phase Transitions</button>
+        <div id="combat-results"></div>
+    </div>
+
+    <script type="module">
+        import { Enemy } from './src/engine/combat/Enemy.js';
+        import { EnemyAI } from './src/engine/combat/EnemyAI.js';
+        import { ActionSystem } from './src/engine/combat/ActionSystem.js';
+        import { Character } from './src/engine/character/Character.js';
+
+        window.testBossPhaseInCombat = async function() {
+            const resultsDiv = document.getElementById('combat-results');
+            resultsDiv.innerHTML = '<div class="combat-log" id="combat-log">Starting boss phase integration test...<br></div>';
+            const log = document.getElementById('combat-log');
+            
+            function addLog(message) {
+                log.innerHTML += message + '<br>';
+                log.scrollTop = log.scrollHeight;
+            }
+
+            try {
+                // Create a test boss
+                const boss = new Enemy('shadow_lord', 12);
+                const ai = EnemyAI.createForEnemyType('shadow_lord');
+                boss.setAI(ai);
+                
+                addLog(`Created boss: ${boss.name}`);
+                addLog(`Initial HP: ${boss.currentHP}/${boss.maxHP}`);
+                addLog(`Phases: ${boss.phases ? boss.phases.length : 0}`);
+                addLog(`Current Phase: ${boss.currentPhase + 1}`);
+                
+                // Create a test attacker
+                const attacker = new Character('warrior');
+                attacker.level = 10;
+                attacker.stats.ATK = 50; // High attack to trigger phase transitions
+                
+                addLog(`\nCreated attacker: ${attacker.name} (ATK: ${attacker.stats.ATK})`);
+                
+                // Create action system
+                const actionSystem = new ActionSystem();
+                
+                // Test phase transitions by dealing damage
+                addLog('\n=== Testing Phase Transitions ===');
+                
+                let phaseTransitions = 0;
+                let attackCount = 0;
+                
+                while (boss.isAlive() && attackCount < 10) {
+                    attackCount++;
+                    const hpBefore = boss.currentHP;
+                    const phaseBefore = boss.currentPhase;
+                    
+                    // Execute attack
+                    const result = actionSystem.executeAttack(attacker, [boss]);
+                    
+                    const hpAfter = boss.currentHP;
+                    const phaseAfter = boss.currentPhase;
+                    
+                    addLog(`Attack ${attackCount}: ${hpBefore} -> ${hpAfter} HP`);
+                    
+                    if (phaseAfter > phaseBefore) {
+                        phaseTransitions++;
+                        addLog(`<span class="success">🔄 PHASE TRANSITION! Phase ${phaseBefore + 1} -> ${phaseAfter + 1}</span>`);
+                        
+                        // Show new phase skills
+                        const phaseSkills = boss.getCurrentPhaseSkills();
+                        addLog(`New phase skills: ${phaseSkills.map(s => s.name).join(', ')}`);
+                    }
+                    
+                    // Show combat messages
+                    if (result.messages && result.messages.length > 0) {
+                        result.messages.forEach(msg => addLog(`  ${msg}`));
+                    }
+                    
+                    if (boss.currentHP <= 0) {
+                        addLog(`<span class="error">Boss defeated!</span>`);
+                        break;
+                    }
+                    
+                    // Small delay for readability
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                addLog(`\n=== Test Results ===`);
+                addLog(`Total attacks: ${attackCount}`);
+                addLog(`Phase transitions: ${phaseTransitions}`);
+                addLog(`Expected transitions: ${boss.phases ? boss.phases.length - 1 : 0}`);
+                
+                if (phaseTransitions > 0) {
+                    addLog(`<span class="success">✅ Boss phase transitions working correctly!</span>`);
+                } else {
+                    addLog(`<span class="warning">⚠️ No phase transitions detected - may need more damage</span>`);
+                }
+                
+                // Test AI behavior in different phases
+                addLog(`\n=== Testing AI Phase Behavior ===`);
+                
+                // Reset boss for AI testing
+                const testBoss = new Enemy('elemental_overlord', 13);
+                const testAI = EnemyAI.createForEnemyType('elemental_overlord');
+                testBoss.setAI(testAI);
+                
+                // Create mock party for AI testing
+                const mockParty = {
+                    getAliveMembers: () => [
+                        { name: 'Test Warrior', class: 'warrior', stats: { HP: 100, ATK: 20 }, currentHP: 100, maxHP: 100, getHPPercentage: () => 1.0 },
+                        { name: 'Test Mage', class: 'mage', stats: { HP: 80, ATK: 25 }, currentHP: 80, maxHP: 80, getHPPercentage: () => 1.0 }
+                    ]
+                };
+                
+                // Test AI decisions in different phases
+                for (let phase = 0; phase < testBoss.phases.length; phase++) {
+                    testBoss.currentPhase = phase;
+                    testBoss.currentHP = Math.floor(testBoss.maxHP * testBoss.phases[phase].hpThreshold);
+                    
+                    const aiDecision = testBoss.getAIDecision(mockParty, [testBoss]);
+                    
+                    addLog(`Phase ${phase + 1} AI Decision: ${aiDecision ? aiDecision.action.name : 'No action'}`);
+                    
+                    if (aiDecision && aiDecision.action.skillData) {
+                        addLog(`  Skill details: ${aiDecision.action.skillData.description || 'No description'}`);
+                    }
+                }
+                
+                addLog(`<span class="success">✅ Boss AI phase behavior test complete!</span>`);
+                
+            } catch (error) {
+                addLog(`<span class="error">❌ Error during test: ${error.message}</span>`);
+                console.error('Boss phase test error:', error);
+            }
+        };
+    </script>
+</body>
+</html>

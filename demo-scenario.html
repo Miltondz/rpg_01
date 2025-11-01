@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dungeon Crawler - Phase 2 Demonstration</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        .demo-controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+            min-width: 200px;
+        }
+        
+        .demo-controls h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        
+        .demo-controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .demo-controls button:hover {
+            background: #1976D2;
+        }
+        
+        .demo-controls button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .demo-phase {
+            background: #333;
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        
+        .demo-phase.active {
+            background: #4CAF50;
+        }
+        
+        .demo-metrics {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 1000;
+        }
+        
+        .metric {
+            margin: 2px 0;
+        }
+        
+        .metric.good { color: #4CAF50; }
+        .metric.warning { color: #FF9800; }
+        .metric.error { color: #F44336; }
+        
+        .demo-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .demo-overlay.active {
+            display: flex;
+        }
+        
+        .demo-overlay h1 {
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+        
+        .demo-overlay p {
+            max-width: 600px;
+            line-height: 1.6;
+            margin: 10px 0;
+        }
+        
+        .demo-overlay button {
+            margin: 20px 10px;
+            padding: 12px 24px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .demo-overlay button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <!-- Demo Controls Panel -->
+    <div class="demo-controls">
+        <h3>Demo Controls</h3>
+        
+        <div class="demo-phase" id="phase-0">
+            <strong>Setup Phase</strong>
+            <button onclick="startDemo()">Start Demo</button>
+        </div>
+        
+        <div class="demo-phase" id="phase-1">
+            <strong>1. Character System</strong>
+            <button onclick="demoCharacterSystem()" id="btn-phase-1" disabled>Show Characters</button>
+        </div>
+        
+        <div class="demo-phase" id="phase-2">
+            <strong>2. Combat System</strong>
+            <button onclick="demoCombatSystem()" id="btn-phase-2" disabled>Start Combat</button>
+        </div>
+        
+        <div class="demo-phase" id="phase-3">
+            <strong>3. Progression</strong>
+            <button onclick="demoProgression()" id="btn-phase-3" disabled>Show Progression</button>
+        </div>
+        
+        <div class="demo-phase" id="phase-4">
+            <strong>4. Game Loop</strong>
+            <button onclick="demoGameLoop()" id="btn-phase-4" disabled>Explore Dungeon</button>
+        </div>
+        
+        <div class="demo-phase" id="phase-5">
+            <strong>5. Advanced Features</strong>
+            <button onclick="demoAdvancedFeatures()" id="btn-phase-5" disabled>Show Performance</button>
+        </div>
+        
+        <button onclick="resetDemo()" style="background: #F44336; margin-top: 15px;">Reset Demo</button>
+    </div>
+    
+    <!-- Performance Metrics -->
+    <div class="demo-metrics">
+        <div class="metric" id="fps-metric">FPS: --</div>
+        <div class="metric" id="memory-metric">Memory: --</div>
+        <div class="metric" id="combat-time">Combat: --</div>
+        <div class="metric" id="save-time">Save Time: --</div>
+    </div>
+    
+    <!-- Demo Overlay -->
+    <div class="demo-overlay" id="demo-overlay">
+        <h1>Dungeon Crawler - Phase 2 Demonstration</h1>
+        <p>Welcome to the Phase 2 vertical slice demonstration. This showcase highlights all major systems implemented during Phase 2 development, including character progression, turn-based combat, inventory management, and the complete game loop.</p>
+        <p><strong>Demonstration Features:</strong></p>
+        <ul style="text-align: left; max-width: 500px;">
+            <li>4 Character Classes with unique progression</li>
+            <li>Turn-based Combat with AP system</li>
+            <li>15 Enemy types across 3 tiers + 3 bosses</li>
+            <li>40-slot Inventory with equipment system</li>
+            <li>Complete 5-floor dungeon experience</li>
+            <li>Save/Load system with multiple slots</li>
+            <li>Performance optimization (60fps target)</li>
+        </ul>
+        <p><strong>Estimated Demo Time:</strong> 45-60 minutes</p>
+        <button onclick="beginDemo()">Begin Demonstration</button>
+        <button onclick="skipToGame()" style="background: #2196F3;">Skip to Game</button>
+    </div>
+    
+    <!-- Main Game Container -->
+    <div id="game-container">
+        <!-- Game content will be loaded here -->
+    </div>
+
+    <!-- Load game engine -->
+    <script type="module" src="src/main.js"></script>
+    
+    <script>
+        // Demo control system
+        class DemoController {
+            constructor() {
+                this.currentPhase = 0;
+                this.gameEngine = null;
+                this.performanceMonitor = null;
+                this.demoStartTime = null;
+                this.phaseStartTime = null;
+                
+                this.initializeDemo();
+            }
+            
+            initializeDemo() {
+                // Show demo overlay on load
+                document.getElementById('demo-overlay').classList.add('active');
+                
+                // Initialize performance monitoring
+                this.startPerformanceMonitoring();
+                
+                console.log('Demo Controller initialized');
+            }
+            
+            startPerformanceMonitoring() {
+                this.performanceMonitor = {
+                    frameCount: 0,
+                    lastTime: performance.now(),
+                    memoryUsage: 0,
+                    combatStartTime: null,
+                    saveStartTime: null
+                };
+                
+                // Update metrics every second
+                setInterval(() => this.updateMetrics(), 1000);
+                
+                // Frame counting
+                const updateFrame = () => {
+                    this.performanceMonitor.frameCount++;
+                    requestAnimationFrame(updateFrame);
+                };
+                requestAnimationFrame(updateFrame);
+            }
+            
+            updateMetrics() {
+                const monitor = this.performanceMonitor;
+                const currentTime = performance.now();
+                
+                // Calculate FPS
+                const fps = monitor.frameCount;
+                monitor.frameCount = 0;
+                
+                // Update FPS display
+                const fpsElement = document.getElementById('fps-metric');
+                fpsElement.textContent = `FPS: ${fps}`;
+                fpsElement.className = 'metric ' + (fps >= 55 ? 'good' : fps >= 45 ? 'warning' : 'error');
+                
+                // Update memory usage if available
+                if (performance.memory) {
+                    const memoryMB = Math.round(performance.memory.usedJSHeapSize / 1048576);
+                    const memoryElement = document.getElementById('memory-metric');
+                    memoryElement.textContent = `Memory: ${memoryMB}MB`;
+                    memoryElement.className = 'metric ' + (memoryMB <= 300 ? 'good' : memoryMB <= 400 ? 'warning' : 'error');
+                }
+            }
+            
+            beginDemo() {
+                document.getElementById('demo-overlay').classList.remove('active');
+                this.demoStartTime = performance.now();
+                this.enablePhase(1);
+                
+                // Initialize game engine if not already done
+                this.initializeGameEngine();
+            }
+            
+            skipToGame() {
+                document.getElementById('demo-overlay').classList.remove('active');
+                this.initializeGameEngine();
+                
+                // Enable all phases for free exploration
+                for (let i = 1; i <= 5; i++) {
+                    this.enablePhase(i);
+                }
+            }
+            
+            async initializeGameEngine() {
+                try {
+                    // Import and initialize the main game engine
+                    const { GameEngine } = await import('./src/main.js');
+                    this.gameEngine = new GameEngine();
+                    
+                    // Set up demo-specific configurations
+                    this.gameEngine.setDemoMode(true);
+                    
+                    console.log('Game engine initialized for demo');
+                } catch (error) {
+                    console.error('Failed to initialize game engine:', error);
+                }
+            }
+            
+            enablePhase(phaseNumber) {
+                const phaseElement = document.getElementById(`phase-${phaseNumber}`);
+                const buttonElement = document.getElementById(`btn-phase-${phaseNumber}`);
+                
+                if (phaseElement) {
+                    phaseElement.classList.add('active');
+                }
+                
+                if (buttonElement) {
+                    buttonElement.disabled = false;
+                }
+                
+                // Disable previous phase
+                if (phaseNumber > 1) {
+                    const prevPhase = document.getElementById(`phase-${phaseNumber - 1}`);
+                    if (prevPhase) {
+                        prevPhase.classList.remove('active');
+                    }
+                }
+                
+                this.currentPhase = phaseNumber;
+                this.phaseStartTime = performance.now();
+            }
+            
+            async demoCharacterSystem() {
+                console.log('Demonstrating Character System...');
+                
+                if (this.gameEngine) {
+                    // Show character creation and stats
+                    await this.gameEngine.showCharacterDemo();
+                }
+                
+                // Enable next phase after 30 seconds or manual advance
+                setTimeout(() => {
+                    this.enablePhase(2);
+                }, 30000);
+            }
+            
+            async demoCombatSystem() {
+                console.log('Demonstrating Combat System...');
+                
+                // Start combat timing
+                this.performanceMonitor.combatStartTime = performance.now();
+                
+                if (this.gameEngine) {
+                    await this.gameEngine.showCombatDemo();
+                }
+                
+                setTimeout(() => {
+                    this.enablePhase(3);
+                }, 45000);
+            }
+            
+            async demoProgression() {
+                console.log('Demonstrating Progression System...');
+                
+                if (this.gameEngine) {
+                    await this.gameEngine.showProgressionDemo();
+                }
+                
+                setTimeout(() => {
+                    this.enablePhase(4);
+                }, 30000);
+            }
+            
+            async demoGameLoop() {
+                console.log('Demonstrating Game Loop...');
+                
+                if (this.gameEngine) {
+                    await this.gameEngine.showGameLoopDemo();
+                }
+                
+                setTimeout(() => {
+                    this.enablePhase(5);
+                }, 60000);
+            }
+            
+            async demoAdvancedFeatures() {
+                console.log('Demonstrating Advanced Features...');
+                
+                // Test save performance
+                this.performanceMonitor.saveStartTime = performance.now();
+                
+                if (this.gameEngine) {
+                    await this.gameEngine.showAdvancedDemo();
+                    
+                    // Measure save time
+                    const saveTime = performance.now() - this.performanceMonitor.saveStartTime;
+                    document.getElementById('save-time').textContent = `Save Time: ${Math.round(saveTime)}ms`;
+                    document.getElementById('save-time').className = 'metric ' + (saveTime <= 500 ? 'good' : saveTime <= 1000 ? 'warning' : 'error');
+                }
+                
+                // Demo complete
+                setTimeout(() => {
+                    this.showDemoComplete();
+                }, 30000);
+            }
+            
+            showDemoComplete() {
+                const totalTime = Math.round((performance.now() - this.demoStartTime) / 1000 / 60);
+                
+                alert(`Demo Complete!\n\nTotal Time: ${totalTime} minutes\n\nThank you for viewing the Phase 2 demonstration. All core systems have been showcased successfully.`);
+            }
+            
+            resetDemo() {
+                // Reset all phases
+                for (let i = 1; i <= 5; i++) {
+                    const phaseElement = document.getElementById(`phase-${i}`);
+                    const buttonElement = document.getElementById(`btn-phase-${i}`);
+                    
+                    if (phaseElement) {
+                        phaseElement.classList.remove('active');
+                    }
+                    
+                    if (buttonElement) {
+                        buttonElement.disabled = true;
+                    }
+                }
+                
+                // Reset state
+                this.currentPhase = 0;
+                this.demoStartTime = null;
+                this.phaseStartTime = null;
+                
+                // Show overlay again
+                document.getElementById('demo-overlay').classList.add('active');
+                
+                // Reset game engine if needed
+                if (this.gameEngine) {
+                    this.gameEngine.reset();
+                }
+                
+                console.log('Demo reset');
+            }
+        }
+        
+        // Global demo controller instance
+        let demoController;
+        
+        // Global functions for button handlers
+        function startDemo() {
+            if (!demoController) {
+                demoController = new DemoController();
+            }
+            demoController.beginDemo();
+        }
+        
+        function beginDemo() {
+            if (!demoController) {
+                demoController = new DemoController();
+            }
+            demoController.beginDemo();
+        }
+        
+        function skipToGame() {
+            if (!demoController) {
+                demoController = new DemoController();
+            }
+            demoController.skipToGame();
+        }
+        
+        function demoCharacterSystem() {
+            demoController.demoCharacterSystem();
+        }
+        
+        function demoCombatSystem() {
+            demoController.demoCombatSystem();
+        }
+        
+        function demoProgression() {
+            demoController.demoProgression();
+        }
+        
+        function demoGameLoop() {
+            demoController.demoGameLoop();
+        }
+        
+        function demoAdvancedFeatures() {
+            demoController.demoAdvancedFeatures();
+        }
+        
+        function resetDemo() {
+            demoController.resetDemo();
+        }
+        
+        // Initialize demo controller when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            demoController = new DemoController();
+        });
+        
+        // Keyboard shortcuts for demo control
+        document.addEventListener('keydown', (event) => {
+            if (event.ctrlKey) {
+                switch (event.key) {
+                    case '1':
+                        event.preventDefault();
+                        demoCharacterSystem();
+                        break;
+                    case '2':
+                        event.preventDefault();
+                        demoCombatSystem();
+                        break;
+                    case '3':
+                        event.preventDefault();
+                        demoProgression();
+                        break;
+                    case '4':
+                        event.preventDefault();
+                        demoGameLoop();
+                        break;
+                    case '5':
+                        event.preventDefault();
+                        demoAdvancedFeatures();
+                        break;
+                    case 'r':
+                        event.preventDefault();
+                        resetDemo();
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

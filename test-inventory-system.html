@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory System Test - Task 6</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 1100;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            max-width: 300px;
+        }
+        
+        .test-btn {
+            background: rgba(0, 100, 200, 0.8);
+            border: 2px solid #0088ff;
+            color: #fff;
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            width: 100%;
+            display: block;
+        }
+        
+        .test-btn:hover {
+            background: rgba(0, 150, 255, 0.9);
+        }
+        
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 50, 0, 0.3);
+            border: 1px solid #00aa00;
+            border-radius: 3px;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .inventory-toggle {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 150, 0, 0.8);
+            border: 2px solid #00ff00;
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 1200;
+        }
+
+        .inventory-toggle:hover {
+            background: rgba(0, 200, 0, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-controls">
+        <h3>Inventory System Test - Task 6</h3>
+        <button class="test-btn" onclick="initializeInventory()">Initialize Inventory</button>
+        <button class="test-btn" onclick="addTestItems()">Add Test Items</button>
+        <button class="test-btn" onclick="testStacking()">Test Item Stacking</button>
+        <button class="test-btn" onclick="testDragDrop()">Test Drag & Drop</button>
+        <button class="test-btn" onclick="testFiltering()">Test Filtering</button>
+        <button class="test-btn" onclick="testSorting()">Test Auto-Sort</button>
+        <button class="test-btn" onclick="fillInventory()">Fill Inventory</button>
+        <button class="test-btn" onclick="clearInventory()">Clear Inventory</button>
+        <button class="test-btn" onclick="testSerialization()">Test Save/Load</button>
+        <div class="status" id="status">Inventory system not initialized</div>
+    </div>
+
+    <button class="inventory-toggle" onclick="toggleInventory()">
+        Toggle Inventory (I)
+    </button>
+
+    <script type="module">
+        import { InventorySystem } from './src/engine/inventory/InventorySystem.js';
+        import { InventoryUI } from './src/engine/ui/InventoryUI.js';
+        import { Item, ItemFactory, ItemTypes, ItemRarity } from './src/engine/inventory/Item.js';
+
+        let inventorySystem = null;
+        let inventoryUI = null;
+
+        // Initialize inventory system
+        window.initializeInventory = function() {
+            try {
+                inventorySystem = new InventorySystem();
+                inventoryUI = new InventoryUI(inventorySystem);
+                
+                // Set initial gold
+                inventorySystem.gold = 150;
+                
+                updateStatus('Inventory system initialized successfully', 'success');
+                
+                // Add some initial items
+                const sword = ItemFactory.createWeapon('Iron Sword', 1, ItemRarity.COMMON.name);
+                const potion = ItemFactory.createHealthPotion('small');
+                
+                inventorySystem.addItem(sword, 1);
+                inventorySystem.addItem(potion, 3);
+                
+                updateStatus('Added initial items: Iron Sword, 3x Small Health Potions', 'info');
+                
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+            }
+        };
+
+        // Add various test items
+        window.addTestItems = function() {
+            if (!inventorySystem) {
+                updateStatus('Inventory system not initialized', 'error');
+                return;
+            }
+
+            try {
+                // Weapons
+                const weapons = [
+                    ItemFactory.createWeapon('Steel Sword', 3, ItemRarity.UNCOMMON.name),
+                    ItemFactory.createWeapon('Magic Blade', 5, ItemRarity.RARE.name),
+                    ItemFactory.createWeapon('Legendary Sword', 8, ItemRarity.EPIC.name)
+                ];
+
+                // Armor
+                const armors = [
+                    ItemFactory.createArmor('Leather Armor', 2, ItemRarity.COMMON.name),
+                    ItemFactory.createArmor('Chain Mail', 4, ItemRarity.UNCOMMON.name),
+                    ItemFactory.createArmor('Plate Armor', 6, ItemRarity.RARE.name)
+                ];
+
+                // Potions
+                const potions = [
+                    ItemFactory.createHealthPotion('medium'),
+                    ItemFactory.createHealthPotion('large'),
+                    ItemFactory.createHealthPotion('full')
+                ];
+
+                // Materials
+                const materials = [
+                    new Item({
+                        name: 'Iron Ore',
+                        type: ItemTypes.MATERIAL,
+                        rarity: ItemRarity.COMMON.name,
+                        description: 'Raw iron ore for crafting',
+                        stackable: true,
+                        value: 5
+                    }),
+                    new Item({
+                        name: 'Magic Crystal',
+                        type: ItemTypes.MATERIAL,
+                        rarity: ItemRarity.RARE.name,
+                        description: 'A glowing crystal with magical properties',
+                        stackable: true,
+                        value: 50
+                    })
+                ];
+
+                // Key Items
+                const keyItems = [
+                    new Item({
+                        name: 'Dungeon Key',
+                        type: ItemTypes.KEY_ITEM,
+                        rarity: ItemRarity.UNCOMMON.name,
+                        description: 'Opens locked doors in the dungeon',
+                        stackable: false,
+                        value: 0
+                    }),
+                    new Item({
+                        name: 'Ancient Scroll',
+                        type: ItemTypes.KEY_ITEM,
+                        rarity: ItemRarity.EPIC.name,
+                        description: 'Contains ancient knowledge',
+                        stackable: false,
+                        value: 0
+                    })
+                ];
+
+                // Add all items
+                weapons.forEach(weapon => inventorySystem.addItem(weapon, 1));
+                armors.forEach(armor => inventorySystem.addItem(armor, 1));
+                potions.forEach(potion => inventorySystem.addItem(potion, Math.floor(Math.random() * 5) + 1));
+                materials.forEach(material => inventorySystem.addItem(material, Math.floor(Math.random() * 10) + 1));
+                keyItems.forEach(keyItem => inventorySystem.addItem(keyItem, 1));
+
+                updateStatus('Added test weapons, armor, potions, materials, and key items', 'success');
+                
+            } catch (error) {
+                updateStatus(`Error adding test items: ${error.message}`, 'error');
+            }
+        };
+
+        // Test item stacking
+        window.testStacking = function() {
+            if (!inventorySystem) {
+                updateStatus('Inventory system not initialized', 'error');
+                return;
+            }
+
+            try {
+                const potion = ItemFactory.createHealthPotion('small');
+                
+                // Add multiple potions to test stacking
+                for (let i = 0; i < 5; i++) {
+                    const result = inventorySystem.addItem(potion, 10);
+                    updateStatus(`Added 10 potions, remaining: ${result.remaining}`, 'info');
+                }
+                
+                updateStatus('Stacking test completed', 'success');
+                
+            } catch (error) {
+                updateStatus(`Error in stacking test: ${error.message}`, 'error');
+            }
+        };
+
+        // Test drag and drop (simulated)
+        window.testDragDrop = function() {
+            if (!inventorySystem) {
+                updateStatus('Inventory system not initialized', 'error');
+                return;
+            }
+
+            try {
+                // Find first two non-empty slots
+                let slot1 = -1, slot2 = -1;
+                
+                for (let i = 0; i < inventorySystem.slots.length; i++) {
+                    if (inventorySystem.slots[i] !== null) {
+                        if (slot1 === -1) slot1 = i;
+                        else if (slot2 === -1) {
+                            slot2 = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (slot1 !== -1 && slot2 !== -1) {
+                    const item1 = inventorySystem.getSlot(slot1);
+                    const item2 = inventorySystem.getSlot(slot2);
+                    
+                    updateStatus(`Swapping slot ${slot1} (${item1.item.name}) with slot ${slot2} (${item2.item.name})`, 'info');
+                    
+                    const success = inventorySystem.moveItem(slot1, slot2);
+                    updateStatus(`Drag & drop test: ${success ? 'Success' : 'Failed'}`, success ? 'success' : 'error');
+                } else {
+                    updateStatus('Need at least 2 items to test drag & drop', 'warning');
+                }
+                
+            } catch (error) {
+                updateStatus(`Error in drag & drop test: ${error.message}`, 'error');
+            }
+        };
+
+        // Test filtering
+        window.testFiltering = function() {
+            if (!inventoryUI) {
+                updateStatus('Inventory UI not initialized', 'error');
+                return;
+            }
+
+            try {
+                inventoryUI.show();
+                
+                const filters = ['all', 'equipment', 'consumable', 'material', 'key_item'];
+                let currentFilter = 0;
+                
+                const cycleFilter = () => {
+                    if (currentFilter < filters.length) {
+                        inventoryUI.setFilter(filters[currentFilter]);
+                        updateStatus(`Applied filter: ${filters[currentFilter]}`, 'info');
+                        currentFilter++;
+                        setTimeout(cycleFilter, 1500);
+                    } else {
+                        updateStatus('Filtering test completed', 'success');
+                    }
+                };
+                
+                cycleFilter();
+                
+            } catch (error) {
+                updateStatus(`Error in filtering test: ${error.message}`, 'error');
+            }
+        };
+
+        // Test sorting
+        window.testSorting = function() {
+            if (!inventorySystem) {
+                updateStatus('Inventory system not initialized', 'error');
+                return;
+            }
+
+            try {
+                updateStatus('Sorting inventory by type and rarity...', 'info');
+                inventorySystem.sortInventory();
+                updateStatus('Inventory sorted successfully', 'success');
+                
+            } catch (error) {
+                updateStatus(`Error in sorting test: ${error.message}`, 'error');
+            }
+        };
+
+        // Fill inventory to test capacity
+        window.fillInventory = function() {
+            if (!inventorySystem) {
+                updateStatus('Inventory system not initialized', 'error');
+                return;
+            }
+
+            try {
+                const potion = ItemFactory.createHealthPotion('small');
+                
+                // Try to add many potions to fill inventory
+                for (let i = 0; i < 50; i++) {
+                    const result = inventorySystem.addItem(potion, 99);
+                    if (result.remaining > 0) {
+                        updateStatus(`Inventory full! ${result.remaining} potions couldn't be added`, 'warning');
+                        break;
+                    }
+                }
+                
+                const stats = inventorySystem.getStats();
+                updateStatus(`Inventory filled: ${stats.usedSlots}/${stats.totalSlots} slots used`, 'success');
+                
+            } catch (error) {
+                updateStatus(`Error filling inventory: ${error.message}`, 'error');
+            }
+        };
+
+        // Clear inventory
+        window.clearInventory = function() {
+            if (!inventorySystem) {
+                updateStatus('Inventory system not initialized', 'error');
+                return;
+            }
+
+            try {
+                inventorySystem.slots.fill(null);
+                inventorySystem.gold = 0;
+                updateStatus('Inventory cleared', 'success');
+                
+            } catch (error) {
+                updateStatus(`Error clearing inventory: ${error.message}`, 'error');
+            }
+        };
+
+        // Test serialization (save/load)
+        window.testSerialization = function() {
+            if (!inventorySystem) {
+                updateStatus('Inventory system not initialized', 'error');
+                return;
+            }
+
+            try {
+                // Save current state
+                const saveData = inventorySystem.serialize();
+                updateStatus('Inventory state saved', 'info');
+                
+                // Clear inventory
+                inventorySystem.slots.fill(null);
+                inventorySystem.gold = 0;
+                updateStatus('Inventory cleared for load test', 'info');
+                
+                // Load saved state
+                setTimeout(() => {
+                    inventorySystem.deserialize(saveData);
+                    updateStatus('Inventory state loaded successfully', 'success');
+                }, 1000);
+                
+            } catch (error) {
+                updateStatus(`Error in serialization test: ${error.message}`, 'error');
+            }
+        };
+
+        // Toggle inventory UI
+        window.toggleInventory = function() {
+            if (!inventoryUI) {
+                updateStatus('Inventory UI not initialized', 'error');
+                return;
+            }
+
+            inventoryUI.toggle();
+            updateStatus(`Inventory ${inventoryUI.isVisible ? 'shown' : 'hidden'}`, 'info');
+        };
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', (event) => {
+            if (event.key.toLowerCase() === 'i' && inventoryUI) {
+                toggleInventory();
+            }
+        });
+
+        // Update status display
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            
+            statusEl.textContent = logEntry + statusEl.textContent;
+            
+            // Color coding
+            switch (type) {
+                case 'success':
+                    statusEl.style.borderColor = '#00ff00';
+                    break;
+                case 'error':
+                    statusEl.style.borderColor = '#ff0000';
+                    break;
+                case 'warning':
+                    statusEl.style.borderColor = '#ff8800';
+                    break;
+                default:
+                    statusEl.style.borderColor = '#00aaff';
+            }
+            
+            // Reset border color after 2 seconds
+            setTimeout(() => {
+                statusEl.style.borderColor = '#00aa00';
+            }, 2000);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatus('Inventory System Test loaded. Click "Initialize Inventory" to start.', 'info');
+        });
+    </script>
+</body>
+</html>

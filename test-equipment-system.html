@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipment System Test</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        body {
+            background: #000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            background: #1a1a1a;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: #333;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        .btn.primary {
+            background: #00aa00;
+            color: #000;
+        }
+        
+        .btn.secondary {
+            border-color: #00aa00;
+            color: #00aa00;
+        }
+        
+        .status-display {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 15px;
+            margin-bottom: 15px;
+            font-size: 12px;
+        }
+        
+        .character-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .character-card {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+        }
+        
+        .character-card h4 {
+            margin: 0 0 10px 0;
+            color: #00ff00;
+        }
+        
+        .equipment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .equipment-slot {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 10px;
+            text-align: center;
+            font-size: 11px;
+        }
+        
+        .equipment-slot.has-item {
+            border-color: #00aa00;
+        }
+        
+        .inventory-display {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+            margin-top: 15px;
+        }
+        
+        .inventory-slot {
+            aspect-ratio: 1;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+        
+        .inventory-slot:hover {
+            border-color: #00aa00;
+        }
+        
+        .inventory-slot.has-item {
+            border-color: #00ff00;
+        }
+        
+        .log-display {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 11px;
+            font-family: monospace;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-entry.success {
+            color: #00ff00;
+        }
+        
+        .log-entry.error {
+            color: #ff4444;
+        }
+        
+        .log-entry.info {
+            color: #00aa00;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Equipment System Test</h1>
+        
+        <div class="test-section">
+            <h2>Test Controls</h2>
+            <div class="test-controls">
+                <button class="btn primary" onclick="initializeTest()">Initialize Systems</button>
+                <button class="btn" onclick="createTestCharacter()">Create Test Character</button>
+                <button class="btn" onclick="generateTestItems()">Generate Test Items</button>
+                <button class="btn" onclick="testEquipItem()">Test Equip Item</button>
+                <button class="btn" onclick="testUnequipItem()">Test Unequip Item</button>
+                <button class="btn" onclick="showCharacterSheet()">Show Character Sheet</button>
+                <button class="btn" onclick="testEquipmentComparison()">Test Equipment Comparison</button>
+                <button class="btn secondary" onclick="clearLog()">Clear Log</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>System Status</h2>
+            <div class="status-display" id="system-status">
+                Systems not initialized
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Characters</h2>
+            <div class="character-display" id="character-display">
+                No characters created
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Inventory</h2>
+            <div class="inventory-display" id="inventory-display">
+                <!-- Inventory slots will be generated here -->
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Log</h2>
+            <div class="log-display" id="test-log">
+                <!-- Log entries will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { CharacterSystem } from './src/engine/character/CharacterSystem.js';
+        import { InventorySystem } from './src/engine/inventory/InventorySystem.js';
+        import { Item, ItemFactory, ItemTypes, ItemRarity } from './src/engine/inventory/Item.js';
+        import { CharacterSheetUI } from './src/engine/ui/CharacterSheetUI.js';
+
+        // Global variables for testing
+        window.characterSystem = null;
+        window.inventorySystem = null;
+        window.characterSheetUI = null;
+        window.testCharacter = null;
+
+        // Initialize test systems
+        window.initializeTest = function() {
+            try {
+                window.characterSystem = new CharacterSystem();
+                window.characterSystem.initialize();
+                
+                window.inventorySystem = new InventorySystem();
+                
+                window.characterSheetUI = new CharacterSheetUI(window.characterSystem, window.inventorySystem);
+                
+                log('Systems initialized successfully', 'success');
+                updateSystemStatus();
+                updateInventoryDisplay();
+            } catch (error) {
+                log(`Failed to initialize systems: ${error.message}`, 'error');
+            }
+        };
+
+        // Create test character
+        window.createTestCharacter = function() {
+            if (!window.characterSystem) {
+                log('Character system not initialized', 'error');
+                return;
+            }
+            
+            try {
+                window.testCharacter = window.characterSystem.createCharacter('warrior', 'Test Warrior');
+                
+                // Add some experience for testing
+                window.characterSystem.experienceSystem.addExperience(window.testCharacter, 300);
+                
+                log(`Created character: ${window.testCharacter.name} (Level ${window.testCharacter.level})`, 'success');
+                updateCharacterDisplay();
+                updateSystemStatus();
+            } catch (error) {
+                log(`Failed to create character: ${error.message}`, 'error');
+            }
+        };
+
+        // Generate test items
+        window.generateTestItems = function() {
+            if (!window.inventorySystem) {
+                log('Inventory system not initialized', 'error');
+                return;
+            }
+            
+            try {
+                // Create various test items
+                const items = [
+                    ItemFactory.createWeapon('Iron Sword', 1, ItemRarity.COMMON.name),
+                    ItemFactory.createWeapon('Steel Sword', 3, ItemRarity.UNCOMMON.name, ['warrior']),
+                    ItemFactory.createWeapon('Mithril Blade', 5, ItemRarity.RARE.name),
+                    ItemFactory.createArmor('Leather Armor', 1, ItemRarity.COMMON.name),
+                    ItemFactory.createArmor('Chain Mail', 3, ItemRarity.UNCOMMON.name),
+                    ItemFactory.createArmor('Plate Armor', 5, ItemRarity.RARE.name, ['warrior']),
+                    ItemFactory.createAccessory('Speed Ring', 2, ItemRarity.COMMON.name, 'SPD'),
+                    ItemFactory.createAccessory('Power Ring', 4, ItemRarity.UNCOMMON.name, 'ATK'),
+                    ItemFactory.createAccessory('Defense Amulet', 3, ItemRarity.RARE.name, 'DEF'),
+                    ItemFactory.createHealthPotion('small'),
+                    ItemFactory.createHealthPotion('medium'),
+                    ItemFactory.createHealthPotion('large')
+                ];
+                
+                // Add items to inventory
+                items.forEach(item => {
+                    const result = window.inventorySystem.addItem(item, 1);
+                    if (result.success) {
+                        log(`Added ${item.name} to inventory`, 'info');
+                    } else {
+                        log(`Failed to add ${item.name}: ${result.message}`, 'error');
+                    }
+                });
+                
+                updateInventoryDisplay();
+                log(`Generated ${items.length} test items`, 'success');
+            } catch (error) {
+                log(`Failed to generate items: ${error.message}`, 'error');
+            }
+        };
+
+        // Test equip item
+        window.testEquipItem = function() {
+            if (!window.testCharacter || !window.characterSystem || !window.inventorySystem) {
+                log('Systems or character not ready', 'error');
+                return;
+            }
+            
+            try {
+                // Find first weapon in inventory
+                const weaponSlots = window.inventorySystem.getItemsByType('weapon');
+                if (weaponSlots.length === 0) {
+                    log('No weapons in inventory to equip', 'error');
+                    return;
+                }
+                
+                const weaponSlot = weaponSlots[0];
+                const weapon = weaponSlot.item;
+                
+                // Check if character can equip it
+                const canEquip = window.characterSystem.canEquipItem(window.testCharacter.id, weapon);
+                if (!canEquip.success) {
+                    log(`Cannot equip ${weapon.name}: ${canEquip.reason}`, 'error');
+                    return;
+                }
+                
+                // Equip the weapon
+                const result = window.characterSystem.equipItem(window.testCharacter.id, weapon, 'weapon');
+                if (result.success) {
+                    // Remove from inventory
+                    window.inventorySystem.removeItem(weaponSlot.slotIndex, 1);
+                    
+                    log(`Successfully equipped ${weapon.name}`, 'success');
+                    log(`ATK increased from ${window.testCharacter.baseStats.ATK} to ${window.testCharacter.stats.ATK}`, 'info');
+                    
+                    updateCharacterDisplay();
+                    updateInventoryDisplay();
+                } else {
+                    log(`Failed to equip ${weapon.name}: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                log(`Error during equip test: ${error.message}`, 'error');
+            }
+        };
+
+        // Test unequip item
+        window.testUnequipItem = function() {
+            if (!window.testCharacter || !window.characterSystem || !window.inventorySystem) {
+                log('Systems or character not ready', 'error');
+                return;
+            }
+            
+            try {
+                // Check if character has weapon equipped
+                const equippedWeapon = window.testCharacter.equipment.weapon;
+                if (!equippedWeapon) {
+                    log('No weapon equipped to unequip', 'error');
+                    return;
+                }
+                
+                // Unequip the weapon
+                const result = window.characterSystem.unequipItem(window.testCharacter.id, 'weapon');
+                if (result.success) {
+                    // Add back to inventory
+                    const addResult = window.inventorySystem.addItem(result.item, 1);
+                    
+                    log(`Successfully unequipped ${result.item.name}`, 'success');
+                    log(`ATK decreased from ${window.testCharacter.stats.ATK + result.item.stats.ATK} to ${window.testCharacter.stats.ATK}`, 'info');
+                    
+                    if (!addResult.success) {
+                        log(`Warning: Could not add item back to inventory: ${addResult.message}`, 'error');
+                    }
+                    
+                    updateCharacterDisplay();
+                    updateInventoryDisplay();
+                } else {
+                    log(`Failed to unequip weapon: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                log(`Error during unequip test: ${error.message}`, 'error');
+            }
+        };
+
+        // Show character sheet
+        window.showCharacterSheet = function() {
+            if (!window.testCharacter || !window.characterSheetUI) {
+                log('Character or UI not ready', 'error');
+                return;
+            }
+            
+            try {
+                window.characterSheetUI.show(window.testCharacter.id);
+                log('Character sheet opened', 'info');
+            } catch (error) {
+                log(`Failed to show character sheet: ${error.message}`, 'error');
+            }
+        };
+
+        // Test equipment comparison functionality
+        window.testEquipmentComparison = function() {
+            if (!window.testCharacter || !window.characterSystem || !window.inventorySystem) {
+                log('Systems or character not ready', 'error');
+                return;
+            }
+            
+            try {
+                // Ensure we have some weapons in inventory for comparison
+                const weaponSlots = window.inventorySystem.getItemsByType('weapon');
+                if (weaponSlots.length < 2) {
+                    log('Need at least 2 weapons in inventory for comparison test', 'error');
+                    return;
+                }
+                
+                // Get the first weapon for comparison
+                const weapon = weaponSlots[0].item;
+                
+                // Test the comparison functionality
+                const comparison = window.characterSystem.getEquipmentComparison(
+                    window.testCharacter.id, 
+                    weapon, 
+                    'weapon'
+                );
+                
+                log(`Equipment comparison test for ${weapon.name}:`, 'info');
+                Object.entries(comparison).forEach(([stat, data]) => {
+                    const changeType = data.isUpgrade ? 'upgrade' : 'downgrade';
+                    log(`  ${stat}: ${data.current} → ${data.new} (${data.difference > 0 ? '+' : ''}${data.difference}) [${changeType}]`, 'info');
+                });
+                
+                // Test visual comparison by opening character sheet
+                window.characterSheetUI.show(window.testCharacter.id);
+                log('Character sheet opened for visual comparison testing', 'success');
+                log('Try clicking the "Compare" button on equipped items or "Equip Item" on empty slots', 'info');
+                
+            } catch (error) {
+                log(`Equipment comparison test failed: ${error.message}`, 'error');
+            }
+        };
+
+        // Update system status display
+        function updateSystemStatus() {
+            const statusElement = document.getElementById('system-status');
+            
+            if (!window.characterSystem) {
+                statusElement.textContent = 'Systems not initialized';
+                return;
+            }
+            
+            const status = window.characterSystem.getSystemStatus();
+            const inventoryStats = window.inventorySystem ? window.inventorySystem.getStats() : null;
+            
+            statusElement.innerHTML = `
+                <strong>Character System:</strong> ${status.isInitialized ? 'Ready' : 'Not Ready'}<br>
+                <strong>Characters:</strong> ${status.totalCharacters}<br>
+                <strong>Party Size:</strong> ${status.partySize}<br>
+                <strong>Equipment System:</strong> ${status.equipmentSystemActive ? 'Active' : 'Inactive'}<br>
+                ${inventoryStats ? `
+                    <strong>Inventory:</strong> ${inventoryStats.usedSlots}/${inventoryStats.totalSlots} slots used<br>
+                    <strong>Items:</strong> ${inventoryStats.itemCount}<br>
+                    <strong>Gold:</strong> ${inventoryStats.gold}
+                ` : '<strong>Inventory:</strong> Not initialized'}
+            `;
+        }
+
+        // Update character display
+        function updateCharacterDisplay() {
+            const displayElement = document.getElementById('character-display');
+            
+            if (!window.testCharacter) {
+                displayElement.innerHTML = 'No characters created';
+                return;
+            }
+            
+            const char = window.testCharacter;
+            const equipmentBonuses = window.characterSystem.equipmentSystem.getEquipmentBonuses(char);
+            
+            displayElement.innerHTML = `
+                <div class="character-card">
+                    <h4>${char.name}</h4>
+                    <p><strong>Class:</strong> ${char.class}</p>
+                    <p><strong>Level:</strong> ${char.level}</p>
+                    <p><strong>HP:</strong> ${char.currentHP}/${char.maxHP}</p>
+                    <p><strong>Stats:</strong></p>
+                    <ul>
+                        <li>ATK: ${char.baseStats.ATK} + ${equipmentBonuses.ATK} = ${char.stats.ATK}</li>
+                        <li>DEF: ${char.baseStats.DEF} + ${equipmentBonuses.DEF} = ${char.stats.DEF}</li>
+                        <li>SPD: ${char.baseStats.SPD} + ${equipmentBonuses.SPD} = ${char.stats.SPD}</li>
+                    </ul>
+                    
+                    <div class="equipment-grid">
+                        <div class="equipment-slot ${char.equipment.weapon ? 'has-item' : ''}">
+                            <strong>Weapon</strong><br>
+                            ${char.equipment.weapon ? char.equipment.weapon.name : 'None'}
+                        </div>
+                        <div class="equipment-slot ${char.equipment.armor ? 'has-item' : ''}">
+                            <strong>Armor</strong><br>
+                            ${char.equipment.armor ? char.equipment.armor.name : 'None'}
+                        </div>
+                        <div class="equipment-slot ${char.equipment.accessory ? 'has-item' : ''}">
+                            <strong>Accessory</strong><br>
+                            ${char.equipment.accessory ? char.equipment.accessory.name : 'None'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Update inventory display
+        function updateInventoryDisplay() {
+            const displayElement = document.getElementById('inventory-display');
+            
+            if (!window.inventorySystem) {
+                displayElement.innerHTML = 'Inventory system not initialized';
+                return;
+            }
+            
+            const slots = window.inventorySystem.slots;
+            displayElement.innerHTML = '';
+            
+            for (let i = 0; i < slots.length; i++) {
+                const slot = slots[i];
+                const slotElement = document.createElement('div');
+                slotElement.className = `inventory-slot ${slot ? 'has-item' : ''}`;
+                
+                if (slot) {
+                    const rarityColor = getRarityColor(slot.item.rarity);
+                    slotElement.innerHTML = `
+                        <div style="color: ${rarityColor}; font-weight: bold;">
+                            ${slot.item.name.substring(0, 8)}<br>
+                            x${slot.quantity}
+                        </div>
+                    `;
+                    slotElement.title = `${slot.item.name} (${slot.item.type}) - Level ${slot.item.level}`;
+                } else {
+                    slotElement.innerHTML = '<div style="color: #333;">Empty</div>';
+                }
+                
+                displayElement.appendChild(slotElement);
+            }
+        }
+
+        // Get rarity color
+        function getRarityColor(rarity) {
+            const colors = {
+                'common': '#FFFFFF',
+                'uncommon': '#00FF00',
+                'rare': '#0080FF',
+                'epic': '#8000FF'
+            };
+            return colors[rarity] || colors.common;
+        }
+
+        // Log function
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('test-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Clear log
+        window.clearLog = function() {
+            document.getElementById('test-log').innerHTML = '';
+        };
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Equipment System Test loaded', 'info');
+            log('Click "Initialize Systems" to begin testing', 'info');
+        });
+    </script>
+</body>
+</html>

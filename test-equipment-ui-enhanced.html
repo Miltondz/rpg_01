@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Equipment UI Test</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        body {
+            background: #000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            background: #1a1a1a;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: #333;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        .btn.primary {
+            background: #00aa00;
+            color: #000;
+        }
+        
+        .btn.secondary {
+            border-color: #00aa00;
+            color: #00aa00;
+        }
+        
+        .status-display {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 15px;
+            margin-bottom: 15px;
+            font-size: 12px;
+        }
+        
+        .feature-demo {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .demo-section {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+        }
+        
+        .demo-section h4 {
+            margin: 0 0 15px 0;
+            color: #00ff00;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        
+        .log-display {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 11px;
+            font-family: monospace;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-entry.success {
+            color: #00ff00;
+        }
+        
+        .log-entry.error {
+            color: #ff4444;
+        }
+        
+        .log-entry.info {
+            color: #00aa00;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .feature-status {
+            float: right;
+            font-weight: bold;
+        }
+        
+        .feature-status.implemented {
+            color: #00ff00;
+        }
+        
+        .feature-status.pending {
+            color: #ffaa00;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Enhanced Equipment UI Test - Task 7.2</h1>
+        
+        <div class="test-section">
+            <h2>Task Requirements Verification</h2>
+            <ul class="feature-list">
+                <li>
+                    Add equipment slots to character sheet with visual indicators
+                    <span class="feature-status implemented">✓ IMPLEMENTED</span>
+                </li>
+                <li>
+                    Implement equipment comparison tooltips (green/red stat changes)
+                    <span class="feature-status implemented">✓ IMPLEMENTED</span>
+                </li>
+                <li>
+                    Create equip/unequip functionality with inventory integration
+                    <span class="feature-status implemented">✓ IMPLEMENTED</span>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Controls</h2>
+            <div class="test-controls">
+                <button class="btn primary" onclick="initializeTest()">Initialize Systems</button>
+                <button class="btn" onclick="createTestCharacter()">Create Test Character</button>
+                <button class="btn" onclick="generateTestItems()">Generate Test Items</button>
+                <button class="btn" onclick="testEquipmentSlots()">Test Equipment Slots</button>
+                <button class="btn" onclick="testComparisonTooltips()">Test Comparison Tooltips</button>
+                <button class="btn" onclick="testEquipUnequip()">Test Equip/Unequip</button>
+                <button class="btn" onclick="showCharacterSheet()">Show Character Sheet</button>
+                <button class="btn secondary" onclick="clearLog()">Clear Log</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>System Status</h2>
+            <div class="status-display" id="system-status">
+                Systems not initialized
+            </div>
+        </div>
+        
+        <div class="feature-demo">
+            <div class="demo-section">
+                <h4>Enhanced Features</h4>
+                <ul>
+                    <li><strong>Visual Indicators:</strong> Rarity-based borders and glow effects</li>
+                    <li><strong>Stat Change Tooltips:</strong> Green/red indicators for upgrades/downgrades</li>
+                    <li><strong>Quick Previews:</strong> Hover effects showing item stats</li>
+                    <li><strong>Upgrade Indicators:</strong> Visual hints when better items are available</li>
+                    <li><strong>Enhanced Comparison:</strong> Detailed stat comparison modals</li>
+                    <li><strong>Inventory Integration:</strong> Seamless equip/unequip with inventory</li>
+                </ul>
+            </div>
+            
+            <div class="demo-section">
+                <h4>Testing Instructions</h4>
+                <ol>
+                    <li>Initialize systems and create a test character</li>
+                    <li>Generate test items to populate inventory</li>
+                    <li>Open character sheet to see equipment slots</li>
+                    <li>Hover over equipment slots to see visual indicators</li>
+                    <li>Click "Equip Item" to test equipment selection</li>
+                    <li>Hover over equipped items to see comparison tooltips</li>
+                    <li>Test unequip functionality</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Log</h2>
+            <div class="log-display" id="test-log">
+                <!-- Log entries will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { CharacterSystem } from './src/engine/character/CharacterSystem.js';
+        import { InventorySystem } from './src/engine/inventory/InventorySystem.js';
+        import { Item, ItemFactory, ItemTypes, ItemRarity } from './src/engine/inventory/Item.js';
+        import { CharacterSheetUI } from './src/engine/ui/CharacterSheetUI.js';
+
+        // Global variables for testing
+        window.characterSystem = null;
+        window.inventorySystem = null;
+        window.characterSheetUI = null;
+        window.testCharacter = null;
+
+        // Initialize test systems
+        window.initializeTest = function() {
+            try {
+                window.characterSystem = new CharacterSystem();
+                window.characterSystem.initialize();
+                
+                window.inventorySystem = new InventorySystem();
+                
+                window.characterSheetUI = new CharacterSheetUI(window.characterSystem, window.inventorySystem);
+                
+                log('✓ Systems initialized successfully', 'success');
+                log('✓ Enhanced Equipment UI loaded', 'success');
+                updateSystemStatus();
+            } catch (error) {
+                log(`✗ Failed to initialize systems: ${error.message}`, 'error');
+            }
+        };
+
+        // Create test character
+        window.createTestCharacter = function() {
+            if (!window.characterSystem) {
+                log('✗ Character system not initialized', 'error');
+                return;
+            }
+            
+            try {
+                window.testCharacter = window.characterSystem.createCharacter('warrior', 'Test Warrior');
+                
+                // Add some experience for testing
+                window.characterSystem.experienceSystem.addExperience(window.testCharacter, 300);
+                
+                log(`✓ Created character: ${window.testCharacter.name} (Level ${window.testCharacter.level})`, 'success');
+                updateSystemStatus();
+            } catch (error) {
+                log(`✗ Failed to create character: ${error.message}`, 'error');
+            }
+        };
+
+        // Generate test items with various rarities
+        window.generateTestItems = function() {
+            if (!window.inventorySystem) {
+                log('✗ Inventory system not initialized', 'error');
+                return;
+            }
+            
+            try {
+                // Create various test items with different rarities for comparison testing
+                const items = [
+                    ItemFactory.createWeapon('Iron Sword', 1, ItemRarity.COMMON.name),
+                    ItemFactory.createWeapon('Steel Sword', 3, ItemRarity.UNCOMMON.name, ['warrior']),
+                    ItemFactory.createWeapon('Mithril Blade', 5, ItemRarity.RARE.name),
+                    ItemFactory.createWeapon('Dragon Slayer', 7, ItemRarity.EPIC.name, ['warrior']),
+                    ItemFactory.createArmor('Leather Armor', 1, ItemRarity.COMMON.name),
+                    ItemFactory.createArmor('Chain Mail', 3, ItemRarity.UNCOMMON.name),
+                    ItemFactory.createArmor('Plate Armor', 5, ItemRarity.RARE.name, ['warrior']),
+                    ItemFactory.createArmor('Dragon Scale Mail', 7, ItemRarity.EPIC.name),
+                    ItemFactory.createAccessory('Speed Ring', 2, ItemRarity.COMMON.name, 'SPD'),
+                    ItemFactory.createAccessory('Power Ring', 4, ItemRarity.UNCOMMON.name, 'ATK'),
+                    ItemFactory.createAccessory('Defense Amulet', 3, ItemRarity.RARE.name, 'DEF'),
+                    ItemFactory.createAccessory('Legendary Pendant', 6, ItemRarity.EPIC.name, 'ATK'),
+                ];
+                
+                // Add items to inventory
+                let addedCount = 0;
+                items.forEach(item => {
+                    const result = window.inventorySystem.addItem(item, 1);
+                    if (result.success) {
+                        addedCount++;
+                        log(`+ Added ${item.name} (${item.rarity})`, 'info');
+                    } else {
+                        log(`✗ Failed to add ${item.name}: ${result.message}`, 'error');
+                    }
+                });
+                
+                log(`✓ Generated ${addedCount} test items with various rarities`, 'success');
+                log('→ Items include different rarities for comparison testing', 'info');
+            } catch (error) {
+                log(`✗ Failed to generate items: ${error.message}`, 'error');
+            }
+        };
+
+        // Test equipment slots functionality
+        window.testEquipmentSlots = function() {
+            if (!window.testCharacter || !window.characterSheetUI) {
+                log('✗ Character or UI not ready', 'error');
+                return;
+            }
+            
+            try {
+                window.characterSheetUI.show(window.testCharacter.id);
+                log('✓ Character sheet opened - equipment slots visible', 'success');
+                log('→ Visual indicators: Rarity borders, hover effects, upgrade hints', 'info');
+                log('→ Try hovering over equipment slots to see enhanced visuals', 'info');
+            } catch (error) {
+                log(`✗ Failed to show equipment slots: ${error.message}`, 'error');
+            }
+        };
+
+        // Test comparison tooltips
+        window.testComparisonTooltips = function() {
+            if (!window.testCharacter || !window.characterSheetUI || !window.inventorySystem) {
+                log('✗ Systems not ready for tooltip testing', 'error');
+                return;
+            }
+            
+            try {
+                // Equip a basic item first
+                const weaponSlots = window.inventorySystem.getItemsByType('weapon');
+                if (weaponSlots.length > 0) {
+                    const basicWeapon = weaponSlots[0];
+                    const result = window.characterSystem.equipItem(window.testCharacter.id, basicWeapon.item, 'weapon');
+                    
+                    if (result.success) {
+                        window.inventorySystem.removeItem(basicWeapon.slotIndex, 1);
+                        log('✓ Equipped basic weapon for comparison testing', 'success');
+                    }
+                }
+                
+                window.characterSheetUI.show(window.testCharacter.id);
+                log('✓ Comparison tooltips ready for testing', 'success');
+                log('→ Hover over equipped items to see enhanced tooltips', 'info');
+                log('→ Click "Compare" buttons to see detailed comparisons', 'info');
+                log('→ Green = upgrades, Red = downgrades', 'info');
+            } catch (error) {
+                log(`✗ Failed to setup comparison tooltips: ${error.message}`, 'error');
+            }
+        };
+
+        // Test equip/unequip functionality
+        window.testEquipUnequip = function() {
+            if (!window.testCharacter || !window.characterSystem || !window.inventorySystem) {
+                log('✗ Systems not ready for equip/unequip testing', 'error');
+                return;
+            }
+            
+            try {
+                // Test equipping different items
+                const weaponSlots = window.inventorySystem.getItemsByType('weapon');
+                if (weaponSlots.length > 0) {
+                    const weapon = weaponSlots[0];
+                    const result = window.characterSystem.equipItem(window.testCharacter.id, weapon.item, 'weapon');
+                    
+                    if (result.success) {
+                        window.inventorySystem.removeItem(weapon.slotIndex, 1);
+                        log(`✓ Equipped ${weapon.item.name}`, 'success');
+                        
+                        // Test unequipping
+                        setTimeout(() => {
+                            const unequipResult = window.characterSystem.unequipItem(window.testCharacter.id, 'weapon');
+                            if (unequipResult.success) {
+                                window.inventorySystem.addItem(unequipResult.item, 1);
+                                log(`✓ Unequipped ${unequipResult.item.name}`, 'success');
+                                log('→ Item returned to inventory', 'info');
+                            }
+                        }, 2000);
+                    }
+                }
+                
+                window.characterSheetUI.show(window.testCharacter.id);
+                log('✓ Equip/Unequip functionality ready', 'success');
+                log('→ Use equipment slots to test equip/unequip', 'info');
+            } catch (error) {
+                log(`✗ Failed to test equip/unequip: ${error.message}`, 'error');
+            }
+        };
+
+        // Show character sheet
+        window.showCharacterSheet = function() {
+            if (!window.testCharacter || !window.characterSheetUI) {
+                log('✗ Character or UI not ready', 'error');
+                return;
+            }
+            
+            try {
+                window.characterSheetUI.show(window.testCharacter.id);
+                log('✓ Character sheet opened with enhanced equipment UI', 'success');
+                log('→ Features: Visual indicators, comparison tooltips, inventory integration', 'info');
+            } catch (error) {
+                log(`✗ Failed to show character sheet: ${error.message}`, 'error');
+            }
+        };
+
+        // Update system status display
+        function updateSystemStatus() {
+            const statusElement = document.getElementById('system-status');
+            
+            if (!window.characterSystem) {
+                statusElement.innerHTML = '<span style="color: #ff4444;">Systems not initialized</span>';
+                return;
+            }
+            
+            const status = window.characterSystem.getSystemStatus();
+            const inventoryStats = window.inventorySystem ? window.inventorySystem.getStats() : null;
+            
+            statusElement.innerHTML = `
+                <strong>Character System:</strong> <span style="color: #00ff00;">${status.isInitialized ? 'Ready' : 'Not Ready'}</span><br>
+                <strong>Enhanced Equipment UI:</strong> <span style="color: #00ff00;">Active</span><br>
+                <strong>Characters:</strong> ${status.totalCharacters}<br>
+                <strong>Party Size:</strong> ${status.partySize}<br>
+                ${inventoryStats ? `
+                    <strong>Inventory:</strong> ${inventoryStats.usedSlots}/${inventoryStats.totalSlots} slots used<br>
+                    <strong>Items:</strong> ${inventoryStats.itemCount}<br>
+                    <strong>Gold:</strong> ${inventoryStats.gold}
+                ` : '<strong>Inventory:</strong> <span style="color: #ff4444;">Not initialized</span>'}
+            `;
+        }
+
+        // Log function
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('test-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Clear log
+        window.clearLog = function() {
+            document.getElementById('test-log').innerHTML = '';
+        };
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Enhanced Equipment UI Test loaded', 'success');
+            log('Task 7.2: Create equipment UI and comparison system', 'info');
+            log('Click "Initialize Systems" to begin testing', 'info');
+        });
+    </script>
+</body>
+</html>

@@ -105,7 +105,7 @@ export class MovementController {
 
   // Movement methods that return promises for animation completion
   async moveForward() {
-    if (this.isAnimating) return false;
+    if (this.isAnimating || !this.isEnabled()) return false;
     
     const targetPos = this.calculateForwardPosition();
     const directionNames = ['North', 'East', 'South', 'West'];
@@ -131,7 +131,7 @@ export class MovementController {
   }
 
   async moveBackward() {
-    if (this.isAnimating) return false;
+    if (this.isAnimating || !this.isEnabled()) return false;
     
     const targetPos = this.calculateBackwardPosition();
     const directionNames = ['North', 'East', 'South', 'West'];
@@ -155,7 +155,7 @@ export class MovementController {
   }
 
   async strafeLeft() {
-    if (this.isAnimating) return false;
+    if (this.isAnimating || !this.isEnabled()) return false;
     
     const targetPos = this.calculateStrafeLeftPosition();
     const collision = await this.collisionSystem.checkMovement(
@@ -176,7 +176,7 @@ export class MovementController {
   }
 
   async strafeRight() {
-    if (this.isAnimating) return false;
+    if (this.isAnimating || !this.isEnabled()) return false;
     
     const targetPos = this.calculateStrafeRightPosition();
     const collision = await this.collisionSystem.checkMovement(
@@ -198,7 +198,7 @@ export class MovementController {
 
   // Turn left (counterclockwise)
   async turnLeft() {
-    if (this.isAnimating) return;
+    if (this.isAnimating || !this.isEnabled()) return;
     
     const startDirection = this.currentDirection;
     // Turn left = decrease direction index (counterclockwise)
@@ -210,7 +210,7 @@ export class MovementController {
 
   // Turn right (clockwise)
   async turnRight() {
-    if (this.isAnimating) return;
+    if (this.isAnimating || !this.isEnabled()) return;
     
     const startDirection = this.currentDirection;
     // Turn right = increase direction index (clockwise)
@@ -285,6 +285,10 @@ export class MovementController {
       this.animationData.onComplete = () => {
         // Update grid position to exact target
         this.currentPosition = { ...targetGridPos };
+        
+        // Emit movement completed event
+        this._emitMovementCompleted(targetGridPos);
+        
         resolve(true);
       };
     });
@@ -420,5 +424,30 @@ export class MovementController {
       default:
         console.log(`Unknown action: ${collision.action}`);
     }
+  }
+
+  // Emit movement completed event for game loop integration
+  _emitMovementCompleted(newPosition) {
+    if (typeof window !== 'undefined' && window.dispatchEvent) {
+      const event = new CustomEvent('movementCompleted', {
+        detail: {
+          newPosition: newPosition,
+          previousPosition: this.currentPosition,
+          direction: this.currentDirection,
+          timestamp: Date.now()
+        }
+      });
+      window.dispatchEvent(event);
+    }
+  }
+
+  // Add method to enable/disable movement (for combat)
+  setEnabled(enabled) {
+    this.movementEnabled = enabled !== false;
+  }
+
+  // Check if movement is enabled
+  isEnabled() {
+    return this.movementEnabled !== false;
   }
 }

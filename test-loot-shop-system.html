@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop System Test - Task 9.2</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 1100;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            max-width: 300px;
+        }
+        
+        .test-btn {
+            background: rgba(0, 100, 200, 0.8);
+            border: 2px solid #0088ff;
+            color: #fff;
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            width: 100%;
+            display: block;
+        }
+        
+        .test-btn:hover {
+            background: rgba(0, 150, 255, 0.9);
+        }
+        
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 50, 0, 0.3);
+            border: 1px solid #00aa00;
+            border-radius: 3px;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .shop-toggle {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(200, 150, 0, 0.8);
+            border: 2px solid #ffd700;
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 1200;
+        }
+
+        .shop-toggle:hover {
+            background: rgba(255, 200, 0, 0.9);
+        }
+
+        .gold-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ffd700;
+            color: #ffd700;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            z-index: 1100;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-controls">
+        <h3>Shop System Test - Task 9.2</h3>
+        <button class="test-btn" onclick="initializeShop()">Initialize Shop</button>
+        <button class="test-btn" onclick="testDynamicPricing()">Test Dynamic Pricing</button>
+        <button class="test-btn" onclick="testBuyItems()">Test Buy Items</button>
+        <button class="test-btn" onclick="testSellItems()">Test Sell Items</button>
+        <button class="test-btn" onclick="testInventoryScaling()">Test Level Scaling</button>
+        <button class="test-btn" onclick="testShopRefresh()">Test Shop Refresh</button>
+        <button class="test-btn" onclick="testCategoryFiltering()">Test Category Filters</button>
+        <button class="test-btn" onclick="addGold()">Add 500 Gold</button>
+        <button class="test-btn" onclick="simulateProgression()">Simulate Progression</button>
+        <div class="status" id="status">Shop system not initialized</div>
+    </div>
+
+    <div class="gold-display" id="goldDisplay">Gold: 0</div>
+
+    <button class="shop-toggle" onclick="toggleShop()">
+        Open Shop (S)
+    </button>
+
+    <script type="module">
+        import { ShopSystem } from './src/engine/shop/ShopSystem.js';
+        import { ShopUI } from './src/engine/ui/ShopUI.js';
+        import { InventorySystem } from './src/engine/inventory/InventorySystem.js';
+        import { PartyManager } from './src/engine/character/PartyManager.js';
+        import { Item, ItemFactory, ItemTypes, ItemRarity } from './src/engine/inventory/Item.js';
+
+        let shopSystem = null;
+        let shopUI = null;
+        let inventorySystem = null;
+        let partyManager = null;
+        let currentPartyLevel = 1;
+
+        // Initialize shop system
+        window.initializeShop = function() {
+            try {
+                // Initialize required systems
+                inventorySystem = new InventorySystem();
+                partyManager = new PartyManager();
+                partyManager.setGold(500); // Starting gold for testing
+                
+                shopSystem = new ShopSystem();
+                shopUI = new ShopUI(inventorySystem, partyManager);
+                
+                updateGoldDisplay();
+                updateStatus('Shop system initialized successfully', 'success');
+                updateStatus(`Starting with ${partyManager.getGold()} gold`, 'info');
+                
+                // Add some test items to inventory for selling
+                const sword = ItemFactory.createWeapon('Test Sword', 2, ItemRarity.UNCOMMON.name);
+                const potion = ItemFactory.createHealthPotion('small');
+                
+                inventorySystem.addItem(sword, 1);
+                inventorySystem.addItem(potion, 5);
+                
+                updateStatus('Added test items to inventory for selling', 'info');
+                
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+            }
+        };
+
+        // Test dynamic pricing system
+        window.testDynamicPricing = function() {
+            if (!shopSystem) {
+                updateStatus('Shop system not initialized', 'error');
+                return;
+            }
+
+            try {
+                // Test pricing for different rarity items
+                const testItems = [
+                    ItemFactory.createWeapon('Common Sword', 1, ItemRarity.COMMON.name),
+                    ItemFactory.createWeapon('Uncommon Sword', 1, ItemRarity.UNCOMMON.name),
+                    ItemFactory.createWeapon('Rare Sword', 1, ItemRarity.RARE.name),
+                    ItemFactory.createWeapon('Epic Sword', 1, ItemRarity.EPIC.name)
+                ];
+
+                updateStatus('=== Dynamic Pricing Test ===', 'info');
+                
+                testItems.forEach(item => {
+                    const buyPrice = shopSystem.getBuyPrice(item);
+                    const sellPrice = shopSystem.getSellPrice(item);
+                    const sellPercentage = Math.floor((sellPrice / buyPrice) * 100);
+                    
+                    updateStatus(`${item.rarity} ${item.name}: Buy ${buyPrice}g, Sell ${sellPrice}g (${sellPercentage}%)`, 'info');
+                });
+                
+                updateStatus('Dynamic pricing test completed - Sell price is 50% of buy price', 'success');
+                
+            } catch (error) {
+                updateStatus(`Error in pricing test: ${error.message}`, 'error');
+            }
+        };
+
+        // Test buying items
+        window.testBuyItems = function() {
+            if (!shopSystem || !partyManager) {
+                updateStatus('Shop system not initialized', 'error');
+                return;
+            }
+
+            try {
+                const shopItems = shopSystem.getShopInventory();
+                if (shopItems.length === 0) {
+                    updateStatus('No items in shop inventory', 'warning');
+                    return;
+                }
+
+                const testItem = shopItems[0];
+                const initialGold = partyManager.getGold();
+                
+                updateStatus(`Attempting to buy ${testItem.name} for ${testItem.price}g`, 'info');
+                
+                const result = shopSystem.buyItem(
+                    testItem.id, 
+                    1, 
+                    inventorySystem, 
+                    initialGold
+                );
+
+                if (result.success) {
+                    // Add item to inventory and deduct gold
+                    result.items.forEach(item => {
+                        inventorySystem.addItem(item);
+                    });
+                    partyManager.spendGold(result.cost);
+                    
+                    updateStatus(`Successfully bought ${testItem.name}!`, 'success');
+                    updateStatus(`Gold: ${initialGold} → ${partyManager.getGold()}`, 'info');
+                    updateGoldDisplay();
+                } else {
+                    updateStatus(`Purchase failed: ${result.message}`, 'error');
+                }
+                
+            } catch (error) {
+                updateStatus(`Error in buy test: ${error.message}`, 'error');
+            }
+        };
+
+        // Test selling items
+        window.testSellItems = function() {
+            if (!shopSystem || !inventorySystem || !partyManager) {
+                updateStatus('Shop system not initialized', 'error');
+                return;
+            }
+
+            try {
+                const inventoryItems = inventorySystem.getAllItems();
+                const sellableItems = inventoryItems.filter(item => 
+                    item.type !== ItemTypes.KEY_ITEM
+                );
+
+                if (sellableItems.length === 0) {
+                    updateStatus('No sellable items in inventory', 'warning');
+                    return;
+                }
+
+                const testItem = sellableItems[0];
+                const initialGold = partyManager.getGold();
+                const sellPrice = shopSystem.getSellPrice(testItem);
+                
+                updateStatus(`Attempting to sell ${testItem.name} for ${sellPrice}g`, 'info');
+                
+                const result = shopSystem.sellItem(testItem, 1, inventorySystem);
+                
+                if (result.success) {
+                    // Remove item and add gold
+                    inventorySystem.removeItemById(testItem.id, 1);
+                    partyManager.addGold(result.value);
+                    
+                    updateStatus(`Successfully sold ${testItem.name}!`, 'success');
+                    updateStatus(`Gold: ${initialGold} → ${partyManager.getGold()}`, 'info');
+                    updateGoldDisplay();
+                } else {
+                    updateStatus(`Sale failed: ${result.message}`, 'error');
+                }
+                
+            } catch (error) {
+                updateStatus(`Error in sell test: ${error.message}`, 'error');
+            }
+        };
+
+        // Test inventory scaling with level
+        window.testInventoryScaling = function() {
+            if (!shopSystem) {
+                updateStatus('Shop system not initialized', 'error');
+                return;
+            }
+
+            try {
+                updateStatus('=== Inventory Scaling Test ===', 'info');
+                
+                const testLevels = [1, 3, 5, 8, 10];
+                
+                testLevels.forEach(level => {
+                    shopSystem.refreshShop(level, true);
+                    const inventory = shopSystem.getShopInventory();
+                    
+                    const itemCounts = {
+                        total: inventory.length,
+                        weapons: inventory.filter(item => item.type === ItemTypes.WEAPON).length,
+                        armor: inventory.filter(item => item.type === ItemTypes.ARMOR).length,
+                        consumables: inventory.filter(item => item.type === ItemTypes.CONSUMABLE).length,
+                        rare: inventory.filter(item => item.rarity === 'rare' || item.rarity === 'epic').length
+                    };
+                    
+                    updateStatus(`Level ${level}: ${itemCounts.total} items (${itemCounts.weapons}W, ${itemCounts.armor}A, ${itemCounts.consumables}C, ${itemCounts.rare} rare+)`, 'info');
+                });
+                
+                // Reset to current level
+                shopSystem.refreshShop(currentPartyLevel, true);
+                updateStatus('Inventory scaling test completed', 'success');
+                
+            } catch (error) {
+                updateStatus(`Error in scaling test: ${error.message}`, 'error');
+            }
+        };
+
+        // Test shop refresh
+        window.testShopRefresh = function() {
+            if (!shopSystem) {
+                updateStatus('Shop system not initialized', 'error');
+                return;
+            }
+
+            try {
+                const beforeRefresh = shopSystem.getShopInventory().length;
+                updateStatus(`Items before refresh: ${beforeRefresh}`, 'info');
+                
+                shopSystem.refreshShop(currentPartyLevel, true);
+                
+                const afterRefresh = shopSystem.getShopInventory().length;
+                updateStatus(`Items after refresh: ${afterRefresh}`, 'info');
+                updateStatus('Shop refresh test completed', 'success');
+                
+            } catch (error) {
+                updateStatus(`Error in refresh test: ${error.message}`, 'error');
+            }
+        };
+
+        // Test category filtering
+        window.testCategoryFiltering = function() {
+            if (!shopUI) {
+                updateStatus('Shop UI not initialized', 'error');
+                return;
+            }
+
+            try {
+                shopUI.show(currentPartyLevel);
+                
+                const categories = ['all', ItemTypes.WEAPON, ItemTypes.ARMOR, ItemTypes.CONSUMABLE];
+                let currentCategory = 0;
+                
+                const cycleCategory = () => {
+                    if (currentCategory < categories.length) {
+                        shopUI.filterByCategory(categories[currentCategory]);
+                        updateStatus(`Applied filter: ${categories[currentCategory]}`, 'info');
+                        currentCategory++;
+                        setTimeout(cycleCategory, 2000);
+                    } else {
+                        updateStatus('Category filtering test completed', 'success');
+                    }
+                };
+                
+                cycleCategory();
+                
+            } catch (error) {
+                updateStatus(`Error in filtering test: ${error.message}`, 'error');
+            }
+        };
+
+        // Add gold for testing
+        window.addGold = function() {
+            if (!partyManager) {
+                updateStatus('Party manager not initialized', 'error');
+                return;
+            }
+
+            partyManager.addGold(500);
+            updateGoldDisplay();
+            updateStatus('Added 500 gold', 'success');
+        };
+
+        // Simulate party progression
+        window.simulateProgression = function() {
+            if (!shopSystem) {
+                updateStatus('Shop system not initialized', 'error');
+                return;
+            }
+
+            try {
+                currentPartyLevel = Math.min(10, currentPartyLevel + 2);
+                shopSystem.refreshShop(currentPartyLevel, true);
+                
+                const inventory = shopSystem.getShopInventory();
+                const rareCounts = {
+                    common: inventory.filter(item => item.rarity === 'common').length,
+                    uncommon: inventory.filter(item => item.rarity === 'uncommon').length,
+                    rare: inventory.filter(item => item.rarity === 'rare').length,
+                    epic: inventory.filter(item => item.rarity === 'epic').length
+                };
+                
+                updateStatus(`Progressed to level ${currentPartyLevel}`, 'success');
+                updateStatus(`Shop inventory: ${rareCounts.common}C, ${rareCounts.uncommon}U, ${rareCounts.rare}R, ${rareCounts.epic}E`, 'info');
+                
+            } catch (error) {
+                updateStatus(`Error in progression simulation: ${error.message}`, 'error');
+            }
+        };
+
+        // Toggle shop UI
+        window.toggleShop = function() {
+            if (!shopUI) {
+                updateStatus('Shop UI not initialized', 'error');
+                return;
+            }
+
+            shopUI.toggle(currentPartyLevel);
+            updateStatus(`Shop ${shopUI.isVisible ? 'opened' : 'closed'}`, 'info');
+        };
+
+        // Update gold display
+        function updateGoldDisplay() {
+            const goldEl = document.getElementById('goldDisplay');
+            if (goldEl && partyManager) {
+                goldEl.textContent = `Gold: ${partyManager.getGold()}`;
+            }
+        }
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', (event) => {
+            if (event.key.toLowerCase() === 's' && shopUI) {
+                toggleShop();
+            }
+        });
+
+        // Update status display
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            
+            statusEl.textContent = logEntry + statusEl.textContent;
+            
+            // Color coding
+            switch (type) {
+                case 'success':
+                    statusEl.style.borderColor = '#00ff00';
+                    break;
+                case 'error':
+                    statusEl.style.borderColor = '#ff0000';
+                    break;
+                case 'warning':
+                    statusEl.style.borderColor = '#ff8800';
+                    break;
+                default:
+                    statusEl.style.borderColor = '#00aaff';
+            }
+            
+            // Reset border color after 2 seconds
+            setTimeout(() => {
+                statusEl.style.borderColor = '#00aa00';
+            }, 2000);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatus('Shop System Test loaded. Click "Initialize Shop" to start.', 'info');
+        });
+    </script>
+</body>
+</html>
+</content>
