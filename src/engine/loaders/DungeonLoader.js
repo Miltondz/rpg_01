@@ -299,7 +299,14 @@ export class DungeonLoader {
           targetSpawn: transition.spawn || {x: 0, z: 0, direction: 0},
           transitionType: transition.type || 'stairs'
         });
-        
+
+        // Visual stair marker on floor
+        if (this.geometryFactory && this.renderer) {
+          const marker = this.geometryFactory.createTransitionMarker(transition.x, transition.z);
+          this.renderer.addToScene(marker);
+          this.levelGeometry.set(`transition_${transition.x}_${transition.z}`, marker);
+        }
+
         console.log(`Registered transition at (${transition.x}, ${transition.z}) to "${transition.target}"`);
         
       } catch (error) {
