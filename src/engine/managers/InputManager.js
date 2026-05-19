@@ -97,7 +97,14 @@ export class InputManager {
    * @param {KeyboardEvent} event - The keyboard event
    */
   handleKeyDown(event) {
-    // Prevent default behavior for game keys
+    // Never intercept keys when user is typing in a form element
+    const tag = event.target?.tagName?.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select'
+        || event.target?.isContentEditable) {
+      return;
+    }
+
+    // Prevent default browser behavior for mapped game keys
     if (this.keyMap[event.code]) {
       event.preventDefault();
     }

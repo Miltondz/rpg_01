@@ -2,6 +2,7 @@
  * Combat UI System for Dungeon Crawler Game
  * Handles combat interface, HP/AP displays, action menus, and turn indicators
  */
+import { CharacterPortrait } from './CharacterPortrait.js';
 
 export class CombatUI {
   constructor() {
@@ -32,16 +33,14 @@ export class CombatUI {
   initialize() {
     try {
       this.createCombatContainer();
-      this.createPartyHUD();
-      this.createEnemyHUD();
-      this.createActionMenu();
-      this.createTurnIndicator();
-      this.createCombatLog();
+      this.createTurnBanner();
+      this.createBattleArena();
+      this.createBottomPanel();
       this.setupEventListeners();
-      
+
       this.isInitialized = true;
       console.log('CombatUI initialized successfully');
-      
+
       return true;
     } catch (error) {
       console.error('Failed to initialize CombatUI:', error);
@@ -53,176 +52,162 @@ export class CombatUI {
    * Create main combat container
    */
   createCombatContainer() {
-    this.elements.combatContainer = document.createElement('div');
-    this.elements.combatContainer.id = 'combat-container';
-    this.elements.combatContainer.className = 'combat-container hidden';
-    this.elements.combatContainer.setAttribute('data-ui-component', 'combat-container');
-    this.elements.combatContainer.setAttribute('data-ui-name', 'main-combat-interface');
-    
-    document.body.appendChild(this.elements.combatContainer);
+    // Reuse the element declared in index.html to avoid duplicate IDs
+    let el = document.getElementById('combat-container');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'combat-container';
+      document.body.appendChild(el);
+    }
+    // Clear any inline styles set by index.html placeholder
+    el.removeAttribute('style');
+    el.className = 'combat-container hidden';
+    el.setAttribute('data-ui-component', 'combat-container');
+    el.setAttribute('data-ui-name', 'main-combat-interface');
+    el.innerHTML = '';
+    this.elements.combatContainer = el;
   }
 
-  /**
-   * Create party HUD with HP/AP bars
-   */
-  createPartyHUD() {
-    const partySection = document.createElement('div');
-    partySection.className = 'combat-section party-section';
-    partySection.setAttribute('data-ui-component', 'party-hud');
-    partySection.setAttribute('data-ui-name', 'player-party-display');
-    
-    const title = document.createElement('h3');
-    title.textContent = 'Party';
-    title.className = 'section-title';
-    partySection.appendChild(title);
-    
+  createTurnBanner() {
+    const banner = document.createElement('div');
+    banner.className = 'combat-turn-banner';
+    banner.setAttribute('data-ui-component', 'turn-indicator');
+    banner.setAttribute('data-ui-name', 'current-turn-display');
+
+    const left = document.createElement('span');
+    left.className = 'turn-label';
+    left.textContent = 'Turn 1';
+
+    const mid = document.createElement('span');
+    mid.className = 'turn-char';
+    mid.textContent = 'Waiting...';
+
+    const right = document.createElement('span');
+    right.className = 'turn-ap';
+    right.textContent = '';
+
+    banner.appendChild(left);
+    banner.appendChild(mid);
+    banner.appendChild(right);
+    this.elements.combatContainer.appendChild(banner);
+    this.elements.turnIndicator = banner;
+  }
+
+  createBattleArena() {
+    const arena = document.createElement('div');
+    arena.className = 'combat-arena';
+
+    // Party side — LEFT
+    const partySide = document.createElement('div');
+    partySide.className = 'combat-side party-side';
+
+    const partyLabel = document.createElement('div');
+    partyLabel.className = 'side-label';
+    partyLabel.textContent = 'Your Party';
+    partySide.appendChild(partyLabel);
+
     this.elements.partyHUD = document.createElement('div');
-    this.elements.partyHUD.className = 'combatants-grid';
+    this.elements.partyHUD.className = 'party-formation';
     this.elements.partyHUD.setAttribute('data-ui-component', 'party-grid');
     this.elements.partyHUD.setAttribute('data-ui-name', 'party-combatants');
-    
-    partySection.appendChild(this.elements.partyHUD);
-    this.elements.combatContainer.appendChild(partySection);
-  }
+    partySide.appendChild(this.elements.partyHUD);
 
-  /**
-   * Create enemy HUD with HP/AP bars
-   */
-  createEnemyHUD() {
-    const enemySection = document.createElement('div');
-    enemySection.className = 'combat-section enemy-section';
-    enemySection.setAttribute('data-ui-component', 'enemy-hud');
-    enemySection.setAttribute('data-ui-name', 'enemy-display');
-    
-    const title = document.createElement('h3');
-    title.textContent = 'Enemies';
-    title.className = 'section-title';
-    enemySection.appendChild(title);
-    
+    // Enemy side — RIGHT
+    const enemySide = document.createElement('div');
+    enemySide.className = 'combat-side enemies-side';
+
+    const enemyLabel = document.createElement('div');
+    enemyLabel.className = 'side-label';
+    enemyLabel.textContent = 'Enemies';
+    enemySide.appendChild(enemyLabel);
+
     this.elements.enemyHUD = document.createElement('div');
-    this.elements.enemyHUD.className = 'combatants-grid';
+    this.elements.enemyHUD.className = 'enemy-column';
     this.elements.enemyHUD.setAttribute('data-ui-component', 'enemy-grid');
     this.elements.enemyHUD.setAttribute('data-ui-name', 'enemy-combatants');
-    
-    enemySection.appendChild(this.elements.enemyHUD);
-    this.elements.combatContainer.appendChild(enemySection);
+    enemySide.appendChild(this.elements.enemyHUD);
+
+    arena.appendChild(partySide);
+    arena.appendChild(enemySide);
+    this.elements.combatContainer.appendChild(arena);
   }
 
-  /**
-   * Create action menu with buttons
-   */
-  createActionMenu() {
-    const actionSection = document.createElement('div');
-    actionSection.className = 'combat-section action-section';
-    actionSection.setAttribute('data-ui-component', 'action-menu');
-    actionSection.setAttribute('data-ui-name', 'combat-actions');
-    
-    const title = document.createElement('h3');
-    title.textContent = 'Actions';
-    title.className = 'section-title';
-    actionSection.appendChild(title);
-    
+  createBottomPanel() {
+    const bottom = document.createElement('div');
+    bottom.className = 'combat-bottom';
+
+    const actionsPanel = document.createElement('div');
+    actionsPanel.className = 'combat-actions-panel';
+
+    const actionsLabel = document.createElement('div');
+    actionsLabel.className = 'panel-label';
+    actionsLabel.textContent = 'Actions';
+    actionsPanel.appendChild(actionsLabel);
+
     this.elements.actionMenu = document.createElement('div');
     this.elements.actionMenu.className = 'action-menu';
     this.elements.actionMenu.setAttribute('data-ui-component', 'action-buttons');
     this.elements.actionMenu.setAttribute('data-ui-name', 'available-actions');
-    
-    // Create default action buttons (Attack, Skill, Item, Defend, Flee)
     this.createDefaultActionButtons();
-    
-    actionSection.appendChild(this.elements.actionMenu);
-    this.elements.combatContainer.appendChild(actionSection);
+    actionsPanel.appendChild(this.elements.actionMenu);
+
+    const logPanel = document.createElement('div');
+    logPanel.className = 'combat-log-panel';
+
+    const logLabel = document.createElement('div');
+    logLabel.className = 'panel-label';
+    logLabel.textContent = 'Combat Log';
+    logPanel.appendChild(logLabel);
+
+    this.elements.combatLog = document.createElement('div');
+    this.elements.combatLog.className = 'combat-log-content';
+    this.elements.combatLog.setAttribute('data-ui-component', 'log-content');
+    this.elements.combatLog.setAttribute('data-ui-name', 'combat-messages');
+    logPanel.appendChild(this.elements.combatLog);
+
+    bottom.appendChild(actionsPanel);
+    bottom.appendChild(logPanel);
+    this.elements.combatContainer.appendChild(bottom);
   }
 
-  /**
-   * Create default action buttons for combat
-   */
+  _actionIcon(id) {
+    const icons = {
+      attack: '⚔', skill: '✨', item: '🧪',
+      defend: '🛡', flee: '🏃', skip: '⏭'
+    };
+    return icons[id] || '●';
+  }
+
   createDefaultActionButtons() {
     const defaultActions = [
-      { id: 'attack', name: 'Attack', apCost: 1, description: 'Basic physical attack' },
-      { id: 'skill', name: 'Skill', apCost: 2, description: 'Use character skill' },
-      { id: 'item', name: 'Item', apCost: 1, description: 'Use inventory item' },
-      { id: 'defend', name: 'Defend', apCost: 1, description: 'Reduce incoming damage' },
-      { id: 'flee', name: 'Flee', apCost: 0, description: 'Attempt to escape combat' }
+      { id: 'attack', name: 'Attack', apCost: 1 },
+      { id: 'skill',  name: 'Skill',  apCost: 2 },
+      { id: 'item',   name: 'Item',   apCost: 1 },
+      { id: 'defend', name: 'Defend', apCost: 1 },
+      { id: 'flee',   name: 'Flee',   apCost: 0 }
     ];
 
     defaultActions.forEach(action => {
       const button = document.createElement('button');
       button.className = 'action-btn';
       button.setAttribute('data-action-id', action.id);
-      button.setAttribute('data-ui-component', 'action-button');
-      button.setAttribute('data-ui-name', `action-${action.id}`);
-      button.title = action.description;
-      
-      button.innerHTML = `
-        <div class="action-name">${action.name}</div>
-        <div class="action-cost">${action.apCost} AP</div>
-      `;
-      
+      button.innerHTML = `<span class="action-icon">${this._actionIcon(action.id)}</span><span class="action-name">${action.name}</span><span class="action-cost">${action.apCost} AP</span>`;
       this.elements.actionMenu.appendChild(button);
     });
-  }
-
-  /**
-   * Create turn indicator
-   */
-  createTurnIndicator() {
-    this.elements.turnIndicator = document.createElement('div');
-    this.elements.turnIndicator.className = 'turn-indicator';
-    this.elements.turnIndicator.setAttribute('data-ui-component', 'turn-indicator');
-    this.elements.turnIndicator.setAttribute('data-ui-name', 'current-turn-display');
-    
-    const turnText = document.createElement('div');
-    turnText.className = 'turn-text';
-    turnText.textContent = 'Turn 1';
-    
-    const characterText = document.createElement('div');
-    characterText.className = 'character-text';
-    characterText.textContent = 'Waiting...';
-    
-    this.elements.turnIndicator.appendChild(turnText);
-    this.elements.turnIndicator.appendChild(characterText);
-    this.elements.combatContainer.appendChild(this.elements.turnIndicator);
-  }
-
-  /**
-   * Create combat log
-   */
-  createCombatLog() {
-    const logSection = document.createElement('div');
-    logSection.className = 'combat-section log-section';
-    logSection.setAttribute('data-ui-component', 'combat-log');
-    logSection.setAttribute('data-ui-name', 'combat-log-display');
-    
-    const title = document.createElement('h3');
-    title.textContent = 'Combat Log';
-    title.className = 'section-title';
-    logSection.appendChild(title);
-    
-    this.elements.combatLog = document.createElement('div');
-    this.elements.combatLog.className = 'combat-log-content';
-    this.elements.combatLog.setAttribute('data-ui-component', 'log-content');
-    this.elements.combatLog.setAttribute('data-ui-name', 'combat-messages');
-    
-    logSection.appendChild(this.elements.combatLog);
-    this.elements.combatContainer.appendChild(logSection);
   }
 
   /**
    * Setup event listeners
    */
   setupEventListeners() {
-    // Listen for combat events
-    window.addEventListener('combatEvent', (event) => {
-      this.handleCombatEvent(event.detail);
-    });
-    
-    // Action button clicks
+    // combatEvent is handled exclusively by CombatUIManager — no listener here (prevents double-handling)
+
+    // Action button clicks — use closest() so clicks on inner text divs are captured too
     this.elements.actionMenu.addEventListener('click', (event) => {
-      if (event.target.classList.contains('action-btn')) {
-        const actionId = event.target.getAttribute('data-action-id');
-        this.handleActionClick(actionId);
-      }
+      const btn = event.target.closest('.action-btn');
+      if (!btn || btn.disabled) return;
+      const actionId = btn.getAttribute('data-action-id');
+      this.handleActionClick(actionId);
     });
   }
 
@@ -243,15 +228,20 @@ export class CombatUI {
     this.clearCombatLog();
     
     // Update initial display
-    this.updatePartyDisplay(combatData.playerParty);
-    this.updateEnemyDisplay(combatData.enemies);
-    this.updateTurnDisplay(combatData.turnOrder);
+    // getPartySummary() returns {members:[...]} — normalise to array
+    const partyMembers = Array.isArray(combatData.playerParty)
+      ? combatData.playerParty
+      : (combatData.playerParty?.members ?? []);
+    this.updatePartyDisplay(partyMembers);
+    this.updateEnemyDisplay(combatData.enemies ?? []);
+    // turnOrder is an array from getTurnOrderSummary(); build the shape updateTurnDisplay expects
+    const turnOrderArr = combatData.turnOrder ?? [];
+    const firstActive = Array.isArray(turnOrderArr)
+      ? (turnOrderArr.find(t => t.isCurrentTurn) ?? turnOrderArr[0] ?? null)
+      : turnOrderArr.currentCharacter ?? null;
+    this.updateTurnDisplay({ turnNumber: 1, currentCharacter: firstActive });
     
-    // Add initial log message
-    setTimeout(() => {
-      this.addLogMessage('Combat begins!', 'system');
-      this.addLogMessage('Choose your action...', 'system');
-    }, 100);
+    // Initial log message will be added by CombatUIManager after this call
   }
 
   /**
@@ -298,11 +288,19 @@ export class CombatUI {
    */
   createCombatantCard(combatant, type, index) {
     const card = document.createElement('div');
-    card.className = `combatant-card ${type}-card`;
+    card.className = `combatant-card ${type === 'enemy' ? 'enemy-card' : 'party-card'}`;
     card.setAttribute('data-ui-component', 'combatant-card');
     card.setAttribute('data-ui-name', `${type}-${combatant.id || index}`);
     card.setAttribute('data-combatant-id', combatant.id || `${type}-${index}`);
     
+    // Portrait canvas — let CSS control display size, no inline height restriction
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'combatant-avatar';
+    const portraitKey = type === 'party' ? (combatant.class || 'unknown') : (combatant.type || 'unknown');
+    const portraitCanvas = CharacterPortrait.createCanvas(portraitKey, 96, 120);
+    avatarDiv.appendChild(portraitCanvas);
+    card.appendChild(avatarDiv);
+
     // Name and level
     const nameDiv = document.createElement('div');
     nameDiv.className = 'combatant-name';
@@ -414,30 +412,22 @@ export class CombatUI {
    */
   updateTurnDisplay(turnData) {
     if (!turnData || !this.elements.turnIndicator) return;
-    
-    const turnText = this.elements.turnIndicator.querySelector('.turn-text');
-    const characterText = this.elements.turnIndicator.querySelector('.character-text');
-    
-    if (turnText) {
-      turnText.textContent = `Turn ${turnData.turnNumber || 1}`;
-    }
-    
-    if (characterText && turnData.currentCharacter) {
+
+    const banner = this.elements.turnIndicator;
+    const labelEl = banner.querySelector('.turn-label');
+    const charEl   = banner.querySelector('.turn-char');
+    const apEl     = banner.querySelector('.turn-ap');
+
+    if (labelEl) labelEl.textContent = `Turn ${turnData.turnNumber || 1}`;
+
+    if (turnData.currentCharacter) {
       const char = turnData.currentCharacter;
-      const typeText = char.type === 'player' ? 'Party' : 'Enemy';
-      const apInfo = char.currentAP !== undefined ? ` (${char.currentAP}/${char.maxAP || 3} AP)` : '';
-      
-      characterText.textContent = `${char.name} - ${typeText}${apInfo}`;
-      
-      // Update turn indicator styling based on character type
-      this.elements.turnIndicator.className = 'turn-indicator';
-      if (char.type === 'player') {
-        this.elements.turnIndicator.classList.add('player-turn');
-      } else {
-        this.elements.turnIndicator.classList.add('enemy-turn');
+      if (charEl) charEl.textContent = char.name || 'Unknown';
+      if (apEl && char.currentAP !== undefined) {
+        apEl.textContent = `AP: ${char.currentAP}/${char.maxAP || 3}`;
       }
-      
-      // Update current character highlighting
+      banner.className = 'combat-turn-banner ' +
+        (char.type === 'player' ? 'player-turn' : 'enemy-turn');
       this.highlightCurrentCharacter(char.id, char.type);
     }
   }
@@ -467,25 +457,22 @@ export class CombatUI {
    * @param {Object} character - Current character
    */
   updateActions(actions, character) {
-    this.availableActions = actions;
     this.currentCharacter = character;
-    
+
     this.elements.actionMenu.innerHTML = '';
-    
+
     // If no character provided, show disabled default actions
     if (!character) {
+      this.availableActions = [];
       this.createDefaultActionButtons();
-      // Disable all buttons
       const buttons = this.elements.actionMenu.querySelectorAll('.action-btn');
-      buttons.forEach(btn => {
-        btn.disabled = true;
-        btn.classList.add('disabled');
-      });
+      buttons.forEach(btn => { btn.disabled = true; btn.classList.add('disabled'); });
       return;
     }
-    
+
     // Create action buttons based on available actions or defaults
     const actionsToShow = actions && actions.length > 0 ? actions : this.getDefaultActions();
+    this.availableActions = actionsToShow; // must reflect what buttons are shown
     
     actionsToShow.forEach(action => {
       const button = document.createElement('button');
@@ -517,12 +504,8 @@ export class CombatUI {
         button.classList.add('item-btn');
       }
       
-      // Enhanced button content with better visual feedback
       const apCostClass = hasEnoughAP ? 'ap-available' : 'ap-insufficient';
-      button.innerHTML = `
-        <div class="action-name">${action.name}</div>
-        <div class="action-cost ${apCostClass}">${apCost} AP</div>
-      `;
+      button.innerHTML = `<span class="action-icon">${this._actionIcon(action.id)}</span><span class="action-name">${action.name}</span><span class="action-cost ${apCostClass}">${apCost} AP</span>`;
       
       this.elements.actionMenu.appendChild(button);
     });
@@ -534,10 +517,7 @@ export class CombatUI {
     skipButton.setAttribute('data-ui-component', 'skip-button');
     skipButton.setAttribute('data-ui-name', 'skip-turn-action');
     skipButton.title = 'End current turn without taking any actions';
-    skipButton.innerHTML = `
-      <div class="action-name">Skip Turn</div>
-      <div class="action-cost">End Turn</div>
-    `;
+    skipButton.innerHTML = `<span class="action-icon">${this._actionIcon('skip')}</span><span class="action-name">Skip</span><span class="action-cost">End Turn</span>`;
     
     this.elements.actionMenu.appendChild(skipButton);
   }
@@ -716,11 +696,7 @@ export class CombatUI {
     logEntry.setAttribute('data-ui-component', 'log-entry');
     logEntry.setAttribute('data-ui-name', `log-${type}-${Date.now()}`);
     
-    const timestamp = new Date().toLocaleTimeString();
-    logEntry.innerHTML = `
-      <span class="log-time">[${timestamp}]</span>
-      <span class="log-message">${message}</span>
-    `;
+    logEntry.innerHTML = `<span class="log-message">${message}</span>`;
     
     this.elements.combatLog.appendChild(logEntry);
     
@@ -748,6 +724,19 @@ export class CombatUI {
     } else {
       console.warn('Combat log element not found for clearing');
     }
+  }
+
+  /**
+   * Apply a CSS animation class to a combatant card, then remove it.
+   * @param {string} combatantId
+   * @param {string} cssClass
+   * @param {number} duration - ms before class is removed
+   */
+  applyCombatantAnimation(combatantId, cssClass, duration = 450) {
+    const card = this.elements.combatContainer?.querySelector(`[data-combatant-id="${combatantId}"]`);
+    if (!card) return;
+    card.classList.add(cssClass);
+    setTimeout(() => card.classList.remove(cssClass), duration);
   }
 
   /**
@@ -795,4 +784,5 @@ export class CombatUI {
     
     console.log('CombatUI disposed');
   }
+
 }

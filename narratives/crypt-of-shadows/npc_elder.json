@@ -1,0 +1,31 @@
+{
+  "inkVersion": 21,
+  "root": [
+    ["end", null],
+    {
+      "greeting": [
+        "^Ancient Elder: Greetings, wanderer. Few dare to enter the Crypt of Shadows.", "\n",
+        "^Ancient Elder: The darkness here is ancient. Respect it, and perhaps it will spare you.", "\n",
+        {"#": "knot_reached:npc_elder_greeting"},
+        "end",
+        null
+      ],
+      "post_prologue": [
+        "^Ancient Elder: You have witnessed the shadows stir. The seals weaken.", "\n",
+        "^Ancient Elder: Seek the three altar stones on each floor. They hold the crypt together.", "\n",
+        {"#": "knot_reached:npc_elder_post_prologue"},
+        {"#": "set_flag:flag_elder_post_prologue_seen"},
+        "end",
+        null
+      ],
+      "descent_advice": [
+        "^Ancient Elder: The deeper floors are treacherous. Undead grow stronger with each level.", "\n",
+        "^Ancient Elder: Stock up on antidotes — the lower crypts breathe poison.", "\n",
+        {"#": "knot_reached:npc_elder_descent_advice"},
+        "end",
+        null
+      ]
+    }
+  ],
+  "listDefs": {}
+}

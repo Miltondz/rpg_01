@@ -58,6 +58,48 @@ export const EventTypes = Object.freeze({
   MEMORY_EVENT: 'memoryEvent',
   PERFORMANCE_TEST: 'performanceTest',
   GAME_LOOP_EVENT: 'gameLoopEvent',
+
+  // Campaign
+  CAMPAIGN_LOADED: 'campaign:loaded',
+  CAMPAIGN_PHASE_CHANGED: 'campaign:phase_changed',
+  CAMPAIGN_FLAG_CHANGED: 'campaign:flag_changed',
+  CAMPAIGN_VARIABLE_CHANGED: 'campaign:variable_changed',
+  CAMPAIGN_COMPLETE: 'campaign:complete',
+  CAMPAIGN_RESTORED: 'campaign:restored',
+  COMBAT_ENCOUNTER_COMPLETE: 'combat:encounter_complete',
+  PLAYER_FLOOR_CLEARED: 'player:floor_cleared',
+
+  // Quests
+  QUEST_STARTED: 'quest:started',
+  QUEST_ADVANCED: 'quest:advanced',
+  QUEST_COMPLETED: 'quest:completed',
+  QUEST_OBJECTIVE_COMPLETED: 'quest:objective_completed',
+
+  // Narrative
+  NARRATIVE_STORY_LOADED: 'narrative:story_loaded',
+  NARRATIVE_LINE_READY: 'narrative:line_ready',
+  NARRATIVE_CHOICES_READY: 'narrative:choices_ready',
+  NARRATIVE_CHOICE_MADE: 'narrative:choice_made',
+  NARRATIVE_KNOT_REACHED: 'narrative:knot_reached',
+  NARRATIVE_KNOT_CHANGED: 'narrative:knot_changed',
+  NARRATIVE_DIALOGUE_COMPLETE: 'narrative:dialogue_complete',
+  NARRATIVE_DIALOGUE_READY: 'narrative:dialogue_ready',
+  NARRATIVE_STORY_COMPLETE: 'narrative:story_complete',
+  NARRATIVE_VARIABLE_SET: 'narrative:variable_set',
+
+  // NPC
+  NPC_SPAWNED: 'npc:spawned',
+  NPC_DESPAWNED: 'npc:despawned',
+  NPC_DIALOGUE_STARTED: 'npc:dialogue_started',
+  NPC_AFFINITY_CHANGED: 'npc:affinity_changed',
+  NPC_STATE_CHANGED: 'npc:state_changed',
+  NPC_SHOP_OPENED: 'npc:shop_opened',
+  NPC_SPAWN_REQUEST: 'npc:spawn_request',
+  NPC_DESPAWN_REQUEST: 'npc:despawn_request',
+
+  // Audio
+  AUDIO_PLAY_MUSIC: 'audio:play_music',
+  AUDIO_PLAY_SFX: 'audio:play_sfx',
 });
 
 class _EventBus {

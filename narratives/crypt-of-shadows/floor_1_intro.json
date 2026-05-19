@@ -1,0 +1,16 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^Floor 1 - The Entrance Crypt.",
+      "\n",
+      "^Moss-covered walls. The dead rest uneasily here.",
+      "\n",
+      {"#": "knot_reached:floor_1_intro"},
+      "end",
+      null
+    ],
+    null
+  ],
+  "listDefs": {}
+}

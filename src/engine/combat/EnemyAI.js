@@ -339,24 +339,26 @@ export class EnemyAI {
       );
       
       if (healActions.length > 0) {
-        return healActions[0];
+        return healActions.reduce((best, cur) => cur.score > best.score ? cur : best);
       }
     }
-    
-    const defensiveActions = validActions.filter(a => 
-      a.action.type === 'defend' || 
+
+    const defensiveActions = validActions.filter(a =>
+      a.action.type === 'defend' ||
       (a.action.effects && a.action.effects.includes('buff'))
     );
-    
+
     if (defensiveActions.length > 0) {
-      return defensiveActions[0];
+      return defensiveActions.reduce((best, cur) => cur.score > best.score ? cur : best);
     }
-    
-    const attackActions = validActions.filter(a => 
+
+    const attackActions = validActions.filter(a =>
       a.action.type === 'attack' || a.action.type === 'skill'
     );
-    
-    return attackActions.length > 0 ? attackActions[0] : validActions[0];
+
+    return attackActions.length > 0
+      ? attackActions.reduce((best, cur) => cur.score > best.score ? cur : best)
+      : validActions[0];
   }
 
   /**

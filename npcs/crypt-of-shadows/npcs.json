@@ -1,0 +1,57 @@
+{
+  "dungeonId": "crypt-of-shadows",
+  "npcs": [
+    {
+      "id": "npc_elder",
+      "name": "Ancient Elder",
+      "type": "npc",
+      "faction": "ancient",
+      "isShopkeeper": false,
+      "portrait": "elder",
+      "position": { "x": 3, "z": 3 },
+      "dialogueStory": "npc_elder",
+      "dialogueKnot": "greeting",
+      "dialogueConditions": {
+        "knotOverrides": [
+          {
+            "condition": { "flag": "flag_prologue_done" },
+            "knot": "post_prologue"
+          },
+          {
+            "condition": { "flag": "flag_first_descent" },
+            "knot": "descent_advice"
+          }
+        ]
+      }
+    },
+    {
+      "id": "npc_merchant",
+      "name": "Wandering Merchant",
+      "type": "npc",
+      "faction": "neutral",
+      "isShopkeeper": true,
+      "portrait": "merchant",
+      "position": { "x": 6, "z": 2 },
+      "dialogueStory": "npc_merchant",
+      "dialogueKnot": "greeting",
+      "dialogueConditions": {
+        "knotOverrides": []
+      },
+      "shopInventory": ["small_health_potion", "antidote"]
+    },
+    {
+      "id": "npc_ghost",
+      "name": "Restless Spirit",
+      "type": "npc",
+      "faction": "undead",
+      "isShopkeeper": false,
+      "portrait": "ghost",
+      "position": { "x": 7, "z": 7 },
+      "dialogueStory": "npc_ghost",
+      "dialogueKnot": "lament",
+      "dialogueConditions": {
+        "knotOverrides": []
+      }
+    }
+  ]
+}

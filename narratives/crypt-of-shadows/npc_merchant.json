@@ -1,0 +1,16 @@
+{
+  "inkVersion": 21,
+  "root": [
+    ["end", null],
+    {
+      "greeting": [
+        "^Wandering Merchant: Ah, a customer! Coin speaks louder than swords down here.", "\n",
+        "^Wandering Merchant: I carry only the essentials. Take what you need — at a fair price.", "\n",
+        {"#": "knot_reached:npc_merchant_greeting"},
+        "end",
+        null
+      ]
+    }
+  ],
+  "listDefs": {}
+}

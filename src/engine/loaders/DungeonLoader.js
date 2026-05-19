@@ -14,7 +14,10 @@ export class DungeonLoader {
     this.renderer = renderer;
     this.geometryFactory = geometryFactory;
     this.currentLevel = null;
-    this.levelGeometry = new Map(); // Track created geometry for cleanup
+    this.levelGeometry = new Map();
+    // Derived from level id on load — used by SaveSystem
+    this.currentDungeon = '';
+    this.currentFloor   = 0;
   }
 
   /**
@@ -71,6 +74,17 @@ export class DungeonLoader {
       }
       
       this.currentLevel = level;
+
+      // Parse dungeon + floor from level id: "dungeon-name-floor-N"
+      const floorMatch = (level.id ?? '').match(/^(.*?)-floor-(\d+)$/);
+      if (floorMatch) {
+        this.currentDungeon = floorMatch[1];
+        this.currentFloor   = parseInt(floorMatch[2], 10);
+      } else {
+        this.currentDungeon = level.id ?? '';
+        this.currentFloor   = 0;
+      }
+
       console.log(`Level "${level.id}" loaded successfully (${level.width}x${level.height})`);
       
       return level;

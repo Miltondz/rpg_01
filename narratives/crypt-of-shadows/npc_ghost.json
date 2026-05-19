@@ -1,0 +1,18 @@
+{
+  "inkVersion": 21,
+  "root": [
+    ["end", null],
+    {
+      "lament": [
+        "^Restless Spirit: I remember... warmth. Light. Before the Shadow Lord sealed us here.", "\n",
+        "^Restless Spirit: We cannot leave. Not until the seals are broken and the lord is cast down.", "\n",
+        "^Restless Spirit: Will you free us? Or will you become one of us...?", "\n",
+        {"#": "knot_reached:npc_ghost_lament"},
+        {"#": "set_flag:flag_ghost_spoken"},
+        "end",
+        null
+      ]
+    }
+  ],
+  "listDefs": {}
+}

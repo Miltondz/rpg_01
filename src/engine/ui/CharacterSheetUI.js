@@ -27,9 +27,15 @@ export class CharacterSheetUI {
    * @param {string} characterId - Character ID to display
    */
   show(characterId) {
+    // Default to first alive party member when no ID given
+    if (!characterId) {
+      const party = this.characterSystem.partyManager?.party ?? [];
+      const first = party.find(Boolean);
+      characterId = first?.id ?? null;
+    }
     const character = this.characterSystem.getCharacter(characterId);
     if (!character) {
-      console.error('Character not found:', characterId);
+      console.error('CharacterSheetUI: no character to show (party may be empty)');
       return;
     }
     

@@ -236,19 +236,12 @@ export class ActionResolver {
    * @returns {Promise<Object>} Animation result
    */
   async playCasterAnimation(action, caster) {
-    // Placeholder for animation system integration
     const animationType = this.getCasterAnimationType(action);
-    
-    console.log(`Playing ${animationType} animation for ${caster.name}`);
-    
-    // Simulate animation delay
-    await this.delay(300);
-    
     return {
       type: 'caster_animation',
       character: caster,
       animation: animationType,
-      duration: 300
+      duration: 0
     };
   }
 
@@ -309,9 +302,6 @@ export class ActionResolver {
       }
     }
     
-    // Simulate animation delay
-    await this.delay(200);
-    
     return {
       type: 'target_animations',
       target: target,
@@ -344,9 +334,6 @@ export class ActionResolver {
       targets: targets,
       effectType: effectType
     });
-    
-    // Simulate effect duration
-    await this.delay(500);
     
     return effects;
   }

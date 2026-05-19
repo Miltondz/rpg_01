@@ -67,12 +67,34 @@ export class UIRouter {
   }
 
   // Close all open screens (return to exploration).
+  // Hides each screen without re-showing intermediates — avoids flash during boot transitions.
   closeAll() {
-    while (this._stack.length > 0) this.pop();
+    while (this._stack.length > 0) {
+      const leaving = this._stack.pop();
+      const leaver  = this.screens.get(leaving);
+      if (leaver) leaver.hide();
+    }
+    log.info('closeAll → exploration');
   }
 
   isActive(name) { return this.current === name; }
-  isOpen()       { return this._stack.length > 0; }
+  isOpen(name)   { return name ? this._stack.includes(name) : this._stack.length > 0; }
+
+  // Pop a specific named screen regardless of stack position (removes first match from top).
+  popNamed(name) {
+    const idx = this._stack.lastIndexOf(name);
+    if (idx < 0) return;
+    this._stack.splice(idx, 1);
+    const screen = this.screens.get(name);
+    if (screen) screen.hide();
+    // If removed from top, resume new top
+    if (idx === this._stack.length && this.current) {
+      const resume = this.screens.get(this.current);
+      if (resume) resume.show();
+    }
+    log.info(`popNamed ← ${name}`);
+    this._dispatch(name, 'hide');
+  }
 
   _dispatch(name, action) {
     window.dispatchEvent(new CustomEvent('uiRouterChange', {

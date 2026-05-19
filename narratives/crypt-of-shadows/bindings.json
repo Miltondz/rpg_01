@@ -1,0 +1,44 @@
+{
+  "bindings": [
+    {
+      "inkVar": "player_name",
+      "type": "character",
+      "path": "members.0.name"
+    },
+    {
+      "inkVar": "player_level",
+      "type": "character",
+      "path": "members.0.level"
+    },
+    {
+      "inkVar": "inventory_has_ancient_key",
+      "type": "inventory",
+      "itemId": "ancient_key"
+    },
+    {
+      "inkVar": "flag_prologue_done",
+      "type": "campaignFlag",
+      "flag": "flag_prologue_done"
+    },
+    {
+      "inkVar": "flag_first_descent",
+      "type": "campaignFlag",
+      "flag": "flag_first_descent"
+    },
+    {
+      "inkVar": "merchant_alive",
+      "type": "campaignVariable",
+      "key": "merchant_alive"
+    },
+    {
+      "inkVar": "ancient_seal_broken",
+      "type": "campaignVariable",
+      "key": "ancient_seal_broken"
+    },
+    {
+      "inkVar": "shadow_lord_weakened",
+      "type": "campaignVariable",
+      "key": "shadow_lord_weakened"
+    }
+  ]
+}

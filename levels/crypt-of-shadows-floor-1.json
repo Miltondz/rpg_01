@@ -5,8 +5,8 @@
   "height": 10,
   "spawn": {
     "x": 1,
-    "z": 1,
-    "direction": 0
+    "z": 2,
+    "direction": 2
   },
   "tiles": [
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2,

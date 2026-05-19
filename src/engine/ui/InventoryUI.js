@@ -8,6 +8,7 @@
 export class InventoryUI {
     constructor(inventorySystem) {
         this.inventorySystem = inventorySystem;
+        this.partyManager = null;
         this.container = null;
         this.gridContainer = null;
         this.slotElements = [];
@@ -27,6 +28,7 @@ export class InventoryUI {
         
         this.createUI();
         this.inventorySystem.addChangeListener(this.handleInventoryChange);
+        window.addEventListener('partyDataChanged', () => { if (this.isVisible) this.updateAllSlots(); });
     }
 
     createUI() {
@@ -120,8 +122,7 @@ export class InventoryUI {
         this.container.appendChild(controls);
         this.container.appendChild(stats);
         this.container.appendChild(this.gridContainer);
-        
-        document.body.appendChild(this.container);
+        // Not appended to body here — deferred to show() so it only enters DOM when opened.
     }
 
     createControls() {
@@ -261,7 +262,7 @@ export class InventoryUI {
             max-width: 250px;
             line-height: 1.4;
         `;
-        document.body.appendChild(this.tooltipElement);
+        // Appended lazily in show() alongside the main container.
     }
 
     updateSlotDisplay(slotIndex) {
@@ -329,11 +330,16 @@ export class InventoryUI {
         this.updateStats();
     }
 
+    setPartyManager(pm) {
+        this.partyManager = pm;
+    }
+
     updateStats() {
         const stats = this.inventorySystem.getStats();
+        const gold = this.partyManager?.gold ?? 0;
         this.slotsDisplay.textContent = `Slots: ${stats.usedSlots}/${stats.totalSlots}`;
         this.itemsDisplay.textContent = `Items: ${stats.itemCount}`;
-        this.goldDisplay.textContent = `Gold: ${stats.gold}`;
+        this.goldDisplay.textContent = `Gold: ${gold}`;
     }
 
     setFilter(filterType) {
@@ -387,6 +393,12 @@ export class InventoryUI {
     }
 
     show() {
+        if (!this.container.parentNode) {
+            document.body.appendChild(this.container);
+            if (this.tooltipElement && !this.tooltipElement.parentNode) {
+                document.body.appendChild(this.tooltipElement);
+            }
+        }
         this.isVisible = true;
         this.container.style.display = 'block';
         this.updateAllSlots();

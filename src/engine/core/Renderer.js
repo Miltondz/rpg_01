@@ -96,20 +96,20 @@ export class Renderer {
    */
   setupLighting() {
     // Hemisphere light: warm ceiling glow (torch bounce) vs cool stone floor
-    this.hemisphereLight = new THREE.HemisphereLight(0x2a1500, 0x050810, 0.5);
+    this.hemisphereLight = new THREE.HemisphereLight(0x7a3a00, 0x101828, 0.6);
     this.scene.add(this.hemisphereLight);
 
-    // Weak fill ambient so deep shadow areas aren't pitch black
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.08);
+    // Fill ambient — keeps deep shadow areas readable, not pitch black
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.18);
     this.scene.add(this.ambientLight);
 
     // Primary torch — attached to camera, flickers each frame
-    this.pointLight = new THREE.PointLight(0xff8800, 1.0, 12, 2);
+    this.pointLight = new THREE.PointLight(0xff9933, 2.2, 16, 1.5);
     this.pointLight.position.set(0, 0.15, 0.4);
     this.camera.add(this.pointLight);
 
     // Secondary cold rim light — slight blue-purple, simulates reflected stone glow
-    this.rimLight = new THREE.PointLight(0x2233aa, 0.15, 8, 2);
+    this.rimLight = new THREE.PointLight(0x2233aa, 0.3, 10, 2);
     this.rimLight.position.set(0, -0.5, -1.5);
     this.camera.add(this.rimLight);
 
@@ -121,8 +121,8 @@ export class Renderer {
    * Set up fog effects for atmospheric depth
    */
   setupFog() {
-    // Exponential fog — more natural falloff than linear; density 0.12 ≈ 70% at 10 units
-    this.scene.fog = new THREE.FogExp2(0x050302, 0.12);
+    // Exponential fog — density 0.07 keeps 2–3 tiles visible ahead
+    this.scene.fog = new THREE.FogExp2(0x0a0604, 0.07);
     console.log('Fog effects configured');
   }
 

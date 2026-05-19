@@ -41,6 +41,12 @@ import { itemDatabase } from './engine/inventory/ItemDatabase.js';
 import { enemyDatabase } from './engine/data/EnemyDatabase.js';
 import { EncounterSystem } from './engine/systems/EncounterSystem.js';
 
+// Campaign & narrative systems
+import { CampaignManager } from './engine/campaign/CampaignManager.js';
+import { NarrativeManager } from './engine/narrative/NarrativeManager.js';
+import { NarrativeUI } from './engine/ui/NarrativeUI.js';
+import { NPCEngine } from './engine/npc/NPCEngine.js';
+
 // Import UI systems
 import { UIRouter } from './engine/ui/UIRouter.js';
 import { CombatUIManager } from './engine/ui/CombatUIManager.js';
@@ -50,6 +56,12 @@ import { EquipmentUI } from './engine/ui/EquipmentUI.js';
 import { ShopUI } from './engine/ui/ShopUI.js';
 import { SaveLoadUI } from './engine/ui/SaveLoadUI.js';
 import { PartyCreationUI } from './engine/ui/PartyCreationUI.js';
+import { CharacterPortrait } from './engine/ui/CharacterPortrait.js';
+import { ModalDialog } from './engine/ui/ModalDialog.js';
+import { SplashScreen } from './engine/ui/SplashScreen.js';
+import { MainMenuScreen } from './engine/ui/MainMenuScreen.js';
+import { PauseMenuScreen } from './engine/ui/PauseMenuScreen.js';
+import { OptionsScreen } from './engine/ui/OptionsScreen.js';
 
 /**
  * Main Game Engine Class
@@ -88,6 +100,13 @@ class DungeonCrawlerEngine {
     this.enemyDatabase = enemyDatabase;
     this.encounterSystem = null;
     this.currentLevelId = null;
+    this._encounterBillboards = [];
+
+    // Campaign & narrative
+    this.campaignManager = null;
+    this.narrativeManager = null;
+    this.narrativeUI = null;
+    this.npcEngine = null;
 
     // UI systems
     this.uiRouter = null;
@@ -98,7 +117,12 @@ class DungeonCrawlerEngine {
     this.shopUI = null;
     this.saveLoadUI = null;
     this.partyCreationUI = null;
-    
+    this.modalDialog     = null;
+    this.splashScreen    = null;
+    this.mainMenuScreen  = null;
+    this.pauseMenuScreen = null;
+    this.optionsScreen   = null;
+
     // Game state
     this.isInitialized = false;
     this.isRunning = false;
@@ -253,6 +277,18 @@ class DungeonCrawlerEngine {
     this.saveSystem = new SaveSystem();
     this.inventorySystem = new InventorySystem(40);
     
+    // Campaign & narrative
+    this.campaignManager = new CampaignManager();
+    this.narrativeManager = new NarrativeManager(
+      this.campaignManager,
+      this.partyManager,
+      this.inventorySystem
+    );
+    this.narrativeManager.setTheme('crypt-of-shadows');
+
+    // NPC system
+    this.npcEngine = new NPCEngine(this.campaignManager, this.narrativeManager);
+
     // Initialize game loop manager
     this.gameLoopManager = new GameLoopManager(this);
     
@@ -273,18 +309,33 @@ class DungeonCrawlerEngine {
 
     this.uiRouter = new UIRouter();
 
+    // Narrative UI (creates its own DOM panel)
+    this.narrativeUI = new NarrativeUI(this.narrativeManager);
+
     // Instantiate UIs — order matters: some create DOM in constructor
     this.inventoryUI     = new InventoryUI(this.inventorySystem);
+    this.inventoryUI.setPartyManager(this.partyManager);
     this.characterSheetUI = new CharacterSheetUI(this.characterSystem, this.inventorySystem);
     this.equipmentUI     = new EquipmentUI(this.characterSystem, this.inventorySystem);
     this.shopUI          = new ShopUI(this.inventorySystem, this.partyManager);
     this.saveLoadUI      = new SaveLoadUI(this.saveSystem);
     this.partyCreationUI = new PartyCreationUI(this.characterSystem);
     this.combatUIManager = new CombatUIManager();
-    await this.combatUIManager.initialize(this.combatSystem);
+    await this.combatUIManager.initialize(this.combatSystem, this.partyManager, this.inventorySystem);
 
-    const blockMove  = () => this.inputManager.blockInput();
+    this.modalDialog     = new ModalDialog();
+    this.splashScreen    = new SplashScreen();
+    this.mainMenuScreen  = new MainMenuScreen(this.saveSystem);
+    this.pauseMenuScreen = new PauseMenuScreen();
+    this.optionsScreen   = new OptionsScreen();
+
+    const blockMove   = () => this.inputManager.blockInput();
     const unblockMove = () => this.inputManager.unblockInput();
+
+    this.uiRouter.register('narrative', {
+      show: () => { this.narrativeUI.show(); blockMove(); },
+      hide: () => { this.narrativeUI.hide(); unblockMove(); },
+    });
 
     this.uiRouter.register('inventory', {
       show: () => { this.inventoryUI.show();      blockMove(); },
@@ -294,9 +345,15 @@ class DungeonCrawlerEngine {
       show: () => { this.characterSheetUI.show(null); blockMove(); },
       hide: () => { this.characterSheetUI.hide();     unblockMove(); },
     });
+    this._pendingEquipment = { character: null, slot: null };
     this.uiRouter.register('equipment', {
-      show: () => { this.equipmentUI.show(null, null); blockMove(); },
-      hide: () => { this.equipmentUI.hide();            unblockMove(); },
+      show: () => {
+        const { character, slot } = this._pendingEquipment;
+        if (!character) { unblockMove(); return; } // guard: don't open without a character
+        this.equipmentUI.show(character, slot);
+        blockMove();
+      },
+      hide: () => { this.equipmentUI.hide(); unblockMove(); },
     });
     this.uiRouter.register('shop', {
       show: () => {
@@ -316,12 +373,75 @@ class DungeonCrawlerEngine {
       show: () => { this.saveLoadUI.show('load'); blockMove(); },
       hide: () => { this.saveLoadUI.hide();       unblockMove(); },
     });
+    this.uiRouter.register('splash', {
+      show: () => { this.splashScreen.show();    blockMove(); },
+      hide: () => { this.splashScreen.hide();    unblockMove(); },
+    });
+    this.uiRouter.register('main-menu', {
+      show: () => { this.mainMenuScreen.show();  blockMove(); },
+      hide: () => { this.mainMenuScreen.hide();  unblockMove(); },
+    });
+    this.uiRouter.register('party-creation', {
+      show: () => { this.partyCreationUI.show(); blockMove(); },
+      hide: () => { this.partyCreationUI.hide(); unblockMove(); },
+    });
+    this.uiRouter.register('pause-menu', {
+      show: () => { this.pauseMenuScreen.show(); blockMove(); },
+      hide: () => { this.pauseMenuScreen.hide(); unblockMove(); },
+    });
+    this.uiRouter.register('options', {
+      show: () => { this.optionsScreen.show();   blockMove(); },
+      hide: () => { this.optionsScreen.hide();   unblockMove(); },
+    });
+
+    // Menu screen event routing
+    window.addEventListener('splashComplete',    () => this.uiRouter.replace('main-menu'));
+    window.addEventListener('mainMenuNewGame',   () => this.uiRouter.push('party-creation'));
+    window.addEventListener('mainMenuContinue',  () => this.uiRouter.push('load'));
+    window.addEventListener('mainMenuOptions',   () => this.uiRouter.push('options'));
+    window.addEventListener('optionsBack',       () => this.uiRouter.pop());
+
+    window.addEventListener('pauseAction', (e) => {
+      const { action } = e.detail ?? {};
+      switch (action) {
+        case 'resume':
+          this.uiRouter.pop();
+          break;
+        case 'options':
+          this.uiRouter.push('options');
+          break;
+        case 'save':
+          this.uiRouter.push('save');
+          break;
+        case 'load':
+          this.uiRouter.push('load');
+          break;
+        case 'exit-to-menu':
+          this.modalDialog.show(
+            'Return to main menu? Unsaved progress will be lost.',
+            () => {
+              this.uiRouter.closeAll();
+              this.uiRouter.push('main-menu');
+            },
+            null
+          );
+          break;
+      }
+    });
 
     // Close overlay screens when a UI dispatches a self-close event
     window.addEventListener('inventoryClose',     () => { if (this.uiRouter.isActive('inventory'))      this.uiRouter.pop(); });
     window.addEventListener('characterSheetClose',() => { if (this.uiRouter.isActive('character-sheet')) this.uiRouter.pop(); });
     window.addEventListener('equipmentClose',     () => { if (this.uiRouter.isActive('equipment'))      this.uiRouter.pop(); });
-    window.addEventListener('shopClose',          () => { if (this.uiRouter.isActive('shop'))           this.uiRouter.pop(); });
+    window.addEventListener('shopClose',          () => {
+      if (this.uiRouter.isActive('shop')) this.uiRouter.pop();
+      // Reset any NPC that was in SHOP state back to Idle
+      if (this.npcEngine) {
+        for (const npc of this.npcEngine.npcs.values()) {
+          if (npc.behavior.state === 'Shop') npc.behavior.transition('Idle');
+        }
+      }
+    });
     window.addEventListener('saveLoadClose',      () => {
       if (this.uiRouter.isActive('save') || this.uiRouter.isActive('load')) this.uiRouter.pop();
     });
@@ -335,33 +455,75 @@ class DungeonCrawlerEngine {
   initializeGameFlow() {
     const log = Logger.tag('Boot');
 
+    // Wire SaveSystem with full game state so saveGame() has access to all subsystems
+    this.saveSystem.initialize({
+      partyManager:       this.partyManager,
+      movementController: this.movementController,
+      dungeonLoader:      this.dungeonLoader,
+      renderer:           this.renderer,
+      inventorySystem:    this.inventorySystem,
+    });
+
     // AutoSaveManager
     this.autoSaveManager = new AutoSaveManager(this.saveSystem);
 
     // EncounterSystem — uses shared partyManager (same ref as CharacterSystem.partyManager)
     this.encounterSystem = new EncounterSystem(this.combatSystem, this.partyManager);
 
-    // movementCompleted → encounter check
+    // movementCompleted → encounter check + NPC proximity hint
     window.addEventListener('movementCompleted', async (e) => {
+      const pos = e.detail.newPosition;
+      if (this.npcEngine && pos) {
+        this.npcEngine.checkProximity(pos.x, pos.z, this.debugUI);
+      }
       if (!this.encounterSystem || !this.currentLevelId) return;
-      await this.encounterSystem.checkForEncounter(e.detail.newPosition, this.currentLevelId);
+      // EncounterSystem expects an object with .id, not a bare string
+      await this.encounterSystem.checkForEncounter(
+        pos, { id: this.currentLevelId }
+      );
     });
 
-    // encounterEvent → block/unblock movement around combat
+    // encounterEvent → block/unblock movement; spawn/clear 3D enemy billboards
     window.addEventListener('encounterEvent', (e) => {
       if (e.detail.type === 'encounterTriggered') {
         this.inputManager.blockInput();
+        this._spawnEncounterBillboards(e.detail.data?.enemies ?? []);
         Logger.tag('Event:encounterEvent').info('combat starting');
       } else if (e.detail.type === 'encounterEnded') {
         this.inputManager.unblockInput();
+        this._clearEncounterBillboards();
         Logger.tag('Event:encounterEvent').info('combat ended');
       }
     });
 
-    // gameStart (emitted by PartyCreationUI) → load campaign floor 1
+    // combatEvent → clear billboards on start; unblock movement + notify encounter system on end
+    window.addEventListener('combatEvent', (e) => {
+      const { type, data } = e.detail ?? {};
+      if (type === 'combatStarted') {
+        this._clearEncounterBillboards();
+      } else if (type === 'combatEnded') {
+        this._clearEncounterBillboards();
+        this.encounterSystem?.onCombatEnd(data?.result ?? 'unknown');
+      }
+    });
+
+    // gameStateChange (emitted by CombatUIManager results buttons)
+    window.addEventListener('gameStateChange', (e) => {
+      const { type } = e.detail ?? {};
+      if (type === 'returnToMenu') {
+        this.uiRouter.closeAll();
+        this.uiRouter.push('main-menu');
+      } else if (type === 'loadSave') {
+        this.uiRouter.push('load');
+      }
+      // 'continueExploration' and 'retryCombat': CombatResultsUI.hideResults() already closes overlay;
+      // input is already unblocked via encounterEnded → unblockInput() chain
+    });
+
+    // gameStart (emitted by PartyCreationUI) → close all UI, load campaign floor 1
     window.addEventListener('gameStart', async (e) => {
       log.info('gameStart received — loading campaign');
-      this.partyCreationUI.hide();
+      this.uiRouter.closeAll(); // hides party-creation and anything below it; unblocks input via hide callbacks
 
       try {
         const response = await fetch('levels/crypt-of-shadows-floor-1.json');
@@ -382,6 +544,17 @@ class DungeonCrawlerEngine {
         this.renderer.updateCameraRotation(rotation);
 
         this.autoSaveManager.initialize({ party: this.partyManager });
+
+        // Load campaign state machine for new game
+        if (this.campaignManager) {
+          await this.campaignManager.loadCampaign('crypt-of-shadows');
+        }
+
+        // Spawn NPCs for floor 1
+        if (this.npcEngine) {
+          await this.npcEngine.loadForDungeon('crypt-of-shadows');
+        }
+
         setTimeout(() => this.initializeMinimap(), 500);
         this.debugSurroundingTiles(
           this.movementController.getPosition().x,
@@ -396,15 +569,161 @@ class DungeonCrawlerEngine {
       }
     });
 
-    // gameLoadRequested (emitted by SaveLoadUI) → load saved state
-    window.addEventListener('gameLoadRequested', (e) => {
-      Logger.tag('Event:gameLoadRequested').info('load requested', e.detail);
-      // TODO Etapa 5: restore full game state from save slot
+    // gameLoadRequested (emitted by SaveLoadUI) → restore full game state
+    window.addEventListener('gameLoadRequested', async (e) => {
+      const { saveData } = e.detail ?? {};
+      if (!saveData) return;
+
+      const loadLog = Logger.tag('Save');
+      loadLog.info('Restoring game state from save');
+
+      try {
+        // 1. Restore characters + party
+        if (saveData.party && this.characterSystem) {
+          // Build character map from party array so characterSystem.getCharacter() works
+          const characters = {};
+          for (const charData of saveData.party.party ?? []) {
+            if (charData?.id) characters[charData.id] = charData;
+          }
+          this.characterSystem.deserialize({ characters, party: saveData.party });
+          // Re-sync partyManager reference used by encounter/combat/UI systems
+          this.partyManager = this.characterSystem.partyManager;
+          if (this.encounterSystem) this.encounterSystem.partyManager = this.partyManager;
+          if (this.combatSystem)    this.combatSystem.playerParty     = null; // reset stale ref
+        }
+
+        // 2. Load dungeon level
+        const dungeon  = saveData.world?.currentDungeon ?? 'crypt-of-shadows';
+        const floor    = saveData.world?.currentFloor   ?? 1;
+        const levelFile = `levels/${dungeon}-floor-${floor}.json`;
+        const resp = await fetch(levelFile);
+        if (!resp.ok) throw new Error(`Level fetch failed: ${resp.status}`);
+        const levelData = await resp.json();
+        this.currentLevelId = levelData.id ?? `${dungeon}-floor-${floor}`;
+        await this.dungeonLoader.loadLevel(levelData);
+
+        // 3. Restore player position
+        const pos = saveData.world?.playerPosition ?? { x: 0, z: 0 };
+        const dir = saveData.world?.playerDirection ?? 0;
+        this.movementController.setPosition(pos.x, pos.z, dir);
+
+        // 4. Sync camera
+        const worldPos = this.movementController.getCurrentWorldPosition();
+        this.renderer.updateCameraPosition(worldPos);
+        this.renderer.updateCameraRotation(this.movementController.getCurrentRotation());
+
+        // 5. Reinit minimap
+        this.uiRouter.closeAll();
+        setTimeout(() => this.initializeMinimap(), 500);
+
+        // 6. Restore campaign state
+        if (saveData.campaign && this.campaignManager) {
+          await this.campaignManager.loadCampaign(saveData.campaign.campaignId ?? 'crypt-of-shadows');
+          this.campaignManager.loadSaveData(saveData.campaign);
+        }
+
+        // 7. Restore NPCs for the loaded dungeon
+        if (this.npcEngine) {
+          await this.npcEngine.loadForDungeon(dungeon);
+          if (saveData.npcs) {
+            this.npcEngine.loadSaveData(saveData.npcs);
+          }
+        }
+
+        this.debugUI.showSuccess(`Loaded — ${dungeon} Floor ${floor}`);
+        loadLog.info(`Save restored: ${dungeon} floor ${floor}`);
+      } catch (err) {
+        loadLog.error('Restore failed:', err);
+        this.debugUI.showError('Load failed: ' + err.message, { system: 'Save' });
+      }
     });
 
-    // Show party creation overlay immediately; game loop already running (empty scene)
-    this.partyCreationUI.show();
-    log.info('Game flow wired — awaiting party creation');
+    // NPC shop opened → open shop UI with NPC's inventory
+    EventBus.registerExternalListener(EventTypes.NPC_SHOP_OPENED);
+    window.addEventListener(EventTypes.NPC_SHOP_OPENED, (e) => {
+      const { inventory } = e.detail ?? {};
+      if (inventory && this.shopSystem) {
+        this.shopSystem.generateInventoryFromList(inventory);
+      }
+      if (!this.uiRouter.isOpen('shop')) {
+        this.uiRouter.push('shop');
+      }
+    });
+
+    // Narrative open/close — route through UIRouter so input gets blocked
+    // Register with EventBus so orphan warnings don't fire for these window listeners
+    EventBus.registerExternalListener(EventTypes.NARRATIVE_STORY_LOADED);
+    EventBus.registerExternalListener(EventTypes.NARRATIVE_DIALOGUE_READY);
+    EventBus.registerExternalListener(EventTypes.NARRATIVE_DIALOGUE_COMPLETE);
+    EventBus.registerExternalListener(EventTypes.NARRATIVE_STORY_COMPLETE);
+
+    window.addEventListener(EventTypes.NARRATIVE_STORY_LOADED, () => {
+      if (!this.uiRouter.isOpen('narrative')) {
+        this.uiRouter.push('narrative');
+        setTimeout(() => this.narrativeUI._onContinue(), 50);
+      }
+    });
+    window.addEventListener(EventTypes.NARRATIVE_DIALOGUE_READY, (e) => {
+      const { npcId } = e.detail ?? {};
+      if (!this.uiRouter.isOpen('narrative')) {
+        this.uiRouter.push('narrative');
+        if (npcId) this.narrativeUI.show(npcId);
+        setTimeout(() => this.narrativeUI._onContinue(), 50);
+      }
+    });
+    window.addEventListener(EventTypes.NARRATIVE_DIALOGUE_COMPLETE, () => {
+      this.uiRouter.popNamed('narrative');
+    });
+    window.addEventListener(EventTypes.NARRATIVE_STORY_COMPLETE, () => {
+      this.uiRouter.popNamed('narrative');
+    });
+
+    // Boot into splash screen — blocks input until game starts
+    this.uiRouter.push('splash');
+    log.info('Game flow wired — splash screen shown');
+  }
+
+  /**
+   * Spawn THREE.Sprite encounter cards in the dungeon scene — one per enemy.
+   * Sprites always face the camera, so no rotation math needed.
+   * Portrait canvas → THREE.CanvasTexture → SpriteMaterial.
+   */
+  _spawnEncounterBillboards(enemies) {
+    this._clearEncounterBillboards();
+    if (!this.renderer?.scene) return;
+
+    const { x: px, z: pz } = this.movementController.getPosition();
+    const dir   = this.movementController.getDirection();
+    const fwd   = Dir.forward(dir);
+    const right = Dir.right(dir);
+    const T     = 2.0; // world units per tile
+
+    enemies.forEach((e, i) => {
+      const col = i - Math.floor(enemies.length / 2);
+      const wx  = (px + fwd.x * 2 + right.x * col) * T;
+      const wz  = (pz + fwd.z * 2 + right.z * col) * T;
+
+      const canvas  = CharacterPortrait.createCanvas(e.type || 'unknown', 128, 160);
+      const texture = new THREE.CanvasTexture(canvas);
+      const mat     = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite  = new THREE.Sprite(mat);
+
+      sprite.scale.set(0.85, 1.06, 1);   // keep card aspect ratio (128:160 ≈ 4:5)
+      sprite.position.set(wx, 0.8, wz);
+
+      this.renderer.scene.add(sprite);
+      this._encounterBillboards.push(sprite);
+    });
+  }
+
+  _clearEncounterBillboards() {
+    if (!this.renderer?.scene) return;
+    for (const sprite of this._encounterBillboards) {
+      this.renderer.scene.remove(sprite);
+      sprite.material.map?.dispose();
+      sprite.material.dispose();
+    }
+    this._encounterBillboards = [];
   }
 
   /**
@@ -469,6 +788,10 @@ class DungeonCrawlerEngine {
     // openEquipmentSelection (emitted by CharacterSheetUI) → open equipment overlay
     window.addEventListener('openEquipmentSelection', (e) => {
       Logger.tag('Event:openEquipmentSelection').debug('received', e.detail);
+      this._pendingEquipment = {
+        character: e.detail?.character ?? null,
+        slot: e.detail?.slot ?? null
+      };
       this.uiRouter?.push('equipment');
     });
   }
@@ -685,8 +1008,10 @@ class DungeonCrawlerEngine {
         }
         break;
       case 'openMenu':
-        // Escape: close any open overlay, otherwise TODO: pause menu
+        // Escape during exploration → pause menu; Escape with overlay open → close it.
+        // (Input is blocked when any menu is open, so this fires only during exploration normally.)
         if (this.uiRouter?.isOpen()) this.uiRouter.pop();
+        else this.uiRouter?.push('pause-menu');
         break;
       case 'quickSave':
         this.uiRouter?.push('save');
@@ -729,6 +1054,15 @@ class DungeonCrawlerEngine {
     const targetZ = position.z + dir.z;
     
     Logger.tag('Interact').debug(`target tile (${targetX},${targetZ})`);
+
+    // Check for NPC facing the player first
+    if (this.npcEngine) {
+      const npc = this.npcEngine.getNPCFacing(position.x, position.z, dir);
+      if (npc) {
+        const handled = this.npcEngine.interactWith(npc);
+        if (handled) return;
+      }
+    }
 
     // Check if there's a door at the target position
     const tile = this.gridSystem.getTile(targetX, targetZ);
@@ -792,7 +1126,16 @@ class DungeonCrawlerEngine {
       
       // Initialize test level index for cycling
       this.currentTestLevelIndex = 1; // Start at index 1 since we loaded index 0
-      
+
+      // Set currentLevelId so movementCompleted handler allows encounter checks
+      this.currentLevelId = stats.id ?? 'test-room-10x10';
+
+      // Ensure encounters can trigger: create a test party if none exists
+      if (this.partyManager && !this.partyManager.getAliveMembers().length) {
+        this.characterSystem.createTestParty('balanced');
+        Logger.tag('Boot').info('Test party created for encounter testing');
+      }
+
       this.debugUI.showSuccess(`Level "${stats.id}" loaded (${stats.dimensions}) - Press L to cycle levels`);
       
     } catch (error) {
@@ -855,8 +1198,17 @@ class DungeonCrawlerEngine {
       // Test edge cases
       this.testEdgeCases();
       
+      // Set currentLevelId so movementCompleted handler allows encounter checks
+      this.currentLevelId = stats.id ?? levelPath.replace(/.*\//, '').replace('.json', '');
+
+      // Ensure encounters can trigger: create a test party if none exists
+      if (this.partyManager && !this.partyManager.getAliveMembers().length) {
+        this.characterSystem.createTestParty('balanced');
+        Logger.tag('Boot').info('Test party created for encounter testing');
+      }
+
       this.debugUI.showSuccess(`Level "${stats.id}" loaded (${stats.dimensions}) - Press L to cycle levels`);
-      
+
       // Move to next level for next load
       this.currentTestLevelIndex = (this.currentTestLevelIndex + 1) % testLevels.length;
       
@@ -911,6 +1263,85 @@ class DungeonCrawlerEngine {
     
     // Update minimap
     this.updateMinimap();
+
+    // Update exploration party HUD
+    this.updateExplorationHUD();
+  }
+
+  updateExplorationHUD() {
+    const hudEl  = document.getElementById('exploration-hud');
+    const barEl  = document.getElementById('party-status-bar');
+    const flrEl  = document.getElementById('floor-indicator');
+    if (!hudEl || !barEl) return;
+
+    // Update floor label
+    if (flrEl) {
+      flrEl.textContent = this.currentLevelId
+        ? this.currentLevelId.replace(/-/g, ' ')
+        : '';
+    }
+
+    const members = this.partyManager?.party?.filter(Boolean) ?? [];
+    if (members.length === 0) { barEl.innerHTML = ''; return; }
+
+    // If card count matches, update in-place; else rebuild
+    if (barEl.children.length === members.length) {
+      members.forEach((m, i) => {
+        const card = barEl.children[i];
+        if (!card) return;
+        card.classList.toggle('dead', !m.isAlive());
+        const fill = card.querySelector('.hud-hp-fill');
+        if (fill) {
+          const pct = Math.max(0, (m.currentHP / m.maxHP) * 100);
+          fill.style.width = pct + '%';
+          fill.classList.toggle('critical', pct <= 15);
+          fill.classList.toggle('low', pct > 15 && pct <= 35);
+        }
+        card.querySelectorAll('.hud-ap-dot').forEach((dot, di) => {
+          dot.classList.toggle('empty', di >= (m.currentAP ?? 0));
+        });
+      });
+      return;
+    }
+
+    // Rebuild all cards
+    barEl.innerHTML = '';
+    members.forEach((m) => {
+      const card = document.createElement('div');
+      card.className = 'party-member-hud' + (m.isAlive() ? '' : ' dead');
+
+      const portrait = document.createElement('div');
+      portrait.className = 'hud-portrait';
+      portrait.appendChild(CharacterPortrait.createCanvas(m.class || 'unknown', 38, 48));
+      card.appendChild(portrait);
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'hud-name';
+      nameEl.textContent = m.name;
+      card.appendChild(nameEl);
+
+      const hpBar = document.createElement('div');
+      hpBar.className = 'hud-hp-bar';
+      const hpFill = document.createElement('div');
+      hpFill.className = 'hud-hp-fill';
+      const pct = Math.max(0, (m.currentHP / m.maxHP) * 100);
+      hpFill.style.width = pct + '%';
+      if (pct <= 15) hpFill.classList.add('critical');
+      else if (pct <= 35) hpFill.classList.add('low');
+      hpBar.appendChild(hpFill);
+      card.appendChild(hpBar);
+
+      const dots = document.createElement('div');
+      dots.className = 'hud-ap-dots';
+      for (let i = 0; i < (m.maxAP || 3); i++) {
+        const dot = document.createElement('div');
+        dot.className = 'hud-ap-dot' + (i >= (m.currentAP ?? m.maxAP ?? 3) ? ' empty' : '');
+        dots.appendChild(dot);
+      }
+      card.appendChild(dots);
+
+      barEl.appendChild(card);
+    });
   }
 
   /**
@@ -1207,6 +1638,20 @@ class DungeonCrawlerEngine {
       
       if (success) {
         this.debugUI.showSuccess(`Level "${transitionData.targetLevel}" loaded`);
+
+        // Notify campaign manager that a floor was cleared / entered
+        if (this.campaignManager && this.dungeonLoader) {
+          const dungeonId = this.dungeonLoader.currentDungeon;
+          const floor = this.dungeonLoader.currentFloor;
+          if (dungeonId) {
+            EventBus.emit(EventTypes.PLAYER_FLOOR_CLEARED, { dungeonId, floor });
+            // Reload NPCs for new dungeon/floor
+            if (this.npcEngine) {
+              await this.npcEngine.loadForDungeon(dungeonId);
+            }
+          }
+        }
+
         // Reinitialize minimap for new level
         setTimeout(() => {
           this.initializeMinimap();

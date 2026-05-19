@@ -294,19 +294,28 @@ export class MemoryManager {
       objectCounts: Object.fromEntries(this.objectCounts),
       thresholds: this.thresholds
     };
-    
+
     if (performance.memory) {
       stats.current = performance.memory.usedJSHeapSize / 1024 / 1024;
       stats.total = performance.memory.totalJSHeapSize / 1024 / 1024;
       stats.limit = performance.memory.jsHeapSizeLimit / 1024 / 1024;
     }
-    
-    // Calculate peak from snapshots
+
     if (this.memorySnapshots.length > 0) {
       stats.peak = Math.max(...this.memorySnapshots.map(s => s.used));
     }
-    
+
     return stats;
+  }
+
+  getStats() {
+    const base = this.getMemoryStats();
+    return {
+      currentMemoryUsage: base.current,
+      peakMemoryUsage: base.peak,
+      totalMemory: base.total || 0,
+      objectCounts: base.objectCounts
+    };
   }
 
   /**

@@ -1,0 +1,21 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^You stand at the entrance of the Crypt of Shadows.",
+      "\n",
+      "^The ancient stone doors loom before you. Cold air breathes out from the darkness within.",
+      "\n",
+      "^Somewhere below, something stirs.",
+      "\n",
+      "^You grip your torch and descend.",
+      "\n",
+      {"#": "knot_reached:prologue_complete"},
+      {"#": "set_flag:flag_prologue_active"},
+      "end",
+      null
+    ],
+    null
+  ],
+  "listDefs": {}
+}

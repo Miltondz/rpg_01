@@ -52,6 +52,10 @@ export class SaveData {
       autoSaveEnabled: true,
       autoSaveInterval: 300000 // 5 minutes in milliseconds
     };
+
+    this.campaign = null;  // populated by CampaignManager.getSaveData()
+    this.narrative = null; // populated by NarrativeManager.getSaveData()
+    this.npcs = null;      // populated by NPCEngine.getSaveData()
   }
 
   /**
@@ -72,11 +76,10 @@ export class SaveData {
       const partyData = gameState.partyManager.serialize();
       saveData.party = partyData;
       
-      // Calculate average party level for metadata
-      const totalLevel = partyData.characters
-        .filter(char => char !== null)
-        .reduce((sum, char) => sum + (char.level || 1), 0);
-      saveData.metadata.partyLevel = Math.floor(totalLevel / Math.max(partyData.characters.filter(char => char !== null).length, 1));
+      // Calculate average party level (serialize() uses .party not .characters)
+      const members = (partyData.characters ?? partyData.party ?? []).filter(c => c !== null);
+      const totalLevel = members.reduce((sum, c) => sum + (c.level || 1), 0);
+      saveData.metadata.partyLevel = Math.floor(totalLevel / Math.max(members.length, 1));
     }
     
     // Inventory data
@@ -114,7 +117,18 @@ export class SaveData {
     
     // Update save time
     saveData.progress.lastSaveTime = Date.now();
-    
+
+    // Campaign and narrative state
+    if (gameState.campaignManager) {
+      saveData.campaign = gameState.campaignManager.getSaveData();
+    }
+    if (gameState.narrativeManager) {
+      saveData.narrative = gameState.narrativeManager.getSaveData();
+    }
+    if (gameState.npcEngine) {
+      saveData.npcs = gameState.npcEngine.getSaveData();
+    }
+
     return saveData;
   }
 
@@ -178,7 +192,11 @@ export class SaveData {
       if (data.settings) {
         Object.assign(saveData.settings, data.settings);
       }
-      
+
+      if (data.campaign) saveData.campaign = data.campaign;
+      if (data.narrative) saveData.narrative = data.narrative;
+      if (data.npcs) saveData.npcs = data.npcs;
+
       console.log('Save data deserialized successfully');
       return saveData;
       

@@ -31,10 +31,14 @@ export class CombatUIManager {
   /**
    * Initialize the combat UI manager
    * @param {Object} combatSystem - Combat system instance
+   * @param {Object} partyManager - Party manager (for gold distribution)
+   * @param {Object} inventorySystem - Inventory system (for loot distribution)
    */
-  async initialize(combatSystem) {
+  async initialize(combatSystem, partyManager = null, inventorySystem = null) {
     try {
       this.currentCombatSystem = combatSystem;
+      this.partyManager = partyManager;
+      this.inventorySystem = inventorySystem;
       
       // Initialize UI components
       this.combatUI = new CombatUI();
@@ -101,6 +105,15 @@ export class CombatUIManager {
       case 'actionExecuted':
         this.handleActionExecuted(eventData.data);
         break;
+      case 'statusEffectTick':
+        this.handleStatusEffectTick(eventData.data);
+        break;
+      case 'turnEnded':
+        this.requestStatsUpdate();
+        break;
+      case 'roundStarted':
+        this.combatUI?.addLogMessage(`--- Round ${eventData.data?.turnNumber ?? '?'} ---`, 'system');
+        break;
     }
   }
 
@@ -110,12 +123,10 @@ export class CombatUIManager {
    */
   handleCombatStarted(combatData) {
     if (!this.isInitialized) return;
-    
+
     this.isActive = true;
-    
-    // Show combat UI
     this.combatUI.showCombat(combatData);
-    
+    this.combatUI.addLogMessage('Combat begins!', 'system');
     console.log('Combat UI activated');
   }
 
@@ -125,14 +136,68 @@ export class CombatUIManager {
    */
   handleCombatEnded(endData) {
     if (!this.isActive) return;
-    
+
+    // Distribute rewards immediately so XP/gold/loot land before results screen
+    if (endData.result === 'victory' && endData.rewards) {
+      this.distributeRewards(endData.rewards);
+      // AutoSaveManager listens for combatVictory to trigger post-combat save
+      window.dispatchEvent(new CustomEvent('combatVictory', { detail: endData }));
+    }
+
     // Hide combat UI after a delay to show final animations
     setTimeout(() => {
       this.combatUI.hideCombat();
       this.isActive = false;
     }, 2000);
-    
-    console.log('Combat UI deactivated');
+  }
+
+  /**
+   * Distribute XP, gold, and loot to the party after victory
+   * @param {Object} rewards - { experience, gold, loot[] }
+   */
+  distributeRewards(rewards) {
+    const cs = this.currentCombatSystem;
+    if (!cs) return;
+
+    const party = cs.playerParty;
+    if (!party) return;
+
+    // XP — distribute to all alive members
+    if (rewards.experience) {
+      const aliveMembers = party.getAliveMembers();
+      for (const member of aliveMembers) {
+        if (typeof member.addExperience === 'function') {
+          member.addExperience(rewards.experience);
+        }
+      }
+      console.log(`Distributed ${rewards.experience} XP to ${party.getAliveMembers().length} members`);
+    }
+
+    // Gold — add to party pool
+    if (rewards.gold) {
+      if (typeof party.addGold === 'function') {
+        party.addGold(rewards.gold);
+        console.log(`Added ${rewards.gold} gold to party`);
+      } else if (party.gold !== undefined) {
+        party.gold += rewards.gold;
+        console.log(`Added ${rewards.gold} gold (direct)`);
+      }
+    }
+
+    // Loot — add to inventory if available
+    if (Array.isArray(rewards.loot) && rewards.loot.length > 0 && this.inventorySystem) {
+      for (const item of rewards.loot) {
+        try {
+          this.inventorySystem.addItem(item, item.quantity ?? 1);
+        } catch (e) {
+          console.warn('Failed to add loot item:', item?.name, e);
+        }
+      }
+      console.log(`Added ${rewards.loot.length} loot items to inventory`);
+    }
+
+    // Notify all open UI panels to refresh
+    window.dispatchEvent(new CustomEvent('partyDataChanged', { detail: { source: 'combatRewards', rewards } }));
   }
 
   /**
@@ -141,13 +206,18 @@ export class CombatUIManager {
    */
   handleTurnStarted(turnData) {
     if (!this.isActive || !turnData.currentCharacter) return;
-    
-    // Update actions for current character if it's a player character
+
+    // Update turn display
+    this.combatUI.updateTurnDisplay(turnData);
+
     if (turnData.currentCharacter.type === 'player') {
-      this.updatePlayerActions(turnData.currentCharacter);
+      // Pass the REAL Character object (with hasAP, skills, etc.), not the summary
+      this.updatePlayerActions(this.currentCombatSystem.currentCharacter);
+      this.combatUI.addLogMessage(`${turnData.currentCharacter.name}'s turn — choose your action...`, 'system');
     } else {
-      // Clear actions for enemy turns
-      this.combatUI.updateActions([], turnData.currentCharacter);
+      // Enemy turn — disable action buttons
+      this.combatUI.updateActions([], null);
+      this.combatUI.addLogMessage(`${turnData.currentCharacter.name}'s turn...`, 'system');
     }
   }
 
@@ -156,7 +226,47 @@ export class CombatUIManager {
    * @param {Object} actionData - Action execution data
    */
   handleActionExecuted(actionData) {
+    // Visual animations
+    const actorId = actionData?.actorId ?? actionData?.actor?.id;
+    const targetIds = actionData?.targetIds ?? (actionData?.targets ?? []).map(t => t.id).filter(Boolean);
+    const actionType = actionData?.actionType ?? actionData?.action?.type ?? '';
+
+    if (actorId) {
+      const attackClass = actionType === 'skill' ? 'casting' : 'attacking';
+      this.combatUI?.applyCombatantAnimation(actorId, attackClass, 400);
+    }
+
+    if (targetIds.length > 0) {
+      const hitClass = actionType === 'fire' ? 'fire-hit'
+        : actionType === 'ice' ? 'ice-hit'
+        : actionType === 'lightning' ? 'lightning-hit'
+        : actionType === 'heal' ? 'healing-glow'
+        : 'hit-flash';
+      setTimeout(() => {
+        for (const id of targetIds) {
+          this.combatUI?.applyCombatantAnimation(id, hitClass, 400);
+        }
+      }, 200);
+    }
+
+    // Show action messages in combat log
+    const messages = actionData?.messages ?? actionData?.result?.messages ?? [];
+    for (const msg of messages) {
+      const type = msg.toLowerCase().includes('defeat') || msg.toLowerCase().includes('damage')
+        ? 'damage'
+        : msg.toLowerCase().includes('heal')
+          ? 'healing'
+          : 'action';
+      this.combatUI?.addLogMessage(msg, type);
+    }
     // Update combatant stats after action
+    this.requestStatsUpdate();
+  }
+
+  handleStatusEffectTick(tickData) {
+    for (const msg of tickData?.messages ?? []) {
+      this.combatUI?.addLogMessage(msg, 'status');
+    }
     this.requestStatsUpdate();
   }
 
@@ -166,11 +276,10 @@ export class CombatUIManager {
    */
   updatePlayerActions(character) {
     if (!this.currentCombatSystem) return;
-    
-    // Get available actions from combat system
-    const availableActions = this.currentCombatSystem.getAvailableActions(character);
-    
-    // Update UI
+
+    // Pass inventorySystem so real consumable items appear as actions
+    const availableActions = this.currentCombatSystem.getAvailableActions(character, this.inventorySystem);
+
     this.combatUI.updateActions(availableActions, character);
   }
 
@@ -247,23 +356,34 @@ export class CombatUIManager {
    * @param {Object} action - Action to execute
    * @param {Object} character - Character performing action
    */
-  async executePlayerAction(action, character) {
+  async executePlayerAction(action, _characterSummary) {
     if (!this.currentCombatSystem) return;
-    
-    // Get targets for the action
-    const targets = this.getActionTargets(action, character);
-    
-    if (!targets || targets.length === 0) {
-      this.combatUI.addLogMessage('No valid targets for this action!', 'warning');
+
+    // Use the REAL Character object from CombatSystem — processAction does identity check
+    const character = this.currentCombatSystem.currentCharacter;
+    if (!character) {
+      this.combatUI.addLogMessage('No active character!', 'error');
       return;
     }
-    
-    // Execute action through combat system
+
+    const targets = this.getActionTargets(action, character);
+
+    // targetType 'none' (flee) legitimately has zero targets — don't block it
+    if (action.targetType !== 'none' && (!targets || targets.length === 0)) {
+      this.combatUI.addLogMessage('No valid targets!', 'warning');
+      return;
+    }
+
     try {
       const result = await this.currentCombatSystem.processAction(character, action, targets);
-      
       if (!result.success) {
-        this.combatUI.addLogMessage(`Action failed: ${result.error}`, 'error');
+        const msg = result.errors?.[0] ?? result.error ?? 'unknown error';
+        this.combatUI.addLogMessage(`Action failed: ${msg}`, 'error');
+      } else if (action.type === 'item' && action.inventorySlotIndex !== undefined && this.inventorySystem) {
+        // Consume the item from inventory after successful use
+        this.inventorySystem.removeItem(action.inventorySlotIndex, 1);
+        // Refresh action buttons (consumable list may have changed)
+        this.updatePlayerActions(character);
       }
     } catch (error) {
       console.error('Error executing action:', error);
@@ -279,25 +399,26 @@ export class CombatUIManager {
    */
   getActionTargets(action, character) {
     if (!this.currentCombatSystem) return [];
-    
-    // Get targeting info from combat system
-    const targetingInfo = this.currentCombatSystem.getTargetingInfo(action, character);
-    
-    // For now, auto-select targets based on action type
-    // In a full implementation, this would show a target selection UI
+
+    const cs = this.currentCombatSystem;
+    const aliveEnemies = cs.enemies.filter(e => e.isAlive && e.isAlive());
+    const aliveAllies = cs.playerParty ? cs.playerParty.getAliveMembers() : [];
+
     switch (action.targetType) {
       case 'single_enemy':
-        return targetingInfo.validTargets.filter(t => t.type === 'enemy').slice(0, 1);
+        return aliveEnemies.slice(0, 1);
       case 'single_ally':
-        return targetingInfo.validTargets.filter(t => t.type === 'player').slice(0, 1);
+        return aliveAllies.slice(0, 1);
       case 'all_enemies':
-        return targetingInfo.validTargets.filter(t => t.type === 'enemy');
+        return aliveEnemies;
       case 'all_allies':
-        return targetingInfo.validTargets.filter(t => t.type === 'player');
+        return aliveAllies;
       case 'self':
         return [character];
+      case 'none':
+        return [];
       default:
-        return targetingInfo.validTargets.slice(0, 1);
+        return aliveEnemies.slice(0, 1);
     }
   }
 
@@ -332,20 +453,19 @@ export class CombatUIManager {
    * Check for level ups after combat
    */
   checkForLevelUps() {
-    // This would integrate with the character system
-    // For now, we'll simulate a level up check
-    console.log('Checking for level ups...');
-    
-    // Example level up data (would come from character system)
-    const levelUpData = {
-      character: { id: 'warrior-1', name: 'Test Warrior' },
-      newLevel: 2,
-      statsGained: { HP: 12, ATK: 2, DEF: 2, SPD: 1 },
-      skillsUnlocked: [{ name: 'Power Strike' }]
-    };
-    
-    // Show level up if applicable
-    // this.combatResultsUI.showLevelUpCelebration(levelUpData);
+    const cs = this.currentCombatSystem;
+    if (!cs?.playerParty) return;
+
+    // Listen for levelUp events emitted by Character.levelUp() during addExperience
+    // Results are async (fired during distributeRewards), so this is a no-op sweep
+    // The 'levelUp' CustomEvent from Character carries the real data
+    const members = cs.playerParty.getAliveMembers();
+    for (const member of members) {
+      if (member._pendingLevelUpData) {
+        this.combatResultsUI?.showLevelUpCelebration(member._pendingLevelUpData);
+        delete member._pendingLevelUpData;
+      }
+    }
   }
 
   /**

@@ -1,0 +1,161 @@
+{
+  "id": "crypt-of-shadows",
+  "version": "1.0",
+  "variables": {
+    "merchant_alive": true,
+    "ancient_seal_broken": false,
+    "shadow_lord_weakened": false
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "The Awakening",
+      "phases": [
+        {
+          "id": "phase-1-1",
+          "name": "Prologue",
+          "autoPlayStory": "intro",
+          "autoPlayKnot": null,
+          "entryConditions": {
+            "type": "auto",
+            "onCampaignStart": true
+          },
+          "exitTriggers": [
+            {
+              "type": "event",
+              "eventName": "narrative:knot_reached",
+              "eventPayload": { "knot": "prologue_complete" }
+            }
+          ],
+          "contentGates": {
+            "dungeons": ["crypt-of-shadows-floor-1"],
+            "quests": [],
+            "npcs": [],
+            "narrativeKnots": ["intro"]
+          },
+          "worldFlags": {
+            "setOnEntry": ["flag_prologue_active"],
+            "setOnExit": ["flag_prologue_done"]
+          }
+        },
+        {
+          "id": "phase-1-2",
+          "name": "First Descent",
+          "entryConditions": {
+            "type": "sequential",
+            "previousPhase": "phase-1-1"
+          },
+          "exitTriggers": [
+            {
+              "type": "event",
+              "eventName": "player:floor_cleared",
+              "eventPayload": { "dungeonId": "crypt-of-shadows", "floor": 2 }
+            }
+          ],
+          "contentGates": {
+            "dungeons": ["crypt-of-shadows-floor-1", "crypt-of-shadows-floor-2"],
+            "quests": [],
+            "npcs": [],
+            "narrativeKnots": ["floor_1_intro"]
+          },
+          "worldFlags": {
+            "setOnEntry": ["flag_first_descent"],
+            "setOnExit": ["flag_floor_2_cleared"]
+          }
+        },
+        {
+          "id": "phase-1-3",
+          "name": "The Shadow Chambers",
+          "entryConditions": {
+            "type": "sequential",
+            "previousPhase": "phase-1-2"
+          },
+          "exitTriggers": [
+            {
+              "type": "event",
+              "eventName": "player:floor_cleared",
+              "eventPayload": { "dungeonId": "crypt-of-shadows", "floor": 4 }
+            }
+          ],
+          "contentGates": {
+            "dungeons": [
+              "crypt-of-shadows-floor-1",
+              "crypt-of-shadows-floor-2",
+              "crypt-of-shadows-floor-3",
+              "crypt-of-shadows-floor-4"
+            ],
+            "quests": [],
+            "npcs": [],
+            "narrativeKnots": ["floor_3_intro"]
+          },
+          "worldFlags": {
+            "setOnEntry": ["flag_shadow_chambers_open"],
+            "setOnExit": ["flag_ancient_halls_reached"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "act-2",
+      "name": "The Shadow Lord",
+      "phases": [
+        {
+          "id": "phase-2-1",
+          "name": "Final Descent",
+          "entryConditions": {
+            "type": "sequential",
+            "previousPhase": "phase-1-3"
+          },
+          "exitTriggers": [
+            {
+              "type": "event",
+              "eventName": "combat:encounter_complete",
+              "eventPayload": { "isBossVictory": true }
+            }
+          ],
+          "contentGates": {
+            "dungeons": [
+              "crypt-of-shadows-floor-1",
+              "crypt-of-shadows-floor-2",
+              "crypt-of-shadows-floor-3",
+              "crypt-of-shadows-floor-4",
+              "crypt-of-shadows-floor-5"
+            ],
+            "quests": [],
+            "npcs": [],
+            "narrativeKnots": ["floor_5_intro", "shadow_lord_pre_battle"]
+          },
+          "worldFlags": {
+            "setOnEntry": ["flag_final_floor_open"],
+            "setOnExit": ["flag_shadow_lord_defeated"]
+          }
+        },
+        {
+          "id": "phase-2-2",
+          "name": "Epilogue",
+          "entryConditions": {
+            "type": "sequential",
+            "previousPhase": "phase-2-1"
+          },
+          "exitTriggers": [
+            {
+              "type": "event",
+              "eventName": "narrative:knot_reached",
+              "eventPayload": { "knot": "epilogue_complete" }
+            }
+          ],
+          "contentGates": {
+            "dungeons": [],
+            "quests": [],
+            "npcs": [],
+            "narrativeKnots": ["epilogue"]
+          },
+          "worldFlags": {
+            "setOnEntry": ["flag_epilogue_active"],
+            "setOnExit": ["flag_campaign_complete"]
+          }
+        }
+      ]
+    }
+  ]
+}

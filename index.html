@@ -53,6 +53,12 @@
             </div>
         </div>
 
+        <!-- Exploration HUD — party status + floor name -->
+        <div id="exploration-hud" class="exploration-hud">
+            <div id="party-status-bar" class="party-status-bar"></div>
+            <div id="floor-indicator" class="floor-indicator"></div>
+        </div>
+
         <!-- Controls Help -->
         <div id="controls-help" class="controls-help" data-ui-component="controls-panel" data-ui-name="control-instructions">
             <h4>Controls</h4>
@@ -75,7 +81,9 @@
 
     <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
+    <!-- Ink narrative runtime (exposes window.inkjs.Story) -->
+    <script src="https://cdn.jsdelivr.net/npm/inkjs@2/dist/ink.js"></script>
+
     <!-- Game Engine Scripts -->
     <script type="module" src="src/main.js"></script>
 </body>

@@ -71,6 +71,217 @@ export class ItemDatabase {
       stackable: true,
       maxStack: 99
     });
+
+    // Aliases and additional consumables used by ShopSystem / level files
+    this.addItem('small_health_potion', {
+      name: 'Small Health Potion',
+      type: 'consumable',
+      rarity: 'common',
+      effects: [{ type: 'heal', value: 25 }],
+      value: 15,
+      stackable: true,
+      maxStack: 99
+    });
+    this.addItem('health_potion_small', {
+      name: 'Small Health Potion',
+      type: 'consumable',
+      rarity: 'common',
+      effects: [{ type: 'heal', value: 25 }],
+      value: 15,
+      stackable: true,
+      maxStack: 99
+    });
+    this.addItem('large_health_potion', {
+      name: 'Large Health Potion',
+      type: 'consumable',
+      rarity: 'uncommon',
+      effects: [{ type: 'heal', value: 100 }],
+      value: 60,
+      stackable: true,
+      maxStack: 99
+    });
+    this.addItem('full_health_potion', {
+      name: 'Full Health Potion',
+      type: 'consumable',
+      rarity: 'rare',
+      effects: [{ type: 'heal', value: 9999 }],
+      value: 150,
+      stackable: true,
+      maxStack: 30
+    });
+    this.addItem('ap_potion', {
+      name: 'AP Potion',
+      type: 'consumable',
+      rarity: 'common',
+      effects: [{ type: 'restore_ap', value: 3 }],
+      value: 30,
+      stackable: true,
+      maxStack: 99
+    });
+    this.addItem('greater_ap_potion', {
+      name: 'Greater AP Potion',
+      type: 'consumable',
+      rarity: 'uncommon',
+      effects: [{ type: 'restore_ap', value: 9 }],
+      value: 80,
+      stackable: true,
+      maxStack: 30
+    });
+    this.addItem('antidote', {
+      name: 'Antidote',
+      type: 'consumable',
+      rarity: 'common',
+      effects: [{ type: 'cure_poison', value: 1 }],
+      value: 18,
+      stackable: true,
+      maxStack: 99
+    });
+    this.addItem('panacea', {
+      name: 'Panacea',
+      type: 'consumable',
+      rarity: 'uncommon',
+      effects: [{ type: 'cure_all', value: 1 }],
+      value: 90,
+      stackable: true,
+      maxStack: 20
+    });
+    this.addItem('strength_elixir', {
+      name: 'Strength Elixir',
+      type: 'consumable',
+      rarity: 'uncommon',
+      effects: [{ type: 'buff_atk', value: 5, duration: 3 }],
+      value: 45,
+      stackable: true,
+      maxStack: 20
+    });
+    this.addItem('defense_elixir', {
+      name: 'Defense Elixir',
+      type: 'consumable',
+      rarity: 'uncommon',
+      effects: [{ type: 'buff_def', value: 5, duration: 3 }],
+      value: 45,
+      stackable: true,
+      maxStack: 20
+    });
+    this.addItem('speed_elixir', {
+      name: 'Speed Elixir',
+      type: 'consumable',
+      rarity: 'uncommon',
+      effects: [{ type: 'buff_spd', value: 5, duration: 3 }],
+      value: 40,
+      stackable: true,
+      maxStack: 20
+    });
+    this.addItem('berserker_elixir', {
+      name: 'Berserker Elixir',
+      type: 'consumable',
+      rarity: 'rare',
+      effects: [{ type: 'buff_atk', value: 15, duration: 2 }, { type: 'debuff_def', value: 8, duration: 2 }],
+      value: 120,
+      stackable: true,
+      maxStack: 10
+    });
+    this.addItem('guardian_elixir', {
+      name: 'Guardian Elixir',
+      type: 'consumable',
+      rarity: 'rare',
+      effects: [{ type: 'buff_def', value: 15, duration: 2 }],
+      value: 120,
+      stackable: true,
+      maxStack: 10
+    });
+    this.addItem('phoenix_down', {
+      name: 'Phoenix Down',
+      type: 'consumable',
+      rarity: 'rare',
+      effects: [{ type: 'revive', value: 1 }],
+      value: 200,
+      stackable: true,
+      maxStack: 5
+    });
+    this.addItem('elixir_of_life', {
+      name: 'Elixir of Life',
+      type: 'consumable',
+      rarity: 'epic',
+      effects: [{ type: 'revive', value: 1 }, { type: 'heal', value: 9999 }],
+      value: 500,
+      stackable: true,
+      maxStack: 3
+    });
+
+    // Materials
+    this.addItem('iron_ore', {
+      name: 'Iron Ore',
+      type: 'material',
+      rarity: 'common',
+      value: 8,
+      stackable: true,
+      maxStack: 99
+    });
+    this.addItem('magic_crystal', {
+      name: 'Magic Crystal',
+      type: 'material',
+      rarity: 'uncommon',
+      value: 35,
+      stackable: true,
+      maxStack: 50
+    });
+    this.addItem('mithril_ore', {
+      name: 'Mithril Ore',
+      type: 'material',
+      rarity: 'rare',
+      value: 120,
+      stackable: true,
+      maxStack: 20
+    });
+    this.addItem('dragon_scale', {
+      name: 'Dragon Scale',
+      type: 'material',
+      rarity: 'epic',
+      value: 500,
+      stackable: true,
+      maxStack: 10
+    });
+
+    // Key items
+    this.addItem('bronze_key', {
+      name: 'Bronze Key',
+      type: 'key_item',
+      rarity: 'common',
+      value: 0,
+      stackable: true,
+      maxStack: 5
+    });
+
+    // Additional weapons/armor for shop
+    this.addItem('rusty_sword', {
+      name: 'Rusty Sword',
+      type: 'weapon',
+      rarity: 'common',
+      stats: { ATK: 6 },
+      value: 20
+    });
+    this.addItem('iron_sword', {
+      name: 'Iron Sword',
+      type: 'weapon',
+      rarity: 'common',
+      stats: { ATK: 14 },
+      value: 80
+    });
+    this.addItem('iron_shield', {
+      name: 'Iron Shield',
+      type: 'armor',
+      rarity: 'common',
+      stats: { DEF: 8 },
+      value: 70
+    });
+    this.addItem('chain_mail', {
+      name: 'Chain Mail',
+      type: 'armor',
+      rarity: 'uncommon',
+      stats: { DEF: 14, HP: 20 },
+      value: 150
+    });
   }
 
   /**
@@ -81,6 +292,8 @@ export class ItemDatabase {
   addItem(id, itemData) {
     this.items.set(id, {
       id,
+      description: itemData.description || itemData.name || id,
+      icon: itemData.icon || '●',
       ...itemData,
       level: itemData.level || 1
     });

@@ -158,6 +158,17 @@ export class ShopSystem {
     }
 
     /**
+     * Load a specific item list as shop inventory (for NPC shopkeepers).
+     * @param {string[]} itemIds - Array of item IDs to stock
+     */
+    generateInventoryFromList(itemIds) {
+        this.shopInventory.clear();
+        for (const itemId of itemIds ?? []) {
+            this._addShopItem(itemId, 5);
+        }
+    }
+
+    /**
      * Refresh shop inventory based on party level
      * @param {number} partyLevel - Average party level
      * @param {boolean} forceRefresh - Force refresh regardless of cooldown

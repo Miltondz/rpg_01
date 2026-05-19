@@ -31,6 +31,7 @@ export class CombatSystem {
     
     // Combat settings
     this.maxAP = 3; // Action Points per turn
+    this.animationsEnabled = false; // Set true to add AI turn delays for visual pacing
     
     // Combat results
     this.combatResults = null;
@@ -97,7 +98,17 @@ export class CombatSystem {
       enemies: this.enemies.map(e => this.getEnemySummary(e)),
       turnOrder: this.getTurnOrderSummary()
     });
-    
+
+    // Kick off first turn after the UI has had time to render (combatStarted handler runs first)
+    setTimeout(() => {
+      if (!this.isActive) return;
+      this.updateCombatState();
+      this.emitCombatEvent('turnStarted', this.getCurrentTurnInfo());
+      if (this.combatState === 'ENEMY_TURN') {
+        this.handleEnemyTurn();
+      }
+    }, 250);
+
     return true;
   }
 
@@ -176,37 +187,56 @@ export class CombatSystem {
       return null;
     }
 
+    // Emit turn-end event for the character whose turn just finished
+    if (this.currentCharacter) {
+      this.emitCombatEvent('turnEnded', { character: this.currentCharacter, turnNumber: this.turnNumber });
+    }
+
     // Move to next character in turn order
     this.currentTurnIndex++;
-    
+
     // Check if we've completed a full round
     if (this.currentTurnIndex >= this.turnOrder.length) {
       this.currentTurnIndex = 0;
       this.turnNumber++;
-      
+      this.emitCombatEvent('roundStarted', { turnNumber: this.turnNumber });
+
       // Recalculate turn order (remove dead characters)
       this.updateTurnOrder();
-      
-      console.log(`Starting turn ${this.turnNumber}`);
+
+      console.log(`Starting round ${this.turnNumber}`);
     }
-    
+
+    // Skip dead characters mid-round (may have died since round start)
+    let safetyLimit = this.turnOrder.length + 1;
+    while (safetyLimit-- > 0 && this.turnOrder.length > 0) {
+      const candidate = this.turnOrder[this.currentTurnIndex];
+      const alive = candidate?.isAlive ? candidate.isAlive() : (candidate?.currentHP ?? 0) > 0;
+      if (alive) break;
+      // Skip dead character
+      this.currentTurnIndex = (this.currentTurnIndex + 1) % this.turnOrder.length;
+    }
+
     // Set current character
     this.currentCharacter = this.turnOrder[this.currentTurnIndex];
-    
-    // Reset current character's AP
+
+    // Reset current character's AP and tick status effects
     if (this.currentCharacter) {
       if (this.currentCharacter.resetAP) {
         this.currentCharacter.resetAP();
       } else {
         this.currentCharacter.currentAP = this.currentCharacter.maxAP || this.maxAP;
       }
-      
+
+      this.tickStatusEffects(this.currentCharacter);
+      this.tickSkillCooldowns(this.currentCharacter);
+
       // Determine combat state based on current character
       this.updateCombatState();
     }
-    
+
     const turnInfo = this.getCurrentTurnInfo();
-    
+
     // Emit turn start event
     this.emitCombatEvent('turnStarted', turnInfo);
     
@@ -239,6 +269,63 @@ export class CombatSystem {
     }
     
     console.log('Turn order updated, removed dead characters');
+  }
+
+  /**
+   * Tick status effects for a character at the start of their turn.
+   * Applies per-turn effects (poison/burn/regen) and decrements duration.
+   * Removes expired effects.
+   */
+  tickStatusEffects(character) {
+    if (!Array.isArray(character.statusEffects) || character.statusEffects.length === 0) return;
+
+    const messages = [];
+    const remaining = [];
+
+    for (const effect of character.statusEffects) {
+      // Per-turn damage/healing
+      switch (effect.type) {
+        case 'poison':
+        case 'burn': {
+          const dmg = Math.max(1, Math.floor(effect.value ?? 5));
+          if (typeof character.takeDamage === 'function') character.takeDamage(dmg);
+          messages.push(`${character.name} takes ${dmg} ${effect.type} damage`);
+          break;
+        }
+        case 'regen': {
+          const hp = Math.max(1, Math.floor(effect.value ?? 5));
+          if (typeof character.heal === 'function') character.heal(hp);
+          messages.push(`${character.name} regenerates ${hp} HP`);
+          break;
+        }
+        default:
+          break;
+      }
+
+      // Decrement duration
+      effect.duration = (effect.duration ?? 1) - 1;
+      if (effect.duration > 0) {
+        remaining.push(effect);
+      }
+    }
+
+    character.statusEffects = remaining;
+
+    if (messages.length > 0) {
+      this.emitCombatEvent('statusEffectTick', { character, messages });
+    }
+  }
+
+  /**
+   * Decrement skill cooldowns for a character at the start of their turn.
+   */
+  tickSkillCooldowns(character) {
+    if (!Array.isArray(character.skills)) return;
+    for (const skill of character.skills) {
+      if (skill.currentCooldown > 0) {
+        skill.currentCooldown--;
+      }
+    }
   }
 
   /**
@@ -293,7 +380,16 @@ export class CombatSystem {
     
     this.isActive = false;
     this.combatState = result.toUpperCase();
-    
+
+    // Clear status effects from all combatants
+    const allCombatants = [
+      ...(this.playerParty?.getAliveMembers() ?? []),
+      ...this.enemies
+    ];
+    for (const c of allCombatants) {
+      if (Array.isArray(c.statusEffects)) c.statusEffects = [];
+    }
+
     // Create combat results
     this.combatResults = {
       result: result,
@@ -302,11 +398,20 @@ export class CombatSystem {
       partyState: this.playerParty.getPartySummary(),
       timestamp: Date.now()
     };
-    
+
     console.log(`Combat ended: ${result}`, this.combatResults);
-    
+
     // Emit combat end event
     this.emitCombatEvent('combatEnded', this.combatResults);
+
+    // Notify campaign manager — include isBossVictory flag for phase triggers
+    if (result === 'victory') {
+      const isBossVictory = this.enemies.some(e => e.tier === 'boss');
+      window.dispatchEvent(new CustomEvent(
+        'combat:encounter_complete',
+        { detail: { victory: true, isBossVictory, enemies: this.enemies, loot: rewards?.loot ?? [] } }
+      ));
+    }
   }
 
   /**
@@ -346,15 +451,34 @@ export class CombatSystem {
       } else {
         character.currentAP -= apCost;
       }
-      
+
+      // Emit actionExecuted so UI can display messages
+      this.emitCombatEvent('actionExecuted', {
+        character,
+        action,
+        result: resolution.executionResult,
+        messages: resolution.executionResult?.messages ?? []
+      });
+
+      // Remove any mid-round deaths from turn order
+      this.updateTurnOrder();
+
+      // Check flee success before combat-end check
+      const effects = resolution.executionResult?.effects ?? [];
+      if (effects.some(e => e.type === 'flee_success')) {
+        this.endCombat('fled', null);
+        return resolution;
+      }
+
       // Check if combat should end after this action
       const endCondition = this.checkCombatEnd();
       if (endCondition) {
-        // Calculate rewards for victory
-        const rewards = endCondition === 'victory' ? this.calculateRewards() : null;
+        let rewards = null;
+        if (endCondition === 'victory') {
+          try { rewards = this.calculateRewards(); } catch (e) { console.error('calculateRewards failed:', e); }
+        }
         this.endCombat(endCondition, rewards);
       } else if (character.currentAP <= 0) {
-        // End turn if no AP remaining
         this.nextTurn();
       }
     }
@@ -390,8 +514,8 @@ export class CombatSystem {
    * @param {Object} character - Character to get actions for
    * @returns {Array} Array of available actions
    */
-  getAvailableActions(character) {
-    return this.actionSystem.getAvailableActions(character);
+  getAvailableActions(character, inventorySystem = null) {
+    return this.actionSystem.getAvailableActions(character, inventorySystem);
   }
 
   /**
@@ -473,9 +597,12 @@ export class CombatSystem {
     return {
       id: enemy.id,
       name: enemy.name,
+      type: enemy.type || 'unknown',
       level: enemy.level || 1,
       currentHP: enemy.currentHP,
       maxHP: enemy.maxHP,
+      currentAP: enemy.currentAP ?? 0,
+      maxAP: enemy.maxAP ?? 3,
       isAlive: enemy.isAlive ? enemy.isAlive() : enemy.currentHP > 0
     };
   }
@@ -543,8 +670,8 @@ export class CombatSystem {
     const enemy = this.currentCharacter;
     
     // Add delay for AI thinking animation
-    await this.delay(500);
-    
+    if (this.animationsEnabled) await this.delay(500);
+
     // Get AI decision with validation and fallback
     const aiDecision = this.getAIActionWithFallback(enemy);
     
@@ -561,11 +688,11 @@ export class CombatSystem {
     
     // Check if enemy has more AP for additional actions
     if (enemy.currentAP > 0 && this.isActive) {
-      // AI can take another action
-      setTimeout(() => this.handleEnemyTurn(), 800);
+      const delay = this.animationsEnabled ? 800 : 0;
+      setTimeout(() => this.handleEnemyTurn(), delay);
     } else if (this.isActive) {
-      // End enemy turn
-      setTimeout(() => this.nextTurn(), 1000);
+      const delay = this.animationsEnabled ? 1000 : 0;
+      setTimeout(() => this.nextTurn(), delay);
     }
   }
 
@@ -585,8 +712,8 @@ export class CombatSystem {
     });
     
     // Add animation delay
-    await this.delay(300);
-    
+    if (this.animationsEnabled) await this.delay(300);
+
     // Execute the action
     const result = await this.processAction(enemy, action, target);
     
@@ -599,7 +726,7 @@ export class CombatSystem {
     });
     
     // Add delay for result visualization
-    await this.delay(500);
+    if (this.animationsEnabled) await this.delay(500);
     
     return result;
   }

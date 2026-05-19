@@ -24,32 +24,52 @@ export class ActionSystem {
    * @param {Object} character - Character to get actions for
    * @returns {Array} Array of available actions
    */
-  getAvailableActions(character) {
+  getAvailableActions(character, inventorySystem = null) {
     const actions = [];
-    
+
     // Basic Attack (always available)
     actions.push(this.getBasicAttackAction());
-    
-    // Skills (if character has any and enough AP)
+
+    // Skills (if character has any, enough AP, and not on cooldown)
     if (character.skills) {
       for (const skill of character.skills) {
-        if (character.hasAP(skill.apCost)) {
+        if (character.hasAP(skill.apCost) && !(skill.currentCooldown > 0)) {
           actions.push(this.getSkillAction(skill));
         }
       }
     }
-    
-    // Items (placeholder - would check inventory)
-    actions.push(this.getItemAction());
-    
+
+    // Items — real consumables from inventory when available
+    if (inventorySystem) {
+      const { slots } = inventorySystem;
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i];
+        if (slot && slot.item && slot.item.type === 'consumable' && (slot.quantity ?? 1) > 0) {
+          actions.push({
+            id: `use_item_${slot.item.id}`,
+            name: slot.item.name,
+            type: 'item',
+            apCost: 1,
+            targetType: 'single_ally',
+            description: slot.item.description ?? `Use ${slot.item.name}`,
+            effects: ['item_effect'],
+            itemData: slot.item,
+            inventorySlotIndex: i
+          });
+        }
+      }
+    } else {
+      actions.push(this.getItemAction());
+    }
+
     // Defend (always available)
     actions.push(this.getDefendAction());
-    
+
     // Flee (always available for player characters)
-    if (character.class) { // Player characters have class property
+    if (character.class) {
       actions.push(this.getFleeAction());
     }
-    
+
     return actions;
   }
 
@@ -197,10 +217,17 @@ export class ActionSystem {
       // Calculate damage
       const damageResult = this.calculateDamage(attacker, target, action);
       
-      // Apply damage
-      const actualDamage = Math.max(1, damageResult.finalDamage); // Minimum 1 damage
-      const died = target.takeDamage(actualDamage);
-      
+      // Apply damage — use elemental resistance if target supports it
+      let actualDamage = Math.max(1, damageResult.finalDamage);
+      let died;
+      const element = attacker.stats?.element ?? 'Physical';
+      if (typeof target.takeDamageWithElement === 'function') {
+        actualDamage = Math.max(1, target.takeDamageWithElement(actualDamage, element));
+        died = target.currentHP === 0;
+      } else {
+        died = target.takeDamage(actualDamage);
+      }
+
       // Check for boss phase transitions after damage
       if (!died && target.tier === 'boss' && typeof target.checkPhaseTransition === 'function') {
         const phaseChanged = target.checkPhaseTransition();
@@ -208,8 +235,7 @@ export class ActionSystem {
           result.messages.push(`${target.name} enters a new phase!`);
         }
       }
-      
-      // Record results
+
       result.damage.push({
         target: target,
         damage: actualDamage,
@@ -217,16 +243,22 @@ export class ActionSystem {
         elementalModifier: damageResult.elementalModifier,
         died: died
       });
-      
+
       result.messages.push(
         `${attacker.name} attacks ${target.name} for ${actualDamage} damage${damageResult.isCritical ? ' (Critical!)' : ''}`
       );
-      
+
       if (died) {
         result.messages.push(`${target.name} has been defeated!`);
       }
     }
-    
+
+    // No effects = action had no real impact
+    if (result.damage.length === 0 && result.healing.length === 0 && result.statusEffects.length === 0) {
+      result.success = false;
+      if (!result.messages.length) result.messages.push('No valid targets');
+    }
+
     return result;
   }
 
@@ -241,7 +273,12 @@ export class ActionSystem {
   executeSkill(action, attacker, targets, result) {
     const skill = action.skillData;
     const targetArray = Array.isArray(targets) ? targets : [targets];
-    
+
+    // Set skill cooldown on use
+    if (skill.cooldown > 0) {
+      skill.currentCooldown = skill.cooldown;
+    }
+
     // Handle different skill types
     switch (skill.type) {
       case 'attack':
@@ -256,8 +293,12 @@ export class ActionSystem {
       case 'utility':
         return this.executeSkillUtility(skill, attacker, targetArray, result);
       
+      case 'debuff':
+        return this.executeSkillBuff(skill, attacker, targetArray, result);
+
       default:
-        // Default to attack-type skill
+        // Treat any unrecognised skill type as an attack
+        console.warn(`Unknown skill type '${skill.type}' for ${skill.id} — falling back to attack`);
         return this.executeSkillAttack(skill, attacker, targetArray, result);
     }
   }
@@ -281,10 +322,17 @@ export class ActionSystem {
       // Calculate skill damage
       const damageResult = this.calculateDamage(attacker, target, { type: 'skill', skillMultiplier });
       
-      // Apply damage
-      const actualDamage = Math.max(1, damageResult.finalDamage);
-      const died = target.takeDamage(actualDamage);
-      
+      // Apply damage — use elemental resistance if target supports it
+      let actualDamage = Math.max(1, damageResult.finalDamage);
+      let died;
+      const element = skill.element ?? attacker.stats?.element ?? 'Physical';
+      if (typeof target.takeDamageWithElement === 'function') {
+        actualDamage = Math.max(1, target.takeDamageWithElement(actualDamage, element));
+        died = target.currentHP === 0;
+      } else {
+        died = target.takeDamage(actualDamage);
+      }
+
       // Check for boss phase transitions after damage
       if (!died && target.tier === 'boss' && typeof target.checkPhaseTransition === 'function') {
         const phaseChanged = target.checkPhaseTransition();
@@ -292,8 +340,7 @@ export class ActionSystem {
           result.messages.push(`${target.name} enters a new phase!`);
         }
       }
-      
-      // Record results
+
       result.damage.push({
         target: target,
         damage: actualDamage,
@@ -301,11 +348,11 @@ export class ActionSystem {
         elementalModifier: damageResult.elementalModifier,
         died: died
       });
-      
+
       result.messages.push(
         `${attacker.name} uses ${skill.name} on ${target.name} for ${actualDamage} damage${damageResult.isCritical ? ' (Critical!)' : ''}`
       );
-      
+
       if (died) {
         result.messages.push(`${target.name} has been defeated!`);
       }
@@ -427,8 +474,37 @@ export class ActionSystem {
    * @returns {Object} Action result
    */
   executeItem(action, user, targets, result) {
-    // Placeholder for item system integration
-    result.messages.push(`${user.name} uses an item`);
+    const item = action.itemData;
+    if (!item) {
+      result.success = false;
+      result.messages.push('No item selected');
+      return result;
+    }
+
+    const targetArray = Array.isArray(targets) ? targets : [targets];
+    for (const target of targetArray) {
+      if (!target) continue;
+      // Healing consumables
+      if (item.effects) {
+        for (const effect of item.effects) {
+          if (effect.type === 'heal' && effect.value) {
+            const healed = target.heal(effect.value);
+            result.healing.push({ target, healing: healed });
+            result.messages.push(`${user.name} uses ${item.name} on ${target.name}, restoring ${healed} HP`);
+          } else if (effect.type === 'restore_ap' && effect.value) {
+            target.currentAP = Math.min(target.maxAP ?? 3, (target.currentAP ?? 0) + effect.value);
+            result.messages.push(`${user.name} uses ${item.name}, restoring ${effect.value} AP`);
+          } else if (effect.type === 'cure' && Array.isArray(effect.conditions)) {
+            target.statusEffects = (target.statusEffects ?? []).filter(
+              se => !effect.conditions.includes(se.type)
+            );
+            result.messages.push(`${user.name} uses ${item.name}, curing ${effect.conditions.join(', ')}`);
+          }
+        }
+      } else {
+        result.messages.push(`${user.name} uses ${item.name}`);
+      }
+    }
     return result;
   }
 
@@ -447,11 +523,8 @@ export class ActionSystem {
       duration: 1, // Until next turn
       source: 'defend'
     });
-    
-    // Gain 1 AP
-    defender.currentAP = Math.min(defender.maxAP, defender.currentAP + 1);
-    
-    result.messages.push(`${defender.name} takes a defensive stance and gains 1 AP`);
+
+    result.messages.push(`${defender.name} takes a defensive stance (+50% defense until next turn)`);
     return result;
   }
 

@@ -1,6 +1,9 @@
 /**
- * PartyCreationUI - User interface for creating and managing party composition
- * Handles character creation, party formation, and drag-and-drop positioning
+ * PartyCreationUI - redesigned two-panel layout.
+ * Left: create character form + available roster.
+ * Right: 2×2 formation grid.
+ * Footer: validation + action buttons (always visible).
+ * Click-to-add replaces mandatory drag-and-drop.
  */
 
 import { CharacterClasses } from '../character/CharacterClasses.js';
@@ -10,1037 +13,575 @@ export class PartyCreationUI {
     this.characterSystem = characterSystem;
     this.container = null;
     this.isVisible = false;
-    this.draggedCharacter = null;
-    this.draggedElement = null;
-    
-    // UI state
     this.selectedClass = 'warrior';
-    this.characterName = '';
-    
-    console.log('PartyCreationUI initialized');
+    this.draggedCharacter = null;
   }
 
-  /**
-   * Create and show the party creation interface
-   */
   show() {
     if (this.isVisible) return;
-    
-    this.createUI();
-    this.isVisible = true;
-    
-    // Add to DOM
+    this._buildDOM();
     document.body.appendChild(this.container);
-    
-    // Setup event listeners
-    this.setupEventListeners();
-    
-    console.log('Party creation UI shown');
+    this.isVisible = true;
+    this._bindEvents();
+    this._refresh();
   }
 
-  /**
-   * Hide the party creation interface
-   */
   hide() {
     if (!this.isVisible) return;
-    
-    if (this.container && this.container.parentNode) {
-      this.container.parentNode.removeChild(this.container);
-    }
-    
+    this.container?.parentNode?.removeChild(this.container);
+    this.container = null;
     this.isVisible = false;
-    console.log('Party creation UI hidden');
   }
 
-  /**
-   * Create the main UI structure
-   */
-  createUI() {
+  // ── DOM construction ────────────────────────────────────────────────────────
+
+  _buildDOM() {
+    this._injectStyles();
+
     this.container = document.createElement('div');
-    this.container.className = 'party-creation-overlay';
-    
+    this.container.className = 'pc-overlay';
     this.container.innerHTML = `
-      <div class="party-creation-modal">
-        <div class="modal-header">
-          <h2>Create Your Party</h2>
-          <button class="close-btn" id="close-party-ui">×</button>
+      <div class="pc-modal">
+
+        <div class="pc-header">
+          <span class="pc-title">⚔ Create Your Party</span>
+          <button class="pc-close" id="pc-close">✕</button>
         </div>
-        
-        <div class="modal-content">
-          <div class="creation-section">
-            <h3>Create New Character</h3>
-            
-            <div class="character-form">
-              <div class="form-group">
-                <label for="character-name">Character Name:</label>
-                <input type="text" id="character-name" placeholder="Enter character name" maxlength="20">
+
+        <div class="pc-body">
+
+          <!-- LEFT PANEL -->
+          <div class="pc-left">
+
+            <section class="pc-section">
+              <h3 class="pc-section-title">New Character</h3>
+              <div class="pc-field">
+                <label class="pc-label">Name</label>
+                <input class="pc-input" id="pc-name" type="text"
+                       placeholder="Character name…" maxlength="20" autocomplete="off">
               </div>
-              
-              <div class="form-group">
-                <label for="character-class">Class:</label>
-                <select id="character-class">
-                  <option value="warrior">Warrior - Tank/Melee DPS</option>
-                  <option value="rogue">Rogue - DPS/Critical</option>
-                  <option value="mage">Mage - AoE/Elemental</option>
-                  <option value="cleric">Cleric - Healer/Support</option>
+              <div class="pc-field">
+                <label class="pc-label">Class</label>
+                <select class="pc-input" id="pc-class">
+                  <option value="warrior">Warrior</option>
+                  <option value="rogue">Rogue</option>
+                  <option value="mage">Mage</option>
+                  <option value="cleric">Cleric</option>
                 </select>
               </div>
-              
-              <div class="class-preview" id="class-preview">
-                ${this.createClassPreview('warrior')}
-              </div>
-              
-              <button class="create-character-btn" id="create-character">Create Character</button>
-            </div>
-          </div>
-          
-          <div class="party-section">
-            <h3>Party Formation</h3>
-            <div class="formation-info">
-              <p><strong>Front Row:</strong> +10% damage dealt, -10% defense</p>
-              <p><strong>Back Row:</strong> +10% evasion, +10% defense</p>
-            </div>
-            
-            <div class="party-formation" id="party-formation">
-              <div class="formation-row front-row">
-                <h4>Front Row</h4>
-                <div class="party-slots">
-                  <div class="party-slot" data-position="0" data-row="front">
-                    <div class="slot-label">Position 1</div>
-                    <div class="slot-content" id="slot-0"></div>
-                  </div>
-                  <div class="party-slot" data-position="1" data-row="front">
-                    <div class="slot-label">Position 2</div>
-                    <div class="slot-content" id="slot-1"></div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="formation-row back-row">
-                <h4>Back Row</h4>
-                <div class="party-slots">
-                  <div class="party-slot" data-position="2" data-row="back">
-                    <div class="slot-label">Position 3</div>
-                    <div class="slot-content" id="slot-2"></div>
-                  </div>
-                  <div class="party-slot" data-position="3" data-row="back">
-                    <div class="slot-label">Position 4</div>
-                    <div class="slot-content" id="slot-3"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="available-characters" id="available-characters">
-            <h3>Available Characters</h3>
-            <div class="character-list" id="character-list">
-              <p class="no-characters">No characters created yet</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="modal-footer">
-          <div class="party-validation" id="party-validation"></div>
-          <div class="modal-actions">
-            <button class="btn secondary" id="create-test-party">Create Test Party</button>
-            <button class="btn primary" id="start-game" disabled>Start Game</button>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    // Add CSS styles
-    this.addStyles();
-  }
+              <div class="pc-preview" id="pc-preview"></div>
+              <button class="pc-btn pc-btn-create" id="pc-create">+ Create Character</button>
+            </section>
 
-  /**
-   * Create class preview HTML
-   * @param {string} className - Class name to preview
-   * @returns {string} HTML for class preview
-   */
-  createClassPreview(className) {
-    const classData = CharacterClasses.getClassDefinition(className);
-    if (!classData) return '';
-    
-    return `
-      <div class="class-info">
-        <h4>${classData.name}</h4>
-        <p class="class-description">${classData.description}</p>
-        
-        <div class="class-stats">
-          <h5>Base Stats:</h5>
-          <div class="stats-grid">
-            <div class="stat-item">
-              <span class="stat-label">HP:</span>
-              <span class="stat-value">${classData.baseStats.HP}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">ATK:</span>
-              <span class="stat-value">${classData.baseStats.ATK}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">DEF:</span>
-              <span class="stat-value">${classData.baseStats.DEF}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">SPD:</span>
-              <span class="stat-value">${classData.baseStats.SPD}</span>
-            </div>
+            <section class="pc-section pc-section-roster">
+              <h3 class="pc-section-title">Available <span id="pc-roster-count">(0)</span></h3>
+              <div class="pc-roster" id="pc-roster">
+                <p class="pc-empty">No characters yet</p>
+              </div>
+            </section>
+
+          </div><!-- /left -->
+
+          <!-- RIGHT PANEL -->
+          <div class="pc-right">
+
+            <section class="pc-section pc-section-formation">
+              <h3 class="pc-section-title">Party Formation</h3>
+
+              <div class="pc-formation-info">
+                <span class="pc-badge front">Front ↑ +10% ATK  −10% DEF</span>
+                <span class="pc-badge back">Back ↓ +10% EVA  +10% DEF</span>
+              </div>
+
+              <div class="pc-grid">
+                <div class="pc-row-label">Front</div>
+                <div class="pc-slot" data-pos="0" id="pc-slot-0"><span class="pc-slot-empty">Click roster<br>to assign</span></div>
+                <div class="pc-slot" data-pos="1" id="pc-slot-1"><span class="pc-slot-empty">Click roster<br>to assign</span></div>
+                <div class="pc-row-label">Back</div>
+                <div class="pc-slot" data-pos="2" id="pc-slot-2"><span class="pc-slot-empty">Click roster<br>to assign</span></div>
+                <div class="pc-slot" data-pos="3" id="pc-slot-3"><span class="pc-slot-empty">Click roster<br>to assign</span></div>
+              </div>
+
+              <p class="pc-hint">Click available character to add · Click slot character to remove</p>
+            </section>
+
+          </div><!-- /right -->
+
+        </div><!-- /body -->
+
+        <div class="pc-footer">
+          <div class="pc-validation" id="pc-validation"></div>
+          <div class="pc-actions">
+            <button class="pc-btn pc-btn-test" id="pc-test">Quick Party</button>
+            <button class="pc-btn pc-btn-start" id="pc-start" disabled>▶ Start Game</button>
           </div>
         </div>
-        
-        <div class="class-growth">
-          <h5>Growth per Level:</h5>
-          <div class="growth-grid">
-            <div class="growth-item">HP: +${classData.growth.HP}</div>
-            <div class="growth-item">ATK: +${classData.growth.ATK}</div>
-            <div class="growth-item">DEF: +${classData.growth.DEF}</div>
-            <div class="growth-item">SPD: +${classData.growth.SPD}</div>
-          </div>
-        </div>
-        
-        <div class="class-skills">
-          <h5>Starting Skills:</h5>
-          <ul>
-            ${classData.skillProgression.slice(0, 3).map(skill => 
-              `<li>Level ${skill.level}: ${skill.name}</li>`
-            ).join('')}
-          </ul>
-        </div>
-      </div>
+
+      </div><!-- /modal -->
     `;
   }
 
-  /**
-   * Create character card HTML
-   * @param {Object} character - Character data
-   * @param {boolean} draggable - Whether the card should be draggable
-   * @returns {string} HTML for character card
-   */
-  createCharacterCard(character, draggable = true) {
-    const hpPercent = (character.currentHP / character.maxHP) * 100;
-    const formationEffects = this.characterSystem.partyManager.getFormationEffects(character);
-    
-    return `
-      <div class="character-card ${character.class}" 
-           data-character-id="${character.id}" 
-           ${draggable ? 'draggable="true"' : ''}>
-        <div class="character-header">
-          <h4>${character.name}</h4>
-          <span class="character-level">Lv.${character.level}</span>
-        </div>
-        
-        <div class="character-class">${character.class.charAt(0).toUpperCase() + character.class.slice(1)}</div>
-        
-        <div class="hp-bar">
-          <div class="hp-fill" style="width: ${hpPercent}%"></div>
-          <span class="hp-text">${character.currentHP}/${character.maxHP}</span>
-        </div>
-        
-        <div class="character-stats">
-          <div class="stat">ATK: ${character.stats.ATK}</div>
-          <div class="stat">DEF: ${character.stats.DEF}</div>
-          <div class="stat">SPD: ${character.stats.SPD}</div>
-        </div>
-        
-        <div class="formation-effects">
-          ${formationEffects.description}
-        </div>
-        
-        ${draggable ? '<div class="drag-handle">⋮⋮</div>' : ''}
-      </div>
-    `;
-  }
+  // ── Events ──────────────────────────────────────────────────────────────────
 
-  /**
-   * Setup event listeners
-   */
-  setupEventListeners() {
-    // Close button
-    const closeBtn = this.container.querySelector('#close-party-ui');
-    closeBtn.addEventListener('click', () => this.hide());
-    
-    // Character class selection
-    const classSelect = this.container.querySelector('#character-class');
-    classSelect.addEventListener('change', (e) => {
+  _bindEvents() {
+    const q = id => this.container.querySelector(id);
+
+    q('#pc-close').addEventListener('click', () => this.hide());
+    q('#pc-create').addEventListener('click', () => this._createCharacter());
+    q('#pc-test').addEventListener('click', () => this._testParty());
+    q('#pc-start').addEventListener('click', () => this._startGame());
+
+    q('#pc-class').addEventListener('change', e => {
       this.selectedClass = e.target.value;
-      this.updateClassPreview();
+      this._renderPreview();
     });
-    
-    // Character name input
-    const nameInput = this.container.querySelector('#character-name');
-    nameInput.addEventListener('input', (e) => {
-      this.characterName = e.target.value;
-    });
-    
-    // Create character button
-    const createBtn = this.container.querySelector('#create-character');
-    createBtn.addEventListener('click', () => this.createCharacter());
-    
-    // Create test party button
-    const testPartyBtn = this.container.querySelector('#create-test-party');
-    testPartyBtn.addEventListener('click', () => this.createTestParty());
-    
-    // Start game button
-    const startBtn = this.container.querySelector('#start-game');
-    startBtn.addEventListener('click', () => this.startGame());
-    
-    // Drag and drop for party slots
-    this.setupDragAndDrop();
-    
-    // Listen for party changes
-    window.addEventListener('partyChange', () => this.updatePartyDisplay());
-    
-    // Listen for game start events
-    window.addEventListener('gameStart', (e) => {
-      console.log('Game started with party:', e.detail.party);
-    });
-    
-    // Initial updates
-    this.updateClassPreview();
-    this.updateAvailableCharacters();
-    this.updatePartyDisplay();
-    this.updateValidation();
+
+    // Drag-and-drop (bonus, not required)
+    this._setupDnD();
   }
 
-  /**
-   * Setup drag and drop functionality
-   */
-  setupDragAndDrop() {
-    const container = this.container;
-    
-    // Handle drag start on character cards
-    container.addEventListener('dragstart', (e) => {
-      if (e.target.closest('.character-card')) {
-        const card = e.target.closest('.character-card');
-        this.draggedCharacter = card.dataset.characterId;
-        this.draggedElement = card;
-        card.classList.add('dragging');
-        
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', this.draggedCharacter);
-      }
+  _setupDnD() {
+    const body = this.container.querySelector('.pc-body');
+
+    body.addEventListener('dragstart', e => {
+      const card = e.target.closest('[data-char-id]');
+      if (!card) return;
+      this.draggedCharacter = card.dataset.charId;
+      card.classList.add('pc-dragging');
+      e.dataTransfer.effectAllowed = 'move';
     });
-    
-    // Handle drag end
-    container.addEventListener('dragend', (e) => {
-      if (e.target.closest('.character-card')) {
-        e.target.closest('.character-card').classList.remove('dragging');
-        this.draggedCharacter = null;
-        this.draggedElement = null;
-      }
+    body.addEventListener('dragend', e => {
+      const card = e.target.closest('[data-char-id]');
+      if (card) card.classList.remove('pc-dragging');
+      this.draggedCharacter = null;
     });
-    
-    // Handle drag over party slots
-    container.addEventListener('dragover', (e) => {
-      const slot = e.target.closest('.party-slot');
-      if (slot && this.draggedCharacter) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        slot.classList.add('drag-over');
-      }
+    body.addEventListener('dragover', e => {
+      if (e.target.closest('.pc-slot')) { e.preventDefault(); e.target.closest('.pc-slot').classList.add('pc-drop-target'); }
     });
-    
-    // Handle drag leave
-    container.addEventListener('dragleave', (e) => {
-      const slot = e.target.closest('.party-slot');
-      if (slot) {
-        slot.classList.remove('drag-over');
-      }
+    body.addEventListener('dragleave', e => {
+      const slot = e.target.closest('.pc-slot');
+      if (slot) slot.classList.remove('pc-drop-target');
     });
-    
-    // Handle drop on party slots
-    container.addEventListener('drop', (e) => {
-      const slot = e.target.closest('.party-slot');
-      if (slot && this.draggedCharacter) {
-        e.preventDefault();
-        slot.classList.remove('drag-over');
-        
-        const position = parseInt(slot.dataset.position);
-        this.addCharacterToParty(this.draggedCharacter, position);
-      }
-    });
-    
-    // Handle double-click on character cards to show character sheet
-    container.addEventListener('dblclick', (e) => {
-      const card = e.target.closest('.character-card');
-      if (card && card.dataset.characterId) {
-        this.showCharacterSheet(card.dataset.characterId);
-      }
+    body.addEventListener('drop', e => {
+      const slot = e.target.closest('.pc-slot');
+      if (!slot || !this.draggedCharacter) return;
+      e.preventDefault();
+      slot.classList.remove('pc-drop-target');
+      this._assignToSlot(this.draggedCharacter, parseInt(slot.dataset.pos));
     });
   }
 
-  /**
-   * Update class preview
-   */
-  updateClassPreview() {
-    const preview = this.container.querySelector('#class-preview');
-    preview.innerHTML = this.createClassPreview(this.selectedClass);
-  }
+  // ── Actions ──────────────────────────────────────────────────────────────────
 
-  /**
-   * Create a new character
-   */
-  createCharacter() {
-    const name = this.characterName.trim() || null;
-    
+  _createCharacter() {
+    const input = this.container.querySelector('#pc-name');
+    const name  = input.value.trim() || null;
     try {
-      const character = this.characterSystem.createCharacter(this.selectedClass, name);
-      
-      // Clear form
-      this.container.querySelector('#character-name').value = '';
-      this.characterName = '';
-      
-      // Update displays
-      this.updateAvailableCharacters();
-      this.updateValidation();
-      
-      console.log(`Created character: ${character.name}`);
-    } catch (error) {
-      console.error('Failed to create character:', error);
-      alert('Failed to create character: ' + error.message);
+      this.characterSystem.createCharacter(this.selectedClass, name);
+      input.value = '';
+      this._refresh();
+    } catch (err) {
+      this._setValidation(`⚠ ${err.message}`, 'warn');
     }
   }
 
-  /**
-   * Create a test party
-   */
-  createTestParty() {
-    const party = this.characterSystem.createTestParty('balanced');
-    this.updateAvailableCharacters();
-    this.updatePartyDisplay();
-    this.updateValidation();
-    
-    console.log('Created test party');
+  _testParty() {
+    try {
+      this.characterSystem.createTestParty('balanced');
+    } catch (e) { /* ignore if already exists */ }
+    this._refresh();
   }
 
-  /**
-   * Add character to party at specific position
-   * @param {string} characterId - Character ID
-   * @param {number} position - Party position (0-3)
-   */
-  addCharacterToParty(characterId, position) {
-    // Check if position is occupied
-    const currentParty = this.characterSystem.partyManager.party;
-    if (currentParty[position]) {
-      // Swap if both positions have characters
-      const existingCharacter = currentParty[position];
-      const movingCharacter = this.characterSystem.getCharacter(characterId);
-      
-      if (this.characterSystem.partyManager.hasCharacter(characterId)) {
-        // Swap positions
-        this.characterSystem.partyManager.swapCharacters(characterId, existingCharacter.id);
-      } else {
-        // Remove existing character and add new one
-        this.characterSystem.removeFromParty(existingCharacter.id);
-        this.characterSystem.partyManager.addCharacter(movingCharacter, position);
-      }
-    } else {
-      // Add to empty position
-      const character = this.characterSystem.getCharacter(characterId);
-      if (this.characterSystem.partyManager.hasCharacter(characterId)) {
-        // Move within party
-        this.characterSystem.partyManager.moveCharacter(characterId, position);
-      } else {
-        // Add from available characters
-        this.characterSystem.partyManager.addCharacter(character, position);
-      }
-    }
-    
-    this.updateAvailableCharacters();
-    this.updatePartyDisplay();
-    this.updateValidation();
-  }
-
-  /**
-   * Update available characters display
-   */
-  updateAvailableCharacters() {
-    const characterList = this.container.querySelector('#character-list');
-    const allCharacters = this.characterSystem.getAllCharacters();
-    const availableCharacters = allCharacters.filter(char => 
-      !this.characterSystem.partyManager.hasCharacter(char.id)
-    );
-    
-    if (availableCharacters.length === 0) {
-      characterList.innerHTML = '<p class="no-characters">No available characters</p>';
-      return;
-    }
-    
-    characterList.innerHTML = availableCharacters
-      .map(char => this.createCharacterCard(char, true))
-      .join('');
-  }
-
-  /**
-   * Update party formation display
-   */
-  updatePartyDisplay() {
-    const party = this.characterSystem.partyManager.party;
-    
-    // Update each slot
-    for (let i = 0; i < 4; i++) {
-      const slot = this.container.querySelector(`#slot-${i}`);
-      const character = party[i];
-      
-      if (character) {
-        slot.innerHTML = this.createCharacterCard(character, true);
-      } else {
-        slot.innerHTML = '<div class="empty-slot">Drop character here</div>';
-      }
-    }
-  }
-
-  /**
-   * Update party validation and start button
-   */
-  updateValidation() {
-    const validation = this.characterSystem.validateParty();
-    const validationDiv = this.container.querySelector('#party-validation');
-    const startBtn = this.container.querySelector('#start-game');
-    
-    let html = '';
-    
-    if (validation.warnings.length > 0) {
-      html += '<div class="validation-warnings">';
-      html += '<h4>Warnings:</h4>';
-      html += '<ul>';
-      validation.warnings.forEach(warning => {
-        html += `<li class="warning">${warning}</li>`;
-      });
-      html += '</ul></div>';
-    }
-    
-    if (validation.suggestions.length > 0) {
-      html += '<div class="validation-suggestions">';
-      html += '<h4>Suggestions:</h4>';
-      html += '<ul>';
-      validation.suggestions.forEach(suggestion => {
-        html += `<li class="suggestion">${suggestion}</li>`;
-      });
-      html += '</ul></div>';
-    }
-    
-    if (validation.isValid && this.characterSystem.partyManager.getPartySize() > 0) {
-      html += '<div class="validation-success">Party is ready to start!</div>';
-      startBtn.disabled = false;
-    } else {
-      startBtn.disabled = true;
-    }
-    
-    validationDiv.innerHTML = html;
-  }
-
-  /**
-   * Start the game with current party
-   */
-  startGame() {
-    const partySize = this.characterSystem.partyManager.getPartySize();
-    if (partySize === 0) {
-      alert('You need at least one character to start the game!');
-      return;
-    }
-    
-    // Emit game start event
-    const event = new CustomEvent('gameStart', {
-      detail: {
-        party: this.characterSystem.getParty(),
-        timestamp: Date.now()
-      }
-    });
-    
-    window.dispatchEvent(event);
-    
-    // Hide the UI
+  _startGame() {
+    const size = this.characterSystem.partyManager.getPartySize();
+    if (size === 0) { this._setValidation('⚠ Add at least one character to the party.', 'warn'); return; }
+    window.dispatchEvent(new CustomEvent('gameStart', {
+      detail: { party: this.characterSystem.getParty(), timestamp: Date.now() }
+    }));
     this.hide();
-    
-    console.log('Game started with party of', partySize, 'characters');
   }
 
-  /**
-   * Show character sheet for a character
-   * @param {string} characterId - Character ID
-   */
-  showCharacterSheet(characterId) {
-    // Import and use CharacterSheetUI
-    import('./CharacterSheetUI.js').then(module => {
-      const CharacterSheetUI = module.CharacterSheetUI;
-      const characterSheetUI = new CharacterSheetUI(this.characterSystem);
-      characterSheetUI.show(characterId);
+  _assignToSlot(charId, pos) {
+    const party   = this.characterSystem.partyManager.party;
+    const char    = this.characterSystem.getCharacter(charId);
+    if (!char) return;
+
+    const alreadyInParty = this.characterSystem.partyManager.hasCharacter(charId);
+    if (party[pos]) {
+      // Slot occupied — swap or replace
+      if (alreadyInParty) {
+        this.characterSystem.partyManager.swapCharacters(charId, party[pos].id);
+      } else {
+        this.characterSystem.removeFromParty(party[pos].id);
+        this.characterSystem.partyManager.addCharacter(char, pos);
+      }
+    } else {
+      if (alreadyInParty) {
+        this.characterSystem.partyManager.moveCharacter(charId, pos);
+      } else {
+        this.characterSystem.partyManager.addCharacter(char, pos);
+      }
+    }
+    this._refresh();
+  }
+
+  _removeFromSlot(pos) {
+    const party = this.characterSystem.partyManager.party;
+    if (party[pos]) {
+      this.characterSystem.removeFromParty(party[pos].id);
+      this._refresh();
+    }
+  }
+
+  // ── Render helpers ───────────────────────────────────────────────────────────
+
+  _refresh() {
+    this._renderPreview();
+    this._renderRoster();
+    this._renderFormation();
+    this._renderValidation();
+  }
+
+  _renderPreview() {
+    const preview = this.container.querySelector('#pc-preview');
+    if (!preview) return;
+    const def = CharacterClasses.getClassDefinition(this.selectedClass);
+    if (!def) { preview.innerHTML = ''; return; }
+    const s = def.baseStats;
+    preview.innerHTML = `
+      <div class="pc-preview-inner">
+        <strong>${def.name}</strong>
+        <p class="pc-preview-desc">${def.description}</p>
+        <div class="pc-stat-row">
+          <span>HP <b>${s.HP}</b></span><span>ATK <b>${s.ATK}</b></span>
+          <span>DEF <b>${s.DEF}</b></span><span>SPD <b>${s.SPD}</b></span>
+        </div>
+        <div class="pc-skill-list">
+          ${(def.skillProgression || []).slice(0,3).map(sk => `<span>Lv${sk.level}: ${sk.name}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  _renderRoster() {
+    const roster  = this.container.querySelector('#pc-roster');
+    const counter = this.container.querySelector('#pc-roster-count');
+    const all = this.characterSystem.getAllCharacters();
+    const available = all.filter(c => !this.characterSystem.partyManager.hasCharacter(c.id));
+    counter.textContent = `(${available.length})`;
+
+    if (available.length === 0) {
+      roster.innerHTML = '<p class="pc-empty">All characters assigned</p>';
+      return;
+    }
+    roster.innerHTML = '';
+    available.forEach(char => {
+      const card = this._makeCard(char, true);
+      card.addEventListener('click', () => {
+        // Click: auto-assign to first empty slot
+        const party = this.characterSystem.partyManager.party;
+        const emptyPos = [0,1,2,3].find(i => !party[i]);
+        if (emptyPos !== undefined) {
+          this._assignToSlot(char.id, emptyPos);
+        } else {
+          this._setValidation('⚠ Party is full (4 members max).', 'warn');
+        }
+      });
+      roster.appendChild(card);
     });
   }
 
-  /**
-   * Add CSS styles for the party creation UI
-   */
-  addStyles() {
-    if (document.getElementById('party-creation-styles')) return;
-    
-    const style = document.createElement('style');
-    style.id = 'party-creation-styles';
-    style.textContent = `
-      .party-creation-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
+  _renderFormation() {
+    const party = this.characterSystem.partyManager.party;
+    [0,1,2,3].forEach(pos => {
+      const slot = this.container.querySelector(`#pc-slot-${pos}`);
+      if (!slot) return;
+      slot.innerHTML = '';
+      slot.classList.remove('pc-slot-filled');
+      if (party[pos]) {
+        slot.classList.add('pc-slot-filled');
+        const card = this._makeCard(party[pos], false);
+        card.addEventListener('click', () => this._removeFromSlot(pos));
+        const hint = document.createElement('span');
+        hint.className = 'pc-slot-remove';
+        hint.textContent = '✕ remove';
+        card.appendChild(hint);
+        slot.appendChild(card);
+      } else {
+        slot.innerHTML = '<span class="pc-slot-empty">Click roster<br>to assign</span>';
+      }
+    });
+  }
+
+  _renderValidation() {
+    const result  = this.characterSystem.validateParty();
+    const size    = this.characterSystem.partyManager.getPartySize();
+    const startBtn = this.container.querySelector('#pc-start');
+    const valDiv   = this.container.querySelector('#pc-validation');
+
+    const ready = result.isValid && size > 0;
+    startBtn.disabled = !ready;
+
+    if (ready) {
+      valDiv.innerHTML = '<span class="pc-val-ok">✔ Party ready to adventure!</span>';
+    } else if (size === 0) {
+      valDiv.innerHTML = '<span class="pc-val-info">Add at least one character to your party.</span>';
+    } else {
+      const msgs = [...(result.warnings||[]), ...(result.suggestions||[])].slice(0,2);
+      valDiv.innerHTML = msgs.map(m => `<span class="pc-val-warn">⚠ ${m}</span>`).join('');
+    }
+  }
+
+  _setValidation(msg, type='info') {
+    const valDiv = this.container.querySelector('#pc-validation');
+    if (valDiv) valDiv.innerHTML = `<span class="pc-val-${type}">${msg}</span>`;
+  }
+
+  _makeCard(char, draggable = false) {
+    const div = document.createElement('div');
+    div.className = `pc-card pc-card-${char.class}`;
+    div.dataset.charId = char.id;
+    if (draggable) div.draggable = true;
+    const hp = Math.round((char.currentHP / char.maxHP) * 100);
+    const classColors = { warrior:'#c0392b', rogue:'#27ae60', mage:'#2980b9', cleric:'#f39c12' };
+    div.innerHTML = `
+      <div class="pc-card-top">
+        <span class="pc-card-name">${char.name}</span>
+        <span class="pc-card-level">Lv.${char.level}</span>
+      </div>
+      <span class="pc-card-class" style="color:${classColors[char.class]||'#aaa'}">${char.class}</span>
+      <div class="pc-card-hp">
+        <div class="pc-card-hp-bar" style="width:${hp}%"></div>
+        <span class="pc-card-hp-text">${char.currentHP}/${char.maxHP}</span>
+      </div>
+      <div class="pc-card-stats">
+        <span>ATK ${char.stats.ATK}</span>
+        <span>DEF ${char.stats.DEF}</span>
+        <span>SPD ${char.stats.SPD}</span>
+      </div>
+    `;
+    return div;
+  }
+
+  // ── Styles ───────────────────────────────────────────────────────────────────
+
+  _injectStyles() {
+    if (document.getElementById('pc-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'pc-styles';
+    s.textContent = `
+      /* ── reset user-select for form elements ── */
+      .pc-overlay input, .pc-overlay select, .pc-overlay button {
+        user-select: text;
+        -webkit-user-select: text;
+      }
+
+      .pc-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.85);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 3000;
         font-family: 'Courier New', monospace;
+        color: #ccc;
       }
-      
-      .party-creation-modal {
-        background: #1a1a1a;
-        border: 2px solid #00ff00;
-        border-radius: 10px;
-        width: 90%;
-        max-width: 1200px;
-        max-height: 90%;
-        overflow-y: auto;
-        color: #00ff00;
-      }
-      
-      .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px;
-        border-bottom: 1px solid #00ff00;
-      }
-      
-      .modal-header h2 {
-        margin: 0;
-        color: #00ff00;
-      }
-      
-      .close-btn {
-        background: none;
-        border: 1px solid #00ff00;
-        color: #00ff00;
-        font-size: 24px;
-        width: 40px;
-        height: 40px;
-        cursor: pointer;
-        border-radius: 5px;
-      }
-      
-      .close-btn:hover {
-        background: #00ff00;
-        color: #000;
-      }
-      
-      .modal-content {
-        display: grid;
-        grid-template-columns: 1fr 2fr 1fr;
-        gap: 20px;
-        padding: 20px;
-      }
-      
-      .creation-section, .party-section, .available-characters {
-        border: 1px solid #333;
-        border-radius: 5px;
-        padding: 15px;
-      }
-      
-      .creation-section h3, .party-section h3, .available-characters h3 {
-        margin: 0 0 15px 0;
-        color: #00ff00;
-        border-bottom: 1px solid #333;
-        padding-bottom: 5px;
-      }
-      
-      .form-group {
-        margin-bottom: 15px;
-      }
-      
-      .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        color: #00aa00;
-      }
-      
-      .form-group input, .form-group select {
-        width: 100%;
-        padding: 8px;
-        background: #000;
-        border: 1px solid #00ff00;
-        color: #00ff00;
-        border-radius: 3px;
-        font-family: inherit;
-      }
-      
-      .class-preview {
-        margin: 15px 0;
-        padding: 15px;
-        background: #0a0a0a;
-        border: 1px solid #333;
-        border-radius: 5px;
-      }
-      
-      .class-info h4 {
-        color: #00ff00;
-        margin: 0 0 10px 0;
-      }
-      
-      .class-description {
-        color: #00aa00;
-        margin-bottom: 15px;
-        font-size: 14px;
-      }
-      
-      .stats-grid, .growth-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 5px;
-        margin-bottom: 10px;
-      }
-      
-      .stat-item {
-        display: flex;
-        justify-content: space-between;
-        font-size: 12px;
-      }
-      
-      .stat-label {
-        color: #00aa00;
-      }
-      
-      .stat-value {
-        color: #00ff00;
-        font-weight: bold;
-      }
-      
-      .growth-item {
-        font-size: 12px;
-        color: #00aa00;
-      }
-      
-      .class-skills ul {
-        margin: 0;
-        padding-left: 20px;
-        font-size: 12px;
-        color: #00aa00;
-      }
-      
-      .create-character-btn {
-        width: 100%;
-        padding: 10px;
-        background: #003300;
-        border: 1px solid #00ff00;
-        color: #00ff00;
-        cursor: pointer;
-        border-radius: 5px;
-        font-family: inherit;
-      }
-      
-      .create-character-btn:hover {
-        background: #00ff00;
-        color: #000;
-      }
-      
-      .formation-info {
-        margin-bottom: 15px;
-        padding: 10px;
-        background: #0a0a0a;
-        border: 1px solid #333;
-        border-radius: 3px;
-        font-size: 12px;
-      }
-      
-      .formation-info p {
-        margin: 5px 0;
-        color: #00aa00;
-      }
-      
-      .formation-row {
-        margin-bottom: 20px;
-      }
-      
-      .formation-row h4 {
-        margin: 0 0 10px 0;
-        color: #00ff00;
-        text-align: center;
-      }
-      
-      .party-slots {
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-      }
-      
-      .party-slot {
-        width: 200px;
-        min-height: 150px;
-        border: 2px dashed #333;
-        border-radius: 5px;
-        position: relative;
-        transition: border-color 0.3s;
-      }
-      
-      .party-slot.drag-over {
-        border-color: #00ff00;
-        background: rgba(0, 255, 0, 0.1);
-      }
-      
-      .slot-label {
-        position: absolute;
-        top: 5px;
-        left: 5px;
-        font-size: 10px;
-        color: #666;
-      }
-      
-      .slot-content {
-        padding: 20px 10px 10px 10px;
-        height: 100%;
-      }
-      
-      .empty-slot {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        color: #666;
-        font-size: 12px;
-        text-align: center;
-      }
-      
-      .character-card {
-        background: #0a0a0a;
-        border: 1px solid #333;
-        border-radius: 5px;
-        padding: 10px;
-        margin-bottom: 10px;
-        cursor: move;
-        position: relative;
-        transition: all 0.3s;
-      }
-      
-      .character-card:hover {
-        border-color: #00ff00;
-        transform: translateY(-2px);
-      }
-      
-      .character-card.dragging {
-        opacity: 0.5;
-        transform: rotate(5deg);
-      }
-      
-      .character-card.warrior { border-left: 4px solid #8B4513; }
-      .character-card.rogue { border-left: 4px solid #228B22; }
-      .character-card.mage { border-left: 4px solid #4169E1; }
-      .character-card.cleric { border-left: 4px solid #FFD700; }
-      
-      .character-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 5px;
-      }
-      
-      .character-header h4 {
-        margin: 0;
-        color: #00ff00;
-        font-size: 14px;
-      }
-      
-      .character-level {
-        color: #00aa00;
-        font-size: 12px;
-      }
-      
-      .character-class {
-        color: #00aa00;
-        font-size: 12px;
-        margin-bottom: 8px;
-      }
-      
-      .hp-bar {
-        position: relative;
-        height: 16px;
-        background: #333;
+
+      .pc-modal {
+        background: #111;
+        border: 2px solid #00cc44;
         border-radius: 8px;
+        width: min(96vw, 860px);
+        max-height: 90vh;
+        display: flex; flex-direction: column;
         overflow: hidden;
-        margin-bottom: 8px;
       }
-      
-      .hp-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #ff4444, #ffaa44, #44ff44);
-        transition: width 0.3s;
+
+      /* Header */
+      .pc-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 12px 18px;
+        border-bottom: 1px solid #00cc44;
+        flex-shrink: 0;
       }
-      
-      .hp-text {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        color: #fff;
-        text-shadow: 1px 1px 1px #000;
+      .pc-title { color: #00ff55; font-size: 18px; font-weight: bold; }
+      .pc-close {
+        background: none; border: 1px solid #555; color: #aaa;
+        width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-size: 14px;
       }
-      
-      .character-stats {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 5px;
-        margin-bottom: 8px;
+      .pc-close:hover { border-color: #ff4444; color: #ff4444; }
+
+      /* Body — two panels side-by-side */
+      .pc-body {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 0; overflow: hidden; flex: 1; min-height: 0;
       }
-      
-      .stat {
-        font-size: 10px;
-        color: #00aa00;
-        text-align: center;
-      }
-      
-      .formation-effects {
-        font-size: 10px;
-        color: #666;
-        text-align: center;
-        font-style: italic;
-      }
-      
-      .drag-handle {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        color: #666;
-        font-size: 12px;
-        cursor: move;
-      }
-      
-      .character-list {
-        max-height: 400px;
+
+      .pc-left {
+        border-right: 1px solid #222;
         overflow-y: auto;
+        display: flex; flex-direction: column; gap: 0;
       }
-      
-      .no-characters {
-        text-align: center;
-        color: #666;
-        font-style: italic;
-        margin: 20px 0;
+      .pc-right { overflow-y: auto; }
+
+      .pc-section {
+        padding: 14px 16px;
+        border-bottom: 1px solid #222;
       }
-      
-      .modal-footer {
-        padding: 20px;
-        border-top: 1px solid #333;
+      .pc-section-roster { flex: 1; }
+      .pc-section-formation { height: 100%; }
+
+      .pc-section-title {
+        margin: 0 0 10px; font-size: 13px; color: #00ff55;
+        text-transform: uppercase; letter-spacing: 1px;
+        border-bottom: 1px solid #222; padding-bottom: 6px;
       }
-      
-      .party-validation {
-        margin-bottom: 15px;
+
+      /* Form */
+      .pc-field { margin-bottom: 10px; }
+      .pc-label { display: block; font-size: 11px; color: #888; margin-bottom: 4px; }
+      .pc-input {
+        width: 100%; box-sizing: border-box;
+        background: #0a0a0a; border: 1px solid #333; color: #00ff55;
+        padding: 7px 8px; border-radius: 4px; font-family: inherit; font-size: 13px;
+        outline: none;
       }
-      
-      .validation-warnings, .validation-suggestions {
-        margin-bottom: 10px;
+      .pc-input:focus { border-color: #00cc44; }
+
+      /* Preview */
+      .pc-preview { margin: 8px 0; }
+      .pc-preview-inner {
+        background: #0d0d0d; border: 1px solid #2a2a2a;
+        border-radius: 4px; padding: 10px; font-size: 12px;
       }
-      
-      .validation-warnings h4, .validation-suggestions h4 {
-        margin: 0 0 5px 0;
-        font-size: 14px;
+      .pc-preview-inner strong { color: #00ff55; display: block; margin-bottom: 4px; }
+      .pc-preview-desc { color: #666; font-size: 11px; margin: 0 0 8px; }
+      .pc-stat-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+      .pc-stat-row span { color: #888; font-size: 11px; }
+      .pc-stat-row b { color: #00cc44; }
+      .pc-skill-list { display: flex; flex-direction: column; gap: 2px; }
+      .pc-skill-list span { font-size: 10px; color: #556; }
+
+      /* Buttons */
+      .pc-btn {
+        cursor: pointer; border-radius: 4px; font-family: inherit;
+        font-size: 13px; padding: 8px 14px; border: 1px solid;
+        transition: background 0.15s, color 0.15s;
       }
-      
-      .validation-warnings h4 {
-        color: #ff8800;
+      .pc-btn-create {
+        width: 100%; background: #001a00; border-color: #00cc44; color: #00ff55;
       }
-      
-      .validation-suggestions h4 {
-        color: #00aaff;
+      .pc-btn-create:hover { background: #00cc44; color: #000; }
+      .pc-btn-test { background: #1a001a; border-color: #cc44ff; color: #cc44ff; }
+      .pc-btn-test:hover { background: #cc44ff; color: #000; }
+      .pc-btn-start {
+        background: #003300; border-color: #00ff55; color: #00ff55;
+        padding: 8px 22px; font-weight: bold;
       }
-      
-      .validation-warnings ul, .validation-suggestions ul {
-        margin: 0;
-        padding-left: 20px;
+      .pc-btn-start:hover:not(:disabled) { background: #00ff55; color: #000; }
+      .pc-btn-start:disabled { background: #1a1a1a; border-color: #333; color: #444; cursor: not-allowed; }
+
+      /* Roster */
+      .pc-roster { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+      .pc-empty { color: #444; font-size: 12px; text-align: center; margin: 14px 0; }
+
+      /* Formation grid */
+      .pc-formation-info { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+      .pc-badge {
+        font-size: 10px; padding: 3px 8px; border-radius: 3px;
+        border: 1px solid; white-space: nowrap;
       }
-      
-      .warning {
-        color: #ff8800;
-        font-size: 12px;
+      .pc-badge.front { color: #ff9944; border-color: #ff9944; }
+      .pc-badge.back  { color: #44aaff; border-color: #44aaff; }
+
+      .pc-grid {
+        display: grid;
+        grid-template-columns: 40px 1fr 1fr;
+        grid-template-rows: auto auto;
+        gap: 8px;
+        align-items: start;
       }
-      
-      .suggestion {
-        color: #00aaff;
-        font-size: 12px;
+      .pc-row-label {
+        writing-mode: vertical-rl; text-orientation: mixed;
+        font-size: 11px; color: #555; text-align: center;
+        padding: 4px 0; align-self: center;
       }
-      
-      .validation-success {
-        color: #00ff00;
-        font-weight: bold;
-        text-align: center;
-        padding: 10px;
-        background: rgba(0, 255, 0, 0.1);
-        border: 1px solid #00ff00;
-        border-radius: 5px;
+
+      .pc-slot {
+        min-height: 90px; border: 2px dashed #2a2a2a; border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
+        transition: border-color 0.2s, background 0.2s;
+        cursor: default; overflow: hidden;
       }
-      
-      .modal-actions {
-        display: flex;
+      .pc-slot.pc-slot-filled { border-style: solid; border-color: #2a5a2a; }
+      .pc-slot.pc-drop-target { border-color: #00ff55; background: rgba(0,255,85,0.05); }
+      .pc-slot-empty { font-size: 11px; color: #333; text-align: center; padding: 8px; }
+
+      .pc-hint { font-size: 10px; color: #444; margin: 10px 0 0; text-align: center; }
+
+      /* Character cards */
+      .pc-card {
+        background: #0d0d0d; border: 1px solid #222; border-radius: 5px;
+        padding: 8px 10px; cursor: pointer; position: relative;
+        transition: border-color 0.15s, transform 0.1s;
+        width: 100%; box-sizing: border-box;
+      }
+      .pc-card:hover { border-color: #00cc44; transform: translateY(-1px); }
+      .pc-card.pc-dragging { opacity: 0.45; transform: rotate(3deg); }
+
+      .pc-card-warrior { border-left: 3px solid #c0392b; }
+      .pc-card-rogue   { border-left: 3px solid #27ae60; }
+      .pc-card-mage    { border-left: 3px solid #2980b9; }
+      .pc-card-cleric  { border-left: 3px solid #f39c12; }
+
+      .pc-card-top { display: flex; justify-content: space-between; margin-bottom: 3px; }
+      .pc-card-name { color: #ddd; font-size: 13px; font-weight: bold; }
+      .pc-card-level { font-size: 11px; color: #666; }
+      .pc-card-class { font-size: 11px; display: block; margin-bottom: 5px; }
+
+      .pc-card-hp { position: relative; height: 12px; background: #222; border-radius: 6px; overflow: hidden; margin-bottom: 5px; }
+      .pc-card-hp-bar { height: 100%; background: linear-gradient(90deg, #c0392b, #e67e22, #27ae60); }
+      .pc-card-hp-text {
+        position: absolute; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 9px; color: #fff; text-shadow: 0 0 3px #000;
+      }
+      .pc-card-stats { display: flex; gap: 8px; font-size: 10px; color: #666; }
+      .pc-slot-remove {
+        display: block; font-size: 9px; color: #ff4444; text-align: right;
+        margin-top: 4px; opacity: 0;
+        transition: opacity 0.15s;
+      }
+      .pc-card:hover .pc-slot-remove { opacity: 1; }
+
+      /* Footer */
+      .pc-footer {
+        flex-shrink: 0;
+        padding: 10px 16px;
+        border-top: 1px solid #222;
+        display: flex; justify-content: space-between; align-items: center;
         gap: 10px;
-        justify-content: flex-end;
       }
-      
-      .btn {
-        padding: 10px 20px;
-        border: 1px solid;
-        border-radius: 5px;
-        cursor: pointer;
-        font-family: inherit;
-        font-size: 14px;
-      }
-      
-      .btn.primary {
-        background: #003300;
-        border-color: #00ff00;
-        color: #00ff00;
-      }
-      
-      .btn.primary:hover:not(:disabled) {
-        background: #00ff00;
-        color: #000;
-      }
-      
-      .btn.primary:disabled {
-        background: #333;
-        border-color: #666;
-        color: #666;
-        cursor: not-allowed;
-      }
-      
-      .btn.secondary {
-        background: #330033;
-        border-color: #ff00ff;
-        color: #ff00ff;
-      }
-      
-      .btn.secondary:hover {
-        background: #ff00ff;
-        color: #000;
-      }
-      
-      @media (max-width: 1024px) {
-        .modal-content {
-          grid-template-columns: 1fr;
-          grid-template-rows: auto auto auto;
-        }
-        
-        .party-slots {
-          flex-wrap: wrap;
-        }
-        
-        .party-slot {
-          width: 180px;
-        }
+      .pc-validation { flex: 1; font-size: 12px; }
+      .pc-val-ok   { color: #00ff55; }
+      .pc-val-warn { color: #ff9944; }
+      .pc-val-info { color: #6688aa; }
+      .pc-actions { display: flex; gap: 10px; flex-shrink: 0; }
+
+      /* Scrollbars */
+      .pc-left::-webkit-scrollbar,
+      .pc-right::-webkit-scrollbar,
+      .pc-roster::-webkit-scrollbar { width: 4px; }
+      .pc-left::-webkit-scrollbar-track,
+      .pc-right::-webkit-scrollbar-track,
+      .pc-roster::-webkit-scrollbar-track { background: #0a0a0a; }
+      .pc-left::-webkit-scrollbar-thumb,
+      .pc-right::-webkit-scrollbar-thumb,
+      .pc-roster::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+      @media (max-width: 600px) {
+        .pc-body { grid-template-columns: 1fr; }
+        .pc-left { border-right: none; border-bottom: 1px solid #222; max-height: 50vh; }
       }
     `;
-    
-    document.head.appendChild(style);
+    document.head.appendChild(s);
   }
 }
