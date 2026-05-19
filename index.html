@@ -37,6 +37,9 @@
         <!-- Fade Overlay for Level Transitions -->
         <div id="fade-overlay" class="fade-overlay" data-ui-component="fade-overlay" data-ui-name="transition-overlay"></div>
 
+        <!-- Combat container (used by CombatAnimations for intro transitions) -->
+        <div id="combat-container" style="display:none;position:absolute;inset:0;"></div>
+
         <!-- Minimap -->
         <div id="minimap" class="minimap" data-ui-component="minimap-panel" data-ui-name="level-minimap">
             <h4>Minimap</h4>
@@ -53,30 +56,20 @@
         <!-- Controls Help -->
         <div id="controls-help" class="controls-help" data-ui-component="controls-panel" data-ui-name="control-instructions">
             <h4>Controls</h4>
-            <div class="control-group">
-                <span class="key">W/↑</span> Move Forward
-            </div>
-            <div class="control-group">
-                <span class="key">S/↓</span> Move Backward
-            </div>
-            <div class="control-group">
-                <span class="key">A/←</span> Turn Left
-            </div>
-            <div class="control-group">
-                <span class="key">D/→</span> Turn Right
-            </div>
-            <div class="control-group">
-                <span class="key">Q</span> Strafe Left
-            </div>
-            <div class="control-group">
-                <span class="key">E</span> Strafe Right
-            </div>
-            <div class="control-group">
-                <span class="key">Space</span> Interact
-            </div>
-            <div class="control-group">
-                <span class="key">I</span> Debug Info
-            </div>
+            <div class="control-group"><span class="key">W/↑</span> Move Forward</div>
+            <div class="control-group"><span class="key">S/↓</span> Move Backward</div>
+            <div class="control-group"><span class="key">A/←</span> Turn Left</div>
+            <div class="control-group"><span class="key">D/→</span> Turn Right</div>
+            <div class="control-group"><span class="key">Q / E</span> Strafe L/R</div>
+            <div class="control-group"><span class="key">Space</span> Interact</div>
+            <div class="control-group"><span class="key">I</span> Inventory</div>
+            <div class="control-group"><span class="key">C</span> Character</div>
+            <div class="control-group"><span class="key">P</span> Party</div>
+            <div class="control-group"><span class="key">Esc</span> Close / Menu</div>
+            <div class="control-group"><span class="key">F5 / F9</span> Quick Save/Load</div>
+            <div class="control-group"><span class="key">1-5</span> Combat actions <span class="pending">(in combat)</span></div>
+            <div class="control-group"><span class="key">L / T</span> Cycle test level (dev)</div>
+            <div class="control-group"><span class="key">Ctrl+key</span> Dev diagnostics <span class="pending">(see console)</span></div>
         </div>
     </div>
 

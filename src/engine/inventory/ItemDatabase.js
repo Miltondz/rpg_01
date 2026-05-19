@@ -124,6 +124,27 @@ export class ItemDatabase {
   }
 
   /**
+   * Generate a random item matching optional filters.
+   * STUB: the original implementation was never written; ShopSystem expected this method
+   * and crashed at module-load when it didn't exist. Returns a random matching item
+   * from the current sparse database, or null if no match.
+   * @param {number} level - target item level
+   * @param {string} type - ItemTypes.WEAPON / ARMOR / ACCESSORY / CONSUMABLE
+   * @param {string} rarity - ItemRarity.* (ignored for now, no rarity data on items)
+   * @returns {Object|null}
+   */
+  generateRandomItem(level = 1, type = null, rarity = null) {
+    const candidates = [];
+    for (const item of this.items.values()) {
+      if (type && item.type !== type) continue;
+      candidates.push(item);
+    }
+    if (candidates.length === 0) return null;
+    const template = candidates[Math.floor(Math.random() * candidates.length)];
+    return this.createItem(template.id, level);
+  }
+
+  /**
    * Get items by type
    * @param {string} type - Item type
    * @returns {Array} Items of specified type

@@ -2,6 +2,8 @@
  * @fileoverview Grid system for managing discrete coordinate system and tile data
  */
 
+import { Dir } from './Direction.js';
+
 /**
  * GridSystem manages the discrete coordinate system where the game world is divided
  * into 2x2 meter tiles. Provides coordinate conversion, tile data storage, and
@@ -123,22 +125,14 @@ export class GridSystem {
      */
     getAdjacentTiles(x, z) {
         const adjacent = [];
-        const directions = [
-            { x: 0, z: -1 }, // North
-            { x: 1, z: 0 },  // East
-            { x: 0, z: 1 },  // South
-            { x: -1, z: 0 }  // West
-        ];
-
-        for (const dir of directions) {
+        for (let i = 0; i < 4; i++) {
+            const dir = Dir.delta(i);
             const adjX = x + dir.x;
             const adjZ = z + dir.z;
             const position = { x: adjX, z: adjZ };
             const tile = this.isValidPosition(adjX, adjZ) ? this.getTile(adjX, adjZ) : null;
-            
             adjacent.push({ position, tile });
         }
-
         return adjacent;
     }
 

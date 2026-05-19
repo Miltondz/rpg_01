@@ -1,4 +1,6 @@
 // Collision System - Movement validation and special tile interactions
+import { Dir } from '../core/Direction.js';
+
 export class CollisionSystem {
   constructor(gridSystem, doorSystem = null) {
     this.gridSystem = gridSystem;
@@ -338,14 +340,7 @@ export class CollisionSystem {
    * @returns {Object} Movement validation result
    */
   async validateDirectionalMovement(currentX, currentZ, direction) {
-    const directions = [
-      {x: 0, z: -1}, // North
-      {x: 1, z: 0},  // East
-      {x: 0, z: 1},  // South
-      {x: -1, z: 0}  // West
-    ];
-    
-    if (direction < 0 || direction >= directions.length) {
+    if (direction < 0 || direction >= 4 || !Number.isInteger(direction)) {
       return {
         blocked: true,
         reason: 'invalid_direction',
@@ -353,12 +348,8 @@ export class CollisionSystem {
         data: null
       };
     }
-    
-    const dir = directions[direction];
-    const targetX = currentX + dir.x;
-    const targetZ = currentZ + dir.z;
-    
-    return await this.checkMovement(currentX, currentZ, targetX, targetZ);
+    const dir = Dir.delta(direction);
+    return await this.checkMovement(currentX, currentZ, currentX + dir.x, currentZ + dir.z);
   }
 
   /**

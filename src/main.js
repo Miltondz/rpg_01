@@ -17,6 +17,12 @@ import { GeometryFactory } from './engine/utils/GeometryFactory.js';
 import { DebugUI } from './engine/ui/DebugUI.js';
 import { PerformanceManager } from './engine/performance/PerformanceManager.js';
 
+// Diagnostic infrastructure
+import { Logger, LogLevel } from './engine/utils/Logger.js';
+import { SystemInspector } from './engine/utils/SystemInspector.js';
+import { EventBus, EventTypes } from './engine/core/EventBus.js';
+import { Dir } from './engine/core/Direction.js';
+
 // Import performance systems
 import { PerformanceOptimizer } from './engine/performance/PerformanceOptimizer.js';
 import { MemoryManager } from './engine/performance/MemoryManager.js';
@@ -25,12 +31,25 @@ import { PerformanceTester } from './engine/performance/PerformanceTester.js';
 // Import game systems
 import { CombatSystem } from './engine/combat/CombatSystem.js';
 import { PartyManager } from './engine/character/PartyManager.js';
+import { CharacterSystem } from './engine/character/CharacterSystem.js';
 import { SaveSystem } from './engine/save/SaveSystem.js';
+import { AutoSaveManager } from './engine/save/AutoSaveManager.js';
 import { shopSystem } from './engine/shop/ShopSystem.js';
 import { lootSystem } from './engine/loot/LootSystem.js';
 import { InventorySystem } from './engine/inventory/InventorySystem.js';
 import { itemDatabase } from './engine/inventory/ItemDatabase.js';
 import { enemyDatabase } from './engine/data/EnemyDatabase.js';
+import { EncounterSystem } from './engine/systems/EncounterSystem.js';
+
+// Import UI systems
+import { UIRouter } from './engine/ui/UIRouter.js';
+import { CombatUIManager } from './engine/ui/CombatUIManager.js';
+import { InventoryUI } from './engine/ui/InventoryUI.js';
+import { CharacterSheetUI } from './engine/ui/CharacterSheetUI.js';
+import { EquipmentUI } from './engine/ui/EquipmentUI.js';
+import { ShopUI } from './engine/ui/ShopUI.js';
+import { SaveLoadUI } from './engine/ui/SaveLoadUI.js';
+import { PartyCreationUI } from './engine/ui/PartyCreationUI.js';
 
 /**
  * Main Game Engine Class
@@ -59,12 +78,26 @@ class DungeonCrawlerEngine {
     // Game systems
     this.combatSystem = null;
     this.partyManager = null;
+    this.characterSystem = null;
     this.saveSystem = null;
+    this.autoSaveManager = null;
     this.shopSystem = shopSystem;
     this.lootSystem = lootSystem;
     this.inventorySystem = null;
     this.itemDatabase = itemDatabase;
     this.enemyDatabase = enemyDatabase;
+    this.encounterSystem = null;
+    this.currentLevelId = null;
+
+    // UI systems
+    this.uiRouter = null;
+    this.combatUIManager = null;
+    this.inventoryUI = null;
+    this.characterSheetUI = null;
+    this.equipmentUI = null;
+    this.shopUI = null;
+    this.saveLoadUI = null;
+    this.partyCreationUI = null;
     
     // Game state
     this.isInitialized = false;
@@ -101,11 +134,14 @@ class DungeonCrawlerEngine {
    * Initialize the game engine
    */
   async initialize() {
+    const bootLog = Logger.tag('Boot');
+    const t0 = performance.now();
     try {
-      console.log('Initializing Dungeon Crawler Engine...');
-      
+      bootLog.info('Engine initialize() start');
+
       // Initialize core systems
       this.initializeSystems();
+      bootLog.info(`Core systems ready (+${(performance.now() - t0).toFixed(0)}ms)`);
       
       // Initialize debug UI
       this.debugUI = new DebugUI();
@@ -117,7 +153,8 @@ class DungeonCrawlerEngine {
       this.setupEventListeners();
       
       this.isInitialized = true;
-      console.log('Engine initialized successfully');
+      this.inspector = new SystemInspector(this);
+      bootLog.info('Engine initialized successfully');
       
       // Initialize performance manager
       await this.performanceManager.initialize({
@@ -133,63 +170,47 @@ class DungeonCrawlerEngine {
       this.memoryManager.startMonitoring();
       await this.performanceTester.initialize();
       
-      // Load initial test level automatically - start with 10x10 test room
-      await this.loadInitialTestLevel();
-      
-      // Initialize game loop manager after level is loaded
+      // Initialize UI layer
+      await this.initializeUIs();
+      bootLog.info(`UIs ready (+${(performance.now() - t0).toFixed(0)}ms)`);
+
+      // Initialize game loop manager
       if (this.gameLoopManager) {
         await this.gameLoopManager.initialize();
       }
-      
-      // Log initial player state for debugging
-      const playerPos = this.movementController.getPosition();
-      const playerDir = this.movementController.getDirection();
-      console.log(`Player initialized at (${playerPos.x}, ${playerPos.z}) facing direction ${playerDir}`);
-      
-      // Debug: Show surrounding tiles
-      this.debugSurroundingTiles(playerPos.x, playerPos.z);
-      
-      // Initialize minimap
-      setTimeout(() => {
-        this.initializeMinimap();
-      }, 1000); // Delay to ensure DOM is ready
-      
-      // Add debug key for real-time diagnostics
+
+      // Wire game flow: party creation → campaign → encounters → autosave
+      this.initializeGameFlow();
+      bootLog.info(`Game flow ready (+${(performance.now() - t0).toFixed(0)}ms)`);
+
+      // Dev shortcuts: Ctrl+<key> reserved for engine diagnostics so InputManager bindings
+      // (I=inventory, C=character, P=party, etc.) stay reachable for the player.
+      // Plain keys go through InputManager.keyMap; modifier+key stays here.
       window.addEventListener('keydown', (event) => {
-        if (event.code === 'KeyI') { // I key for info
-          this.debugCurrentState();
+        if (!event.ctrlKey) return;
+        switch (event.code) {
+          case 'KeyI': this.debugCurrentState(); break;
+          case 'KeyM': this.testMinimap(); break;
+          case 'KeyP': this.fullDiagnosis(); break;
+          case 'KeyF': this.showPerformanceStats(); break;
+          case 'KeyT': this.runExtendedSessionTest(); break;
+          case 'KeyL': this.loadTestLevel(); break;
+          case 'KeyC': this.runCombatPerformanceTest(); break;
+          case 'KeyS': this.runSaveLoadPerformanceTest(); break;
+          case 'KeyR': this.showPerformanceReport(); break;
+          case 'KeyD': Logger.dump(); console.log(Logger.asText()); break;
+          default: return;
         }
-        if (event.code === 'KeyM') { // M key for minimap test
-          this.testMinimap();
-        }
-        if (event.code === 'KeyP') { // P key for complete diagnosis
-          this.fullDiagnosis();
-        }
-        if (event.code === 'KeyF') { // F key for performance stats
-          this.showPerformanceStats();
-        }
-        if (event.code === 'KeyT') { // T key for extended session test
-          this.runExtendedSessionTest();
-        }
-        if (event.code === 'KeyL') { // L key for loading next test level
-          this.loadTestLevel();
-        }
-        if (event.code === 'KeyC') { // C key for combat performance test
-          this.runCombatPerformanceTest();
-        }
-        if (event.code === 'KeyS') { // S key for save/load performance test
-          this.runSaveLoadPerformanceTest();
-        }
-        if (event.code === 'KeyR') { // R key for performance report
-          this.showPerformanceReport();
-        }
+        event.preventDefault();
       });
+      Logger.tag('Boot').info('Dev shortcuts now require Ctrl: Ctrl+I/M/P/F/T/L/C/S/R/D');
       
       // Show ready message
-      this.debugUI.showSuccess('Engine Ready - Use WASD to move, Space to interact');
-      
+      this.debugUI.showSuccess('Engine Ready — Create your party to begin!');
+      Logger.tag('Boot').info(`Engine fully ready (+${(performance.now() - t0).toFixed(0)}ms total)`);
+
     } catch (error) {
-      console.error('Failed to initialize engine:', error);
+      Logger.tag('Boot').error('Failed to initialize engine:', error);
       if (this.debugUI) {
         this.debugUI.showError('Failed to initialize engine', { system: 'Engine' });
       }
@@ -227,7 +248,8 @@ class DungeonCrawlerEngine {
     
     // Initialize game systems
     this.combatSystem = new CombatSystem();
-    this.partyManager = new PartyManager();
+    this.characterSystem = new CharacterSystem();
+    this.partyManager = this.characterSystem.partyManager; // single source of truth
     this.saveSystem = new SaveSystem();
     this.inventorySystem = new InventorySystem(40);
     
@@ -243,7 +265,147 @@ class DungeonCrawlerEngine {
     console.log('Core systems initialized');
   }
 
+  /**
+   * Initialize and register all UI screens with UIRouter.
+   */
+  async initializeUIs() {
+    const log = Logger.tag('Boot');
 
+    this.uiRouter = new UIRouter();
+
+    // Instantiate UIs — order matters: some create DOM in constructor
+    this.inventoryUI     = new InventoryUI(this.inventorySystem);
+    this.characterSheetUI = new CharacterSheetUI(this.characterSystem, this.inventorySystem);
+    this.equipmentUI     = new EquipmentUI(this.characterSystem, this.inventorySystem);
+    this.shopUI          = new ShopUI(this.inventorySystem, this.partyManager);
+    this.saveLoadUI      = new SaveLoadUI(this.saveSystem);
+    this.partyCreationUI = new PartyCreationUI(this.characterSystem);
+    this.combatUIManager = new CombatUIManager();
+    await this.combatUIManager.initialize(this.combatSystem);
+
+    const blockMove  = () => this.inputManager.blockInput();
+    const unblockMove = () => this.inputManager.unblockInput();
+
+    this.uiRouter.register('inventory', {
+      show: () => { this.inventoryUI.show();      blockMove(); },
+      hide: () => { this.inventoryUI.hide();      unblockMove(); },
+    });
+    this.uiRouter.register('character-sheet', {
+      show: () => { this.characterSheetUI.show(null); blockMove(); },
+      hide: () => { this.characterSheetUI.hide();     unblockMove(); },
+    });
+    this.uiRouter.register('equipment', {
+      show: () => { this.equipmentUI.show(null, null); blockMove(); },
+      hide: () => { this.equipmentUI.hide();            unblockMove(); },
+    });
+    this.uiRouter.register('shop', {
+      show: () => {
+        const partyLevel = this.partyManager.getAverageLevel?.()
+          ?? this.partyManager.getPartyLevel?.()
+          ?? 1;
+        this.shopUI.show(partyLevel);
+        blockMove();
+      },
+      hide: () => { this.shopUI.hide(); unblockMove(); },
+    });
+    this.uiRouter.register('save', {
+      show: () => { this.saveLoadUI.show('save'); blockMove(); },
+      hide: () => { this.saveLoadUI.hide();       unblockMove(); },
+    });
+    this.uiRouter.register('load', {
+      show: () => { this.saveLoadUI.show('load'); blockMove(); },
+      hide: () => { this.saveLoadUI.hide();       unblockMove(); },
+    });
+
+    // Close overlay screens when a UI dispatches a self-close event
+    window.addEventListener('inventoryClose',     () => { if (this.uiRouter.isActive('inventory'))      this.uiRouter.pop(); });
+    window.addEventListener('characterSheetClose',() => { if (this.uiRouter.isActive('character-sheet')) this.uiRouter.pop(); });
+    window.addEventListener('equipmentClose',     () => { if (this.uiRouter.isActive('equipment'))      this.uiRouter.pop(); });
+    window.addEventListener('shopClose',          () => { if (this.uiRouter.isActive('shop'))           this.uiRouter.pop(); });
+    window.addEventListener('saveLoadClose',      () => {
+      if (this.uiRouter.isActive('save') || this.uiRouter.isActive('load')) this.uiRouter.pop();
+    });
+
+    log.info('UI Router + screens registered');
+  }
+
+  /**
+   * Wire game flow: party creation → campaign load → encounters → autosave.
+   */
+  initializeGameFlow() {
+    const log = Logger.tag('Boot');
+
+    // AutoSaveManager
+    this.autoSaveManager = new AutoSaveManager(this.saveSystem);
+
+    // EncounterSystem — uses shared partyManager (same ref as CharacterSystem.partyManager)
+    this.encounterSystem = new EncounterSystem(this.combatSystem, this.partyManager);
+
+    // movementCompleted → encounter check
+    window.addEventListener('movementCompleted', async (e) => {
+      if (!this.encounterSystem || !this.currentLevelId) return;
+      await this.encounterSystem.checkForEncounter(e.detail.newPosition, this.currentLevelId);
+    });
+
+    // encounterEvent → block/unblock movement around combat
+    window.addEventListener('encounterEvent', (e) => {
+      if (e.detail.type === 'encounterTriggered') {
+        this.inputManager.blockInput();
+        Logger.tag('Event:encounterEvent').info('combat starting');
+      } else if (e.detail.type === 'encounterEnded') {
+        this.inputManager.unblockInput();
+        Logger.tag('Event:encounterEvent').info('combat ended');
+      }
+    });
+
+    // gameStart (emitted by PartyCreationUI) → load campaign floor 1
+    window.addEventListener('gameStart', async (e) => {
+      log.info('gameStart received — loading campaign');
+      this.partyCreationUI.hide();
+
+      try {
+        const response = await fetch('levels/crypt-of-shadows-floor-1.json');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const levelData = await response.json();
+        this.currentLevelId = levelData.id ?? 'crypt-of-shadows-floor-1';
+        await this.dungeonLoader.loadLevel(levelData);
+
+        if (levelData.spawn) {
+          this.movementController.setPosition(
+            levelData.spawn.x, levelData.spawn.z,
+            levelData.spawn.direction ?? 0
+          );
+        }
+        const worldPos = this.movementController.getCurrentWorldPosition();
+        const rotation  = this.movementController.getCurrentRotation();
+        this.renderer.updateCameraPosition(worldPos);
+        this.renderer.updateCameraRotation(rotation);
+
+        this.autoSaveManager.initialize({ party: this.partyManager });
+        setTimeout(() => this.initializeMinimap(), 500);
+        this.debugSurroundingTiles(
+          this.movementController.getPosition().x,
+          this.movementController.getPosition().z
+        );
+        this.debugUI.showSuccess('Crypt of Shadows — Floor 1. WASD to move, Space to interact.');
+        log.info(`Campaign loaded: ${this.currentLevelId}`);
+      } catch (err) {
+        log.warn(`Campaign load failed (${err.message}), falling back to test level`);
+        await this.loadInitialTestLevel();
+        setTimeout(() => this.initializeMinimap(), 500);
+      }
+    });
+
+    // gameLoadRequested (emitted by SaveLoadUI) → load saved state
+    window.addEventListener('gameLoadRequested', (e) => {
+      Logger.tag('Event:gameLoadRequested').info('load requested', e.detail);
+      // TODO Etapa 5: restore full game state from save slot
+    });
+
+    // Show party creation overlay immediately; game loop already running (empty scene)
+    this.partyCreationUI.show();
+    log.info('Game flow wired — awaiting party creation');
+  }
 
   /**
    * Track system memory usage and performance
@@ -302,6 +464,12 @@ class DungeonCrawlerEngine {
     
     window.addEventListener('transitionError', (event) => {
       this.handleTransitionError(event.detail);
+    });
+
+    // openEquipmentSelection (emitted by CharacterSheetUI) → open equipment overlay
+    window.addEventListener('openEquipmentSelection', (e) => {
+      Logger.tag('Event:openEquipmentSelection').debug('received', e.detail);
+      this.uiRouter?.push('equipment');
     });
   }
 
@@ -396,9 +564,9 @@ class DungeonCrawlerEngine {
     
     // Update all game systems
     this.update(cappedDeltaTime);
-    
+
     // Render the scene
-    this.render();
+    this.render(currentTime);
     
     // Performance tracking - end frame timing
     const frameEndTime = performance.now();
@@ -500,8 +668,43 @@ class DungeonCrawlerEngine {
       case 'loadTest':
         await this.loadTestLevel();
         break;
+      case 'openInventory':
+        this.uiRouter?.toggle('inventory');
+        break;
+      case 'openCharacterSheet':
+        this.uiRouter?.toggle('character-sheet');
+        break;
+      case 'openParty':
+        this.uiRouter?.toggle('character-sheet');
+        break;
+      case 'openMap':
+        // Minimap is always visible in HUD — M key toggles minimap panel visibility
+        {
+          const mm = document.getElementById('minimap');
+          if (mm) mm.style.display = mm.style.display === 'none' ? '' : 'none';
+        }
+        break;
+      case 'openMenu':
+        // Escape: close any open overlay, otherwise TODO: pause menu
+        if (this.uiRouter?.isOpen()) this.uiRouter.pop();
+        break;
+      case 'quickSave':
+        this.uiRouter?.push('save');
+        break;
+      case 'quickLoad':
+        this.uiRouter?.push('load');
+        break;
+      case 'combatAction1':
+      case 'combatAction2':
+      case 'combatAction3':
+      case 'combatAction4':
+      case 'combatAction5': {
+        const slot = parseInt(action.type.replace('combatAction', ''));
+        window.dispatchEvent(new CustomEvent('combatKeyAction', { detail: { slot } }));
+        break;
+      }
       default:
-        console.warn('Unknown action type:', action.type);
+        Logger.tag('Input').warn(`Unknown action type: ${action.type}`);
     }
   }
 
@@ -518,31 +721,20 @@ class DungeonCrawlerEngine {
 
     const position = this.movementController.getPosition();
     const direction = this.movementController.getDirection();
-    const directionNames = ['North', 'East', 'South', 'West'];
-    
-    console.log(`=== INTERACTION DEBUG ===`);
-    console.log(`Player at (${position.x}, ${position.z}) facing ${directionNames[direction]}`);
-    
-    // Calculate the tile the player is facing - USING SAME LOGIC AS MOVEMENT
-    const directions = [
-      {x: 0, z: -1}, // North
-      {x: 1, z: 0},  // East
-      {x: 0, z: 1},  // South
-      {x: -1, z: 0}  // West
-    ];
-    
-    const dir = directions[direction];
+    Logger.tag('Interact').debug(`player (${position.x},${position.z}) facing ${Dir.name(direction)}`);
+
+    // Calculate the tile the player is facing — canonical Direction module
+    const dir = Dir.forward(direction);
     const targetX = position.x + dir.x;
     const targetZ = position.z + dir.z;
     
-    console.log(`Looking for interaction at (${targetX}, ${targetZ})`);
-    
+    Logger.tag('Interact').debug(`target tile (${targetX},${targetZ})`);
+
     // Check if there's a door at the target position
     const tile = this.gridSystem.getTile(targetX, targetZ);
-    console.log(`Tile at target position:`, tile);
-    
+
     if (!tile || tile.type !== 'door') {
-      console.log(`No door found. Tile type: ${tile ? tile.type : 'undefined'}`);
+      Logger.tag('Interact').debug(`no door, tile=${tile ? tile.type : 'undefined'}`);
       this.debugUI.showToast('Nothing to interact with');
       return;
     }
@@ -677,19 +869,20 @@ class DungeonCrawlerEngine {
   /**
    * Render the scene with Three.js integration
    */
-  render() {
+  render(currentTime = 0) {
     if (!this.renderer) return;
-    
+
     // Update camera position and rotation from movement controller
     if (this.movementController) {
       const worldPos = this.movementController.getCurrentWorldPosition();
       const rotation = this.movementController.getCurrentRotation();
-      
-      // Only update camera if position or rotation changed
       this.renderer.updateCameraPosition(worldPos);
       this.renderer.updateCameraRotation(rotation);
     }
-    
+
+    // Animate torch flicker
+    this.renderer.updateTorchFlicker(currentTime);
+
     // Render the Three.js scene
     this.renderer.render();
   }
@@ -1074,19 +1267,13 @@ class DungeonCrawlerEngine {
     console.log(`Player Direction: ${dir} (${dirNames[dir]})`);
     console.log(`Camera Rotation: ${rotation} radians (${rotation * 180 / Math.PI} degrees)`);
     
-    // Show what's in each direction from current position
-    const directions = [
-      {name: 'North', dx: 0, dz: -1},
-      {name: 'East', dx: 1, dz: 0},
-      {name: 'South', dx: 0, dz: 1},
-      {name: 'West', dx: -1, dz: 0}
-    ];
-    
+    // Show what's in each direction from current position (uses canonical Direction)
     console.log('Tiles in each direction:');
-    directions.forEach(({name, dx, dz}) => {
-      const tile = this.gridSystem.getTile(pos.x + dx, pos.z + dz);
-      console.log(`  ${name}: ${tile ? tile.type : 'undefined'} at (${pos.x + dx}, ${pos.z + dz})`);
-    });
+    for (let i = 0; i < 4; i++) {
+      const d = Dir.delta(i);
+      const tile = this.gridSystem.getTile(pos.x + d.x, pos.z + d.z);
+      console.log(`  ${Dir.name(i)}: ${tile ? tile.type : 'undefined'} at (${pos.x + d.x}, ${pos.z + d.z})`);
+    }
     
     console.log('==========================');
   }
@@ -1161,6 +1348,7 @@ class DungeonCrawlerEngine {
       strafeLeft: this.gridSystem.getTile(strafeL.x, strafeL.z),
       strafeRight: this.gridSystem.getTile(strafeR.x, strafeR.z)
     };
+    Logger.tag('Diag').info('forward', forward, 'backward', backward, 'sL', strafeL, 'sR', strafeR);
     
     console.log(`Forward tile: ${tiles.forward ? tiles.forward.type : 'undefined'}`);
     console.log(`Backward tile: ${tiles.backward ? tiles.backward.type : 'undefined'}`);
@@ -1323,27 +1511,21 @@ class DungeonCrawlerEngine {
    */
   testDoorInteractions() {
     console.log('--- Testing Door Interactions ---');
-    
+
     const position = this.movementController.getPosition();
-    const directions = [
-      {name: 'North', dx: 0, dz: -1},
-      {name: 'East', dx: 1, dz: 0},
-      {name: 'South', dx: 0, dz: 1},
-      {name: 'West', dx: -1, dz: 0}
-    ];
-    
-    directions.forEach(({name, dx, dz}) => {
-      const checkX = position.x + dx;
-      const checkZ = position.z + dz;
+    for (let i = 0; i < 4; i++) {
+      const d = Dir.delta(i);
+      const checkX = position.x + d.x;
+      const checkZ = position.z + d.z;
       const tile = this.gridSystem.getTile(checkX, checkZ);
-      
+
       if (tile && tile.type === 'door') {
-        console.log(`Door found ${name} at (${checkX}, ${checkZ})`);
+        console.log(`Door found ${Dir.name(i)} at (${checkX}, ${checkZ})`);
         console.log(`  Locked: ${tile.locked}, Key: ${tile.keyType || 'none'}`);
         console.log(`  Orientation: ${tile.orientation}`);
         console.log(`  Walkable: ${tile.walkable}`);
       }
-    });
+    }
   }
 
   /**

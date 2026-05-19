@@ -45,7 +45,7 @@ export class Renderer {
    */
   createScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x000000); // Black background for retro feel
+    this.scene.background = new THREE.Color(0x050302);
   }
 
   /**
@@ -95,25 +95,25 @@ export class Renderer {
    * Set up lighting system (ambient light, point light attached to camera, fog effects)
    */
   setupLighting() {
-    // Ambient light - low intensity warm white for basic illumination
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    // Hemisphere light: warm ceiling glow (torch bounce) vs cool stone floor
+    this.hemisphereLight = new THREE.HemisphereLight(0x2a1500, 0x050810, 0.5);
+    this.scene.add(this.hemisphereLight);
+
+    // Weak fill ambient so deep shadow areas aren't pitch black
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.08);
     this.scene.add(this.ambientLight);
-    
-    // Point light attached to camera - simulates torch/lantern effect
-    this.pointLight = new THREE.PointLight(
-      0xff8800, // Orange color for torch-like effect
-      1.0,      // Intensity
-      10,       // Range (10 meters)
-      2         // Decay factor
-    );
-    
-    // Position light slightly above and forward of camera
-    this.pointLight.position.set(0, 0.2, 0.5);
-    
-    // Attach light to camera so it moves with player
+
+    // Primary torch — attached to camera, flickers each frame
+    this.pointLight = new THREE.PointLight(0xff8800, 1.0, 12, 2);
+    this.pointLight.position.set(0, 0.15, 0.4);
     this.camera.add(this.pointLight);
+
+    // Secondary cold rim light — slight blue-purple, simulates reflected stone glow
+    this.rimLight = new THREE.PointLight(0x2233aa, 0.15, 8, 2);
+    this.rimLight.position.set(0, -0.5, -1.5);
+    this.camera.add(this.rimLight);
+
     this.scene.add(this.camera);
-    
     console.log('Lighting system configured');
   }
 
@@ -121,13 +121,8 @@ export class Renderer {
    * Set up fog effects for atmospheric depth
    */
   setupFog() {
-    // Black fog that starts close and becomes opaque at distance
-    this.scene.fog = new THREE.Fog(
-      0x000000,    // Black fog color
-      this.fogNear, // Start distance (1 meter)
-      this.fogFar   // Full opacity distance (12 meters)
-    );
-    
+    // Exponential fog — more natural falloff than linear; density 0.12 ≈ 70% at 10 units
+    this.scene.fog = new THREE.FogExp2(0x050302, 0.12);
     console.log('Fog effects configured');
   }
 
@@ -246,6 +241,21 @@ export class Renderer {
     });
     
     console.log('Scene cleared');
+  }
+
+  /**
+   * Animate torch intensity each frame — three sine waves at different frequencies
+   * produce a natural flicker without repeating patterns.
+   */
+  updateTorchFlicker(time) {
+    if (!this.pointLight) return;
+    const t = time * 0.001;
+    const flicker =
+      0.90 +
+      Math.sin(t * 2.1)  * 0.10 +
+      Math.sin(t * 7.3)  * 0.05 +
+      Math.sin(t * 19.7) * 0.02;
+    this.pointLight.intensity = Math.max(0.65, Math.min(1.15, flicker));
   }
 
   /**

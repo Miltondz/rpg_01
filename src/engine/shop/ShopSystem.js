@@ -384,7 +384,13 @@ export class ShopSystem {
 
     _addGeneratedItem(item, stock) {
         const shopItemId = `shop_gen_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
-        
+
+        // ItemDatabase.createItem returns a plain object; Item class instances expose getFinalStats().
+        // Fall back to raw stats when the item is plain so the shop tolerates both.
+        const stats = (typeof item.getFinalStats === 'function')
+            ? item.getFinalStats()
+            : (item.stats || {});
+
         this.shopInventory.set(shopItemId, {
             id: shopItemId,
             baseItemId: item.id,
@@ -396,7 +402,7 @@ export class ShopSystem {
             price: this.getBuyPrice(item),
             stock: stock,
             icon: item.icon,
-            stats: item.getFinalStats(),
+            stats,
             requirements: item.requirements
         });
     }

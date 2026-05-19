@@ -2,26 +2,51 @@
  * @fileoverview Input Manager - Handles keyboard input, action queuing, and input blocking
  */
 
+import { Logger } from '../utils/Logger.js';
+
+const log = Logger.tag('Input');
+
 /**
  * Input Manager class that handles keyboard events and manages action queuing
  */
 export class InputManager {
   constructor() {
-    // Key mapping for movement controls - STANDARD CONFIGURATION
+    // Canonical keymap. W=forward, A=turnLeft, etc. No more compensatory inversion.
     this.keyMap = {
-      'KeyW': 'backward',    // ✅ W ahora va hacia atrás (para compensar inversión)
-      'ArrowUp': 'backward', // ✅ Flecha arriba va hacia atrás
-      'KeyS': 'forward',     // ✅ S ahora va hacia adelante (para compensar inversión)
-      'ArrowDown': 'forward', // ✅ Flecha abajo va hacia adelante
-      'KeyA': 'turnRight',   // ✅ A ahora gira derecha (para compensar inversión)
-      'ArrowLeft': 'turnRight', // ✅ Flecha izquierda gira derecha
-      'KeyD': 'turnLeft',    // ✅ D ahora gira izquierda (para compensar inversión)
-      'ArrowRight': 'turnLeft', // ✅ Flecha derecha gira izquierda
-      'KeyQ': 'strafeLeft',
-      'KeyE': 'strafeRight',
-      'Space': 'interact',
-      'KeyT': 'loadTest', // T key to load test level
-      'KeyL': 'loadTest'  // L key to load test level (cycle through levels)
+      // Movement
+      'KeyW':       'forward',
+      'ArrowUp':    'forward',
+      'KeyS':       'backward',
+      'ArrowDown':  'backward',
+      'KeyA':       'turnLeft',
+      'ArrowLeft':  'turnLeft',
+      'KeyD':       'turnRight',
+      'ArrowRight': 'turnRight',
+      'KeyQ':       'strafeLeft',
+      'KeyE':       'strafeRight',
+
+      // Interact
+      'Space':      'interact',
+
+      // UI / screens
+      'KeyI':       'openInventory',
+      'KeyC':       'openCharacterSheet',
+      'KeyP':       'openParty',
+      'KeyM':       'openMap',
+      'Escape':     'openMenu',
+      'F5':         'quickSave',
+      'F9':         'quickLoad',
+
+      // Combat actions (1-5 on number row)
+      'Digit1':     'combatAction1',
+      'Digit2':     'combatAction2',
+      'Digit3':     'combatAction3',
+      'Digit4':     'combatAction4',
+      'Digit5':     'combatAction5',
+
+      // Dev / debug (kept from previous build)
+      'KeyT':       'loadTest',
+      'KeyL':       'loadTest',
     };
 
     // Action queue to prevent input loss during animations
@@ -110,6 +135,8 @@ export class InputManager {
 
     this.actionQueue.push(action);
     this.lastActionTime = currentTime;
+
+    log.debug(`keydown ${event.code} -> ${actionType} (queue=${this.actionQueue.length}, blocked=${this.inputBlocked})`);
   }
 
   /**
@@ -200,7 +227,14 @@ export class InputManager {
    * @returns {boolean} True if the action type is valid
    */
   isValidActionType(actionType) {
-    const validActions = ['forward', 'backward', 'turnLeft', 'turnRight', 'strafeLeft', 'strafeRight', 'interact', 'loadTest'];
+    const validActions = [
+      'forward', 'backward', 'turnLeft', 'turnRight', 'strafeLeft', 'strafeRight',
+      'interact',
+      'openInventory', 'openCharacterSheet', 'openParty', 'openMap', 'openMenu',
+      'quickSave', 'quickLoad',
+      'combatAction1', 'combatAction2', 'combatAction3', 'combatAction4', 'combatAction5',
+      'loadTest',
+    ];
     return validActions.includes(actionType);
   }
 

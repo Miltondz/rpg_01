@@ -177,6 +177,13 @@ body {
     font-size: 10px;
 }
 
+.pending {
+    color: #886600;
+    font-size: 9px;
+    margin-left: 6px;
+    font-style: italic;
+}
+
 /* Fade overlay for level transitions */
 .fade-overlay {
     position: absolute;
@@ -195,23 +202,30 @@ body {
     opacity: 1;
 }
 
-/* Retro scanlines effect (optional) */
-#game-canvas::after {
+/* Vignette — darkens edges for cinematic tunnel feel */
+#game-container::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.75) 100%);
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* CRT scanlines — on container, not canvas (canvas is void, ::after never renders) */
+#game-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
     background: repeating-linear-gradient(
         0deg,
         transparent,
         transparent 2px,
-        rgba(0, 255, 0, 0.03) 2px,
-        rgba(0, 255, 0, 0.03) 4px
+        rgba(0, 0, 0, 0.10) 2px,
+        rgba(0, 0, 0, 0.10) 4px
     );
     pointer-events: none;
-    z-index: 1;
+    z-index: 6;
 }
 
 /* Loading screen */

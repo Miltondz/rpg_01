@@ -1,15 +1,20 @@
 // Movement Controller - Player movement, rotation, and animation
+import { Dir } from '../core/Direction.js';
+import { Logger } from '../utils/Logger.js';
+
+const log = Logger.tag('Movement');
+
 export class MovementController {
   constructor(gridSystem, collisionSystem, renderer) {
     this.gridSystem = gridSystem;
     this.collisionSystem = collisionSystem;
     this.renderer = renderer;
-    
+
     this.currentPosition = {x: 0, z: 0};
-    this.currentDirection = 0; // 0=North, 1=East, 2=South, 3=West
+    this.currentDirection = Dir.NORTH; // 0=N, 1=E, 2=S, 3=W (see core/Direction.js)
     this.isAnimating = false;
     this.animationData = null;
-    
+
     // Animation durations (in milliseconds)
     this.MOVE_DURATION = 250;
     this.TURN_DURATION = 200;
@@ -35,81 +40,34 @@ export class MovementController {
 
   // Calculate forward position based on current direction
   calculateForwardPosition() {
-    // CORRECTED: Invert North/South to match Three.js camera directions
-    const directions = [
-      {x: 0, z: 1},  // North (toward positive Z in grid, matches camera -Z)
-      {x: 1, z: 0},  // East (toward positive X)
-      {x: 0, z: -1}, // South (toward negative Z in grid, matches camera +Z)
-      {x: -1, z: 0}  // West (toward negative X)
-    ];
-    
-    const dir = directions[this.currentDirection];
-    const targetPos = {
-      x: this.currentPosition.x + dir.x,
-      z: this.currentPosition.z + dir.z
-    };
-    
-    return targetPos;
+    const d = Dir.forward(this.currentDirection);
+    return { x: this.currentPosition.x + d.x, z: this.currentPosition.z + d.z };
   }
 
   // Calculate backward position
   calculateBackwardPosition() {
-    // Backward is opposite of forward - CORRECTED
-    const directions = [
-      {x: 0, z: -1}, // South (opposite of corrected North)
-      {x: -1, z: 0}, // West (opposite of East)
-      {x: 0, z: 1},  // North (opposite of corrected South)
-      {x: 1, z: 0}   // East (opposite of West)
-    ];
-    
-    const dir = directions[this.currentDirection];
-    return {
-      x: this.currentPosition.x + dir.x,
-      z: this.currentPosition.z + dir.z
-    };
+    const d = Dir.backward(this.currentDirection);
+    return { x: this.currentPosition.x + d.x, z: this.currentPosition.z + d.z };
   }
 
   // Calculate strafe left position
   calculateStrafeLeftPosition() {
-    // Strafe left = 90 degrees counterclockwise from current direction - CORRECTED
-    const directions = [
-      {x: -1, z: 0}, // West (left of corrected North)
-      {x: 0, z: 1},  // North (left of East) - CORRECTED
-      {x: 1, z: 0},  // East (left of corrected South)
-      {x: 0, z: -1}  // South (left of West) - CORRECTED
-    ];
-    
-    const dir = directions[this.currentDirection];
-    return {
-      x: this.currentPosition.x + dir.x,
-      z: this.currentPosition.z + dir.z
-    };
+    const d = Dir.left(this.currentDirection);
+    return { x: this.currentPosition.x + d.x, z: this.currentPosition.z + d.z };
   }
 
   // Calculate strafe right position
   calculateStrafeRightPosition() {
-    // Strafe right = 90 degrees clockwise from current direction - CORRECTED
-    const directions = [
-      {x: 1, z: 0},  // East (right of corrected North)
-      {x: 0, z: -1}, // South (right of East) - CORRECTED
-      {x: -1, z: 0}, // West (right of corrected South)
-      {x: 0, z: 1}   // North (right of West) - CORRECTED
-    ];
-    
-    const dir = directions[this.currentDirection];
-    return {
-      x: this.currentPosition.x + dir.x,
-      z: this.currentPosition.z + dir.z
-    };
+    const d = Dir.right(this.currentDirection);
+    return { x: this.currentPosition.x + d.x, z: this.currentPosition.z + d.z };
   }
 
   // Movement methods that return promises for animation completion
   async moveForward() {
     if (this.isAnimating || !this.isEnabled()) return false;
-    
+
     const targetPos = this.calculateForwardPosition();
-    const directionNames = ['North', 'East', 'South', 'West'];
-    console.log(`FORWARD: Moving ${directionNames[this.currentDirection]} from (${this.currentPosition.x},${this.currentPosition.z}) to (${targetPos.x},${targetPos.z})`);
+    log.debug(`forward: dir=${Dir.name(this.currentDirection)} (${this.currentPosition.x},${this.currentPosition.z}) -> (${targetPos.x},${targetPos.z})`);
     
     const collision = await this.collisionSystem.checkMovement(
       this.currentPosition.x, this.currentPosition.z,
@@ -132,10 +90,9 @@ export class MovementController {
 
   async moveBackward() {
     if (this.isAnimating || !this.isEnabled()) return false;
-    
+
     const targetPos = this.calculateBackwardPosition();
-    const directionNames = ['North', 'East', 'South', 'West'];
-    console.log(`BACKWARD: Moving opposite of ${directionNames[this.currentDirection]} from (${this.currentPosition.x},${this.currentPosition.z}) to (${targetPos.x},${targetPos.z})`);
+    log.debug(`backward: dir=${Dir.name(this.currentDirection)} (${this.currentPosition.x},${this.currentPosition.z}) -> (${targetPos.x},${targetPos.z})`);
     
     const collision = await this.collisionSystem.checkMovement(
       this.currentPosition.x, this.currentPosition.z,
@@ -156,8 +113,9 @@ export class MovementController {
 
   async strafeLeft() {
     if (this.isAnimating || !this.isEnabled()) return false;
-    
+
     const targetPos = this.calculateStrafeLeftPosition();
+    log.debug(`strafeLeft: dir=${Dir.name(this.currentDirection)} (${this.currentPosition.x},${this.currentPosition.z}) -> (${targetPos.x},${targetPos.z})`);
     const collision = await this.collisionSystem.checkMovement(
       this.currentPosition.x, this.currentPosition.z,
       targetPos.x, targetPos.z
@@ -177,8 +135,9 @@ export class MovementController {
 
   async strafeRight() {
     if (this.isAnimating || !this.isEnabled()) return false;
-    
+
     const targetPos = this.calculateStrafeRightPosition();
+    log.debug(`strafeRight: dir=${Dir.name(this.currentDirection)} (${this.currentPosition.x},${this.currentPosition.z}) -> (${targetPos.x},${targetPos.z})`);
     const collision = await this.collisionSystem.checkMovement(
       this.currentPosition.x, this.currentPosition.z,
       targetPos.x, targetPos.z
@@ -199,24 +158,20 @@ export class MovementController {
   // Turn left (counterclockwise)
   async turnLeft() {
     if (this.isAnimating || !this.isEnabled()) return;
-    
+
     const startDirection = this.currentDirection;
-    // Turn left = decrease direction index (counterclockwise)
-    const targetDirection = (this.currentDirection + 3) % 4; // Same as -1 but handles wrap-around
-    
-    console.log(`Turning left: ${startDirection} -> ${targetDirection}`);
+    const targetDirection = Dir.turnLeft(this.currentDirection);
+    log.debug(`turnLeft: ${Dir.name(startDirection)} -> ${Dir.name(targetDirection)}`);
     return this._animateRotation(startDirection, targetDirection);
   }
 
   // Turn right (clockwise)
   async turnRight() {
     if (this.isAnimating || !this.isEnabled()) return;
-    
+
     const startDirection = this.currentDirection;
-    // Turn right = increase direction index (clockwise)
-    const targetDirection = (this.currentDirection + 1) % 4;
-    
-    console.log(`Turning right: ${startDirection} -> ${targetDirection}`);
+    const targetDirection = Dir.turnRight(this.currentDirection);
+    log.debug(`turnRight: ${Dir.name(startDirection)} -> ${Dir.name(targetDirection)}`);
     return this._animateRotation(startDirection, targetDirection);
   }
 
@@ -322,19 +277,9 @@ export class MovementController {
     });
   }
 
-  // Convert direction index to radians
+  // Convert direction index to radians (canonical, sourced from Direction.js)
   _directionToRadians(direction) {
-    // ✅ MAPEO DIRECTO: Sin correcciones adicionales
-    // Norte: 0° (mira hacia -Z), Este: 90° (mira hacia +X)
-    // Sur: 180° (mira hacia +Z), Oeste: -90° (mira hacia -X)
-    const angles = [
-      0,              // Norte: 0° (mira hacia -Z)
-      Math.PI / 2,    // Este: 90° (mira hacia +X)
-      Math.PI,        // Sur: 180° (mira hacia +Z)
-      -Math.PI / 2    // Oeste: -90° (mira hacia -X)
-    ];
-    console.log(`Converting direction ${direction} to ${angles[direction]} radians (${angles[direction] * 180 / Math.PI}°)`);
-    return angles[direction];
+    return Dir.toRadians(direction);
   }
 
   // Complete animation and set exact final values
