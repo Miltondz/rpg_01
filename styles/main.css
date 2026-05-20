@@ -555,14 +555,13 @@ body {
    COMBAT UI — centered dialog design
    ================================================================ */
 
-/* Centered modal + backdrop via box-shadow spread */
+/* Centered modal: inset:0 + margin:auto avoids transform conflicts with animations */
 .combat-container {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    inset: 0;
     width: min(960px, 96vw);
     height: min(590px, 88vh);
+    margin: auto;
     z-index: 1000;
     background: #080611;
     border: 2px solid #7a5c10;
