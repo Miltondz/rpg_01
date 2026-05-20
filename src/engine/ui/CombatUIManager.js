@@ -226,9 +226,11 @@ export class CombatUIManager {
    * @param {Object} actionData - Action execution data
    */
   handleActionExecuted(actionData) {
-    // Visual animations
-    const actorId = actionData?.actorId ?? actionData?.actor?.id;
-    const targetIds = actionData?.targetIds ?? (actionData?.targets ?? []).map(t => t.id).filter(Boolean);
+    // Visual animations — CombatSystem emits { character, action, result }
+    const actorId = actionData?.actorId ?? actionData?.actor?.id ?? actionData?.character?.id;
+    const resultTargets = actionData?.result?.targets ?? [];
+    const targetIds = actionData?.targetIds
+      ?? (actionData?.targets ?? resultTargets).map(t => t?.id ?? t?.name).filter(Boolean);
     const actionType = actionData?.actionType ?? actionData?.action?.type ?? '';
 
     if (actorId) {

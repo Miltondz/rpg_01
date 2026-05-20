@@ -10,6 +10,8 @@ Browser-based turn-based RPG / dungeon crawler. Vanilla ES6 modules + Three.js r
 
 Core exploration + combat loop is playable. Party creation, dungeon exploration (first-person 3D), turn-based combat, shop, save/load, NPCs, and narrative dialogue are all integrated and running.
 
+Latest: procedural dungeon textures (stone/floor/ceiling/door), combat UI redesign (responsive 2×2 party grid, combat animations, loot distribution on victory).
+
 ## Running
 
 Requires a local HTTP server (ES modules + JSON level fetches require it):
