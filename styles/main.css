@@ -555,7 +555,16 @@ body {
    COMBAT UI — centered dialog design
    ================================================================ */
 
-/* Centered modal: inset:0 + margin:auto avoids transform conflicts with animations */
+/* Full-screen backdrop — shown/hidden independently of the panel */
+.combat-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.76);
+    z-index: 999;
+}
+.combat-backdrop.hidden { display: none; }
+
+/* Centered modal panel */
 .combat-container {
     position: fixed;
     inset: 0;
@@ -579,7 +588,6 @@ body {
     color: #c8b882;
     overflow: hidden;
     box-shadow:
-        0 0 0 2000px rgba(0, 0, 0, 0.75),
         0 24px 80px rgba(0, 0, 0, 0.95),
         inset 0 0 40px rgba(0, 0, 0, 0.6),
         inset 0 1px 0 rgba(255, 210, 80, 0.10);

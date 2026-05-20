@@ -52,6 +52,16 @@ export class CombatUI {
    * Create main combat container
    */
   createCombatContainer() {
+    // Separate backdrop div — explicit show/hide avoids box-shadow persistence bugs
+    let backdrop = document.getElementById('combat-backdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'combat-backdrop';
+      document.body.appendChild(backdrop);
+    }
+    backdrop.className = 'combat-backdrop hidden';
+    this.elements.backdrop = backdrop;
+
     // Reuse the element declared in index.html to avoid duplicate IDs
     let el = document.getElementById('combat-container');
     if (!el) {
@@ -59,7 +69,6 @@ export class CombatUI {
       el.id = 'combat-container';
       document.body.appendChild(el);
     }
-    // Clear any inline styles set by index.html placeholder
     el.removeAttribute('style');
     el.className = 'combat-container hidden';
     el.setAttribute('data-ui-component', 'combat-container');
@@ -252,6 +261,7 @@ export class CombatUI {
     }
     
     this.isActive = true;
+    this.elements.backdrop?.classList.remove('hidden');
     this.elements.combatContainer.classList.remove('hidden');
     
     // Clear previous log
@@ -280,6 +290,7 @@ export class CombatUI {
   hideCombat() {
     this.isActive = false;
     this.elements.combatContainer.classList.add('hidden');
+    this.elements.backdrop?.classList.add('hidden');
     this.clearCombatLog();
   }
 
