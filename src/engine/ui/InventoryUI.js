@@ -265,27 +265,51 @@ export class InventoryUI {
         // Appended lazily in show() alongside the main container.
     }
 
+    /** Returns rarity colour for both Item instances and plain objects. */
+    _itemColor(item) {
+        if (typeof item?.getColor === 'function') return item.getColor();
+        const MAP = { common: '#FFFFFF', uncommon: '#00FF00', rare: '#0080FF', epic: '#8000FF' };
+        return MAP[(item?.rarity ?? 'common').toLowerCase()] ?? '#FFFFFF';
+    }
+
+    /** Returns tooltip-shaped data for both Item instances and plain objects. */
+    _itemTooltip(item) {
+        if (typeof item?.getTooltip === 'function') return item.getTooltip();
+        return {
+            name:         item?.name        ?? 'Unknown Item',
+            type:         item?.type        ?? 'item',
+            rarity:       item?.rarity      ?? 'common',
+            level:        item?.level       ?? 1,
+            description:  item?.description ?? '',
+            value:        item?.value       ?? 0,
+            stats:        item?.stats       ?? {},
+            requirements: item?.requirements ?? {},
+            effects:      item?.effects     ?? []
+        };
+    }
+
     updateSlotDisplay(slotIndex) {
         const slot = this.slotElements[slotIndex];
         const slotData = this.inventorySystem.getSlot(slotIndex);
-        
+
         // Clear slot
         slot.innerHTML = '';
         slot.style.background = 'rgba(255, 255, 255, 0.1)';
-        
+
         if (slotData) {
             const item = slotData.item;
-            
+            const color = this._itemColor(item);
+
             // Set background color based on rarity
-            slot.style.background = `linear-gradient(135deg, ${item.getColor()}22, rgba(255, 255, 255, 0.1))`;
-            slot.style.borderColor = item.getColor();
-            
+            slot.style.background = `linear-gradient(135deg, ${color}22, rgba(255, 255, 255, 0.1))`;
+            slot.style.borderColor = color;
+
             // Item icon (placeholder)
             const icon = document.createElement('div');
             icon.style.cssText = `
                 width: 24px;
                 height: 24px;
-                background: ${item.getColor()};
+                background: ${color};
                 border-radius: 2px;
                 margin-bottom: 2px;
                 display: flex;
@@ -295,7 +319,7 @@ export class InventoryUI {
                 color: black;
                 font-weight: bold;
             `;
-            icon.textContent = item.name.charAt(0).toUpperCase();
+            icon.textContent = (item?.name ?? '?').charAt(0).toUpperCase();
             
             // Quantity display for stackable items
             if (item.stackable && slotData.quantity > 1) {
@@ -493,9 +517,10 @@ export class InventoryUI {
     }
 
     showTooltip(item, x, y) {
-        const tooltip = item.getTooltip();
-        
-        let content = `<div style="color: ${item.getColor()}; font-weight: bold; margin-bottom: 5px;">
+        const tooltip = this._itemTooltip(item);
+        const color   = this._itemColor(item);
+
+        let content = `<div style="color: ${color}; font-weight: bold; margin-bottom: 5px;">
             ${tooltip.name}
         </div>`;
         

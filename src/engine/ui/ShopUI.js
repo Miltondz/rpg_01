@@ -452,12 +452,24 @@ export class ShopUI {
         return element;
     }
 
+    _itemColor(item) {
+        if (typeof item?.getColor === 'function') return item.getColor();
+        const MAP = { common: '#FFFFFF', uncommon: '#00FF00', rare: '#0080FF', epic: '#8000FF' };
+        return MAP[(item?.rarity ?? 'common').toLowerCase()] ?? '#FFFFFF';
+    }
+
+    _itemFinalStats(item) {
+        if (typeof item?.getFinalStats === 'function') return item.getFinalStats();
+        return item?.stats ?? {};
+    }
+
     _createInventoryItemElement(item, mode) {
+        const color = this._itemColor(item);
         const element = document.createElement('div');
         element.className = 'inventory-item';
         element.style.cssText = `
             background: linear-gradient(135deg, #2a1f1a, #1f1611);
-            border: 2px solid ${item.getColor()};
+            border: 2px solid ${color};
             border-radius: 8px;
             padding: 12px;
             cursor: pointer;
@@ -468,7 +480,7 @@ export class ShopUI {
         // Add hover effect
         element.onmouseover = () => {
             element.style.transform = 'translateY(-2px)';
-            element.style.boxShadow = `0 4px 12px ${item.getColor()}40`;
+            element.style.boxShadow = `0 4px 12px ${color}40`;
         };
         
         element.onmouseout = () => {
@@ -485,7 +497,7 @@ export class ShopUI {
 
         element.innerHTML = `
             <div class="item-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span class="item-name" style="color: ${item.getColor()}; font-weight: bold; font-size: 14px;">${item.name}</span>
+                <span class="item-name" style="color: ${color}; font-weight: bold; font-size: 14px;">${item.name}</span>
                 <span class="item-level" style="color: #cccccc; font-size: 12px;">Lv.${item.level}</span>
             </div>
             <div class="item-type" style="color: #999999; font-size: 11px; margin-bottom: 8px;">${this._formatItemType(item.type)}</div>
@@ -493,7 +505,7 @@ export class ShopUI {
                 ${item.description || 'No description available'}
             </div>
             <div class="item-stats" style="margin-bottom: 10px;">
-                ${this._formatItemStats(item.getFinalStats())}
+                ${this._formatItemStats(this._itemFinalStats(item))}
             </div>
             <div class="item-footer">
                 <div style="display: flex; flex-direction: column; gap: 2px;">
