@@ -97,7 +97,7 @@ export class CombatUI {
     const arena = document.createElement('div');
     arena.className = 'combat-arena';
 
-    // Party side — LEFT
+    // Party side — LEFT (back col on left, front col on right toward enemies)
     const partySide = document.createElement('div');
     partySide.className = 'combat-side party-side';
 
@@ -106,11 +106,32 @@ export class CombatUI {
     partyLabel.textContent = 'Your Party';
     partySide.appendChild(partyLabel);
 
+    // Formation column labels: Back | Front
+    const formationHeader = document.createElement('div');
+    formationHeader.className = 'formation-header';
+    const backLabel = document.createElement('div');
+    backLabel.className = 'formation-col-label';
+    backLabel.textContent = '← Back';
+    const frontLabel = document.createElement('div');
+    frontLabel.className = 'formation-col-label front-label';
+    frontLabel.textContent = 'Front →';
+    formationHeader.appendChild(backLabel);
+    formationHeader.appendChild(frontLabel);
+    partySide.appendChild(formationHeader);
+
     this.elements.partyHUD = document.createElement('div');
     this.elements.partyHUD.className = 'party-formation';
     this.elements.partyHUD.setAttribute('data-ui-component', 'party-grid');
     this.elements.partyHUD.setAttribute('data-ui-name', 'party-combatants');
     partySide.appendChild(this.elements.partyHUD);
+
+    // VS divider — CENTER
+    const vsDivider = document.createElement('div');
+    vsDivider.className = 'combat-vs-divider';
+    const vsText = document.createElement('span');
+    vsText.className = 'vs-text';
+    vsText.textContent = 'VS';
+    vsDivider.appendChild(vsText);
 
     // Enemy side — RIGHT
     const enemySide = document.createElement('div');
@@ -128,6 +149,7 @@ export class CombatUI {
     enemySide.appendChild(this.elements.enemyHUD);
 
     arena.appendChild(partySide);
+    arena.appendChild(vsDivider);
     arena.appendChild(enemySide);
     this.elements.combatContainer.appendChild(arena);
   }
@@ -259,11 +281,17 @@ export class CombatUI {
    */
   updatePartyDisplay(partyMembers) {
     this.elements.partyHUD.innerHTML = '';
-    
-    partyMembers.forEach((member, index) => {
-      const memberCard = this.createCombatantCard(member, 'party', index);
-      this.elements.partyHUD.appendChild(memberCard);
-    });
+
+    // Formation: party[0..1] = front row, party[2..3] = back row.
+    // Grid is left=back, right=front (front faces enemies on the right).
+    // CSS grid fills left-to-right per row, so append order: [back0, front0, back1, front1]
+    const front = partyMembers.slice(0, 2);
+    const back  = partyMembers.slice(2, 4);
+    const rows  = Math.max(front.length, back.length);
+    for (let i = 0; i < rows; i++) {
+      if (back[i])  this.elements.partyHUD.appendChild(this.createCombatantCard(back[i],  'party', i + 2));
+      if (front[i]) this.elements.partyHUD.appendChild(this.createCombatantCard(front[i], 'party', i));
+    }
   }
 
   /**
