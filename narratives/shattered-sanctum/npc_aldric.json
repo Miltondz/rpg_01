@@ -1,0 +1,39 @@
+{
+  "inkVersion": 21,
+  "root": [
+    ["end", null],
+    {
+      "lament": [
+        "^Captain Aldric: Who... who walks here? Living souls. I can feel the warmth of you.", "\n",
+        "^Captain Aldric: I am — was — Captain Aldric. I led the Order's last expedition into the Warrens.", "\n",
+        "^Captain Aldric: The shadow got into me. Slowly. I fought it... but not long enough.", "\n",
+        "^Captain Aldric: My body still wanders these tunnels. Corrupted. Killing. I can feel it happening from here but I cannot stop it.", "\n",
+        "^Captain Aldric: Please. Destroy what I have become. In my chamber — the silver-locked room to the west — that thing awaits.", "\n",
+        "^Captain Aldric: If you do this, I will give you the Second Seal Fragment. I carried it when I fell.", "\n",
+        {"#": "knot_reached:npc_aldric_lament"},
+        {"#": "set_flag:flag_aldric_quest_started"},
+        "end",
+        null
+      ],
+      "pre_fight": [
+        "^Captain Aldric: You have found my chamber. What you face is not me — not anymore.", "\n",
+        "^Captain Aldric: Fight without mercy. If you hesitate, it will kill you.", "\n",
+        {"#": "knot_reached:npc_aldric_pre_fight"},
+        "end",
+        null
+      ],
+      "at_peace": [
+        "^Captain Aldric: It is... quiet. For the first time in years, it is quiet.", "\n",
+        "^Captain Aldric: You found my badge too. Good. Give it to Voss, if he still walks up there.", "\n",
+        "^Captain Aldric: The Second Seal Fragment is yours. You earned it.", "\n",
+        "^Captain Aldric: The Hollow King is strong. Use all three Fragments — reinforce the seals before you fight.", "\n",
+        "^Captain Aldric: Or... if you find the three Void Runes in the Sanctum, you can negotiate. I never tried that path. I was not brave enough.", "\n",
+        {"#": "knot_reached:npc_aldric_at_peace"},
+        {"#": "set_flag:flag_aldric_quest_done"},
+        "end",
+        null
+      ]
+    }
+  ],
+  "listDefs": {}
+}

@@ -1,0 +1,166 @@
+{
+  "id": "shattered-sanctum-floor-3",
+  "name": "The Shattered Sanctum",
+  "width": 20,
+  "height": 20,
+  "theme": "dungeon",
+  "spawn": { "x": 1, "z": 2, "direction": 2 },
+  "tiles": [
+    2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+    2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,
+    2,1,2,2,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,2,
+    2,1,2,1,1,2,2,1,1,2,2,1,1,2,2,1,1,2,1,2,
+    2,1,1,1,1,2,2,1,1,2,2,1,1,2,2,1,1,1,1,2,
+    2,1,2,1,1,2,2,1,1,1,1,1,1,2,2,1,1,2,1,2,
+    2,1,2,2,2,2,2,2,1,1,1,1,2,2,2,2,2,2,1,2,
+    2,1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,2,
+    2,2,1,2,2,2,1,2,1,2,2,1,2,1,2,2,2,1,2,2,
+    2,1,1,1,2,1,1,1,1,1,1,1,1,1,1,2,1,1,1,2,
+    2,1,2,1,2,1,2,2,1,2,2,1,2,2,1,2,1,2,1,2,
+    2,1,2,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,1,2,
+    2,1,2,2,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,2,
+    2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,
+    2,2,2,1,2,2,1,2,2,2,2,2,2,1,2,2,1,2,2,2,
+    2,1,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,1,1,2,
+    2,1,2,2,1,2,1,2,2,1,1,2,2,1,2,1,2,2,1,2,
+    2,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,2,1,1,2,
+    2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,2,
+    2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2
+  ],
+  "doors": [
+    { "x": 8, "z": 6, "orientation": "horizontal", "locked": false, "keyType": null, "description": "Cracked sanctum gate, still standing" },
+    { "x": 8, "z": 8, "orientation": "horizontal", "locked": false, "keyType": null, "description": "Inner sanctum threshold" },
+    { "x": 3, "z": 14, "orientation": "horizontal", "locked": true, "keyType": "bronze", "description": "Side chamber — engraved with the Order's crest" },
+    { "x": 16, "z": 14, "orientation": "horizontal", "locked": true, "keyType": "bronze", "description": "Mirror chamber to the east" },
+    { "x": 6, "z": 14, "orientation": "horizontal", "locked": true, "keyType": "silver", "description": "Sealing Chamber — this is where the Hollow King is bound" }
+  ],
+  "transitions": [
+    {
+      "x": 18, "z": 18, "type": "stairs", "target": "shattered-sanctum-floor-1",
+      "spawn": { "x": 17, "z": 17, "direction": 0 },
+      "description": "Stairs back up — retreat if needed"
+    }
+  ],
+  "safeZones": [
+    {
+      "x": 2, "z": 2, "type": "altar", "name": "Sanctum Threshold",
+      "description": "The last sanctified ground in the sanctum. The Order's blessing still holds here.",
+      "services": ["save", "heal"], "healAmount": 100, "cooldown": 0
+    }
+  ],
+  "scriptedEncounters": [
+    {
+      "x": 10, "z": 4, "id": "sanctum_guardians",
+      "type": "scripted", "oneTime": true,
+      "description": "Corrupted paladins who once guarded the First Seal altar",
+      "enemies": [
+        { "type": "corrupted_paladin", "level": 9 },
+        { "type": "corrupted_paladin", "level": 9 },
+        { "type": "shadow_acolyte", "level": 8 }
+      ],
+      "rewards": {
+        "experience": 340, "gold": { "min": 70, "max": 110 },
+        "loot": [{ "itemId": "void_crystal", "chance": 0.7, "quantity": { "min": 1, "max": 2 } }]
+      }
+    },
+    {
+      "x": 10, "z": 9, "id": "void_patrol",
+      "type": "scripted", "oneTime": false,
+      "description": "Shadow acolytes maintaining the ritual circles in the central hall",
+      "enemies": [
+        { "type": "shadow_acolyte", "level": 10 },
+        { "type": "shadow_acolyte", "level": 10 },
+        { "type": "shadow_general", "level": 10 }
+      ],
+      "rewards": {
+        "experience": 380, "gold": { "min": 80, "max": 130 },
+        "loot": [{ "itemId": "dark_potion", "chance": 0.5, "quantity": { "min": 1, "max": 1 } }]
+      }
+    },
+    {
+      "x": 3, "z": 15, "id": "western_guardian",
+      "type": "scripted", "oneTime": true,
+      "description": "A corrupted paladin guarding the western side chamber",
+      "enemies": [
+        { "type": "corrupted_paladin", "level": 10 },
+        { "type": "shadow_beast", "level": 9 }
+      ],
+      "rewards": {
+        "experience": 220, "gold": { "min": 50, "max": 80 },
+        "loot": [{ "itemId": "bronze_key", "chance": 1.0, "quantity": { "min": 1, "max": 1 } }]
+      }
+    },
+    {
+      "x": 16, "z": 15, "id": "eastern_guardian",
+      "type": "scripted", "oneTime": true,
+      "description": "Mirror of the western encounter — an eastern guardian",
+      "enemies": [
+        { "type": "corrupted_paladin", "level": 10 },
+        { "type": "shadow_acolyte", "level": 9 }
+      ],
+      "rewards": {
+        "experience": 220, "gold": { "min": 50, "max": 80 },
+        "loot": [{ "itemId": "silver_key", "chance": 1.0, "quantity": { "min": 1, "max": 1 } }]
+      }
+    },
+    {
+      "x": 10, "z": 16, "id": "hollow_king_boss",
+      "type": "scripted", "oneTime": true,
+      "description": "The Hollow King — imprisoned for an age, now breaking free.",
+      "enemies": [
+        { "type": "hollow_king", "level": 12 },
+        { "type": "shadow_acolyte", "level": 10 }
+      ],
+      "rewards": {
+        "experience": 1200, "gold": { "min": 300, "max": 500 },
+        "loot": [
+          { "itemId": "sanctum_blade", "chance": 1.0, "quantity": { "min": 1, "max": 1 } },
+          { "itemId": "void_ring", "chance": 1.0, "quantity": { "min": 1, "max": 1 } },
+          { "itemId": "void_crystal", "chance": 1.0, "quantity": { "min": 2, "max": 3 } }
+        ]
+      }
+    }
+  ],
+  "keyItems": [
+    { "x": 10, "z": 3, "itemId": "void_rune", "respawn": false },
+    { "x": 17, "z": 9, "itemId": "void_rune", "respawn": false },
+    { "x": 10, "z": 17, "itemId": "void_rune", "respawn": false },
+    { "x": 10, "z": 7, "itemId": "seal_fragment_3", "respawn": false }
+  ],
+  "lootChests": [
+    {
+      "x": 17, "z": 3,
+      "loot": [
+        { "itemId": "large_health_potion", "chance": 0.9, "quantity": { "min": 2, "max": 3 } },
+        { "itemId": "ap_potion", "chance": 0.8, "quantity": { "min": 1, "max": 2 } }
+      ]
+    },
+    {
+      "x": 1, "z": 9,
+      "loot": [
+        { "itemId": "sanctum_amulet", "chance": 0.5, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "defense_elixir", "chance": 0.7, "quantity": { "min": 1, "max": 2 } }
+      ]
+    },
+    {
+      "x": 17, "z": 13,
+      "loot": [
+        { "itemId": "phoenix_down", "chance": 0.6, "quantity": { "min": 1, "max": 2 } },
+        { "itemId": "dark_potion", "chance": 0.5, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 3, "z": 17,
+      "loot": [
+        { "itemId": "strength_elixir", "chance": 0.8, "quantity": { "min": 1, "max": 2 } },
+        { "itemId": "guardian_elixir", "chance": 0.7, "quantity": { "min": 1, "max": 2 } },
+        { "itemId": "full_health_potion", "chance": 0.4, "quantity": { "min": 1, "max": 1 } }
+      ]
+    }
+  ],
+  "tutorialHints": [
+    { "x": 1, "z": 2, "message": "The Sanctum. Three seal altars stand ahead. The Shadow Archivist lurks in the western wing — approach with caution.", "trigger": "first_visit" },
+    { "x": 10, "z": 7, "message": "A seal fragment rests here. If you have all three, you can reinforce the seals before facing the Hollow King.", "trigger": "near_key" },
+    { "x": 10, "z": 15, "message": "The Sealing Chamber. Beyond this door, the Hollow King waits. There is no turning back.", "trigger": "near_exit" }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "dungeonId": "shattered-sanctum-floor-2",
+  "npcs": [
+    {
+      "id": "npc_aldric",
+      "name": "Ghost of Captain Aldric",
+      "type": "npc",
+      "faction": "order",
+      "isShopkeeper": false,
+      "portrait": "ghost",
+      "position": { "x": 10, "z": 9 },
+      "dialogueStory": "npc_aldric",
+      "dialogueKnot": "lament",
+      "dialogueConditions": {
+        "knotOverrides": [
+          {
+            "condition": { "flag": "flag_aldric_quest_started" },
+            "knot": "pre_fight"
+          },
+          {
+            "condition": { "flag": "flag_corrupted_captain_defeated" },
+            "knot": "at_peace"
+          }
+        ]
+      }
+    },
+    {
+      "id": "npc_mira_f2",
+      "name": "Herbalist Mira",
+      "type": "npc",
+      "faction": "neutral",
+      "isShopkeeper": true,
+      "portrait": "merchant",
+      "position": { "x": 17, "z": 5 },
+      "dialogueStory": "npc_mira_f2",
+      "dialogueKnot": "greeting",
+      "dialogueConditions": {
+        "knotOverrides": [
+          {
+            "condition": { "flag": "flag_mushrooms_collected" },
+            "knot": "mushroom_reward"
+          }
+        ]
+      },
+      "shopInventory": [
+        "health_potion_small", "large_health_potion", "antidote",
+        "panacea", "ap_potion", "defense_elixir", "dark_potion"
+      ]
+    }
+  ]
+}

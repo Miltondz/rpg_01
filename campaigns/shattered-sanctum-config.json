@@ -1,0 +1,109 @@
+{
+  "id": "shattered-sanctum",
+  "name": "The Shattered Sanctum",
+  "description": "An ancient fortress built over a sacred prison. Three seals hold the Hollow King — a being of pure void. The seals are cracking. You have three paths: reinforce them, break them, or negotiate. All roads lead to the same chamber.",
+  "startLevel": "shattered-sanctum-floor-1",
+  "recommendedLevel": 4,
+  "floors": [
+    {
+      "id": "shattered-sanctum-floor-1",
+      "name": "The Ruined Outpost",
+      "order": 1,
+      "npcFile": "shattered-sanctum/floor-1-npcs.json",
+      "narrativeBindings": "shattered-sanctum/bindings.json"
+    },
+    {
+      "id": "shattered-sanctum-floor-2",
+      "name": "The Fungal Warrens",
+      "order": 2,
+      "npcFile": "shattered-sanctum/floor-2-npcs.json",
+      "narrativeBindings": "shattered-sanctum/bindings.json"
+    },
+    {
+      "id": "shattered-sanctum-floor-3",
+      "name": "The Shattered Sanctum",
+      "order": 3,
+      "npcFile": "shattered-sanctum/floor-3-npcs.json",
+      "narrativeBindings": "shattered-sanctum/bindings.json"
+    }
+  ],
+  "mainQuest": {
+    "id": "seals_of_the_hollow_king",
+    "name": "Seals of the Hollow King",
+    "description": "The three ancient seals binding the Hollow King are failing. Reach the Sanctum and determine the fate of the prison — and its prisoner.",
+    "stages": [
+      {
+        "id": "learn_the_truth",
+        "description": "Speak with Commander Voss at the altar on Floor 1.",
+        "trigger": "flag_voss_briefed"
+      },
+      {
+        "id": "collect_fragments",
+        "description": "Gather all three Seal Fragments across the dungeon's floors.",
+        "trigger": "inventory_has_seal_1_and_2_and_3"
+      },
+      {
+        "id": "reach_the_sanctum",
+        "description": "Descend to the Shattered Sanctum on Floor 3.",
+        "trigger": "level_enter:shattered-sanctum-floor-3"
+      },
+      {
+        "id": "confront_the_king",
+        "description": "Enter the Sealing Chamber and face the Hollow King.",
+        "trigger": "combat_start:hollow_king_boss"
+      }
+    ],
+    "endings": [
+      {
+        "id": "light_ending",
+        "name": "The Seal Holds",
+        "description": "All three Seal Fragments were used to reinforce the seals before the final fight. The Hollow King is weakened. The Sanctum endures — for now.",
+        "condition": "flag_seals_reinforced AND flag_hollow_king_defeated AND NOT flag_dark_path_accepted"
+      },
+      {
+        "id": "dark_ending",
+        "name": "The Void Inheritors",
+        "description": "The seals were broken on the Shadow Archivist's advice. The Hollow King fell, but his void-energy flowed into the victors. Power was gained. Something else was lost.",
+        "condition": "flag_dark_path_accepted AND flag_hollow_king_defeated"
+      },
+      {
+        "id": "neutral_ending",
+        "name": "The Old Bargain",
+        "description": "Three Void Runes were activated in the Sanctum. The Hollow King, recognising the ancient ritual, withdrew. No fight. An uneasy truce older than the Order itself.",
+        "condition": "flag_all_runes_activated AND flag_hollow_king_defeated"
+      }
+    ]
+  },
+  "sideQuests": [
+    {
+      "id": "echoes_of_the_patrol",
+      "name": "Echoes of the Patrol",
+      "floor": 1,
+      "description": "Three patrol markers from Commander Voss's fallen soldiers are scattered through the Outpost. Collect them and report back to Voss.",
+      "rewardFlag": "flag_armory_unlocked",
+      "rewardDescription": "Voss opens the armory. Iron Spear and XP bonus."
+    },
+    {
+      "id": "herbalists_debt",
+      "name": "The Herbalist's Debt",
+      "floor": 2,
+      "description": "Herbalist Mira needs three Glowing Mushrooms from the Fungal Warrens. Bring them to her camp on Floor 2.",
+      "rewardFlag": "flag_mushroom_quest_done",
+      "rewardDescription": "Sanctum Amulet + upgraded shop inventory."
+    },
+    {
+      "id": "captains_burden",
+      "name": "The Captain's Burden",
+      "floor": 2,
+      "description": "The ghost of Captain Aldric haunts the Warrens. His corrupted body is locked in the western chamber. Destroy it and set him free.",
+      "rewardFlag": "flag_aldric_quest_done",
+      "rewardDescription": "Seal Fragment II + Captain's Badge (for Voss). Lore about the Void Rune neutral ending."
+    }
+  ],
+  "difficultyNotes": "Recommended party level 4-6 for Floor 1, 7-9 for Floor 2, 10-12 for Floor 3. Boss fights are tuned for a full party of 4. The Hollow King's Phase 3 is lethal without preparation — bring Phoenix Downs and reinforced seals.",
+  "balanceWarnings": [
+    "Hollow King HP/ATK may need tuning for actual party stats — test and adjust in CombatBalanceConfig",
+    "Outpost Warden may be too tanky at party level 5 — reduce HP to 110 if needed",
+    "Fungal Spider poison stacking can be brutal — ensure antidotes are findable early"
+  ]
+}

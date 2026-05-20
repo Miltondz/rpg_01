@@ -1,0 +1,51 @@
+{
+  "dungeonId": "shattered-sanctum-floor-1",
+  "npcs": [
+    {
+      "id": "npc_voss",
+      "name": "Commander Voss",
+      "type": "npc",
+      "faction": "order",
+      "isShopkeeper": false,
+      "portrait": "elder",
+      "position": { "x": 2, "z": 4 },
+      "dialogueStory": "npc_voss",
+      "dialogueKnot": "greeting",
+      "dialogueConditions": {
+        "knotOverrides": [
+          {
+            "condition": { "flag": "flag_patrol_complete" },
+            "knot": "patrol_thanks"
+          },
+          {
+            "condition": { "flag": "flag_voss_briefed" },
+            "knot": "reminder"
+          }
+        ]
+      }
+    },
+    {
+      "id": "npc_mira_f1",
+      "name": "Herbalist Mira",
+      "type": "npc",
+      "faction": "neutral",
+      "isShopkeeper": true,
+      "portrait": "merchant",
+      "position": { "x": 17, "z": 4 },
+      "dialogueStory": "npc_mira_f1",
+      "dialogueKnot": "greeting",
+      "dialogueConditions": {
+        "knotOverrides": [
+          {
+            "condition": { "flag": "flag_mushroom_quest_started" },
+            "knot": "mushroom_reminder"
+          }
+        ]
+      },
+      "shopInventory": [
+        "health_potion_small", "large_health_potion", "antidote",
+        "mana_potion", "ap_potion", "strength_elixir"
+      ]
+    }
+  ]
+}

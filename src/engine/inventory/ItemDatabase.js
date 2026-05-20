@@ -282,6 +282,139 @@ export class ItemDatabase {
       stats: { DEF: 14, HP: 20 },
       value: 150
     });
+
+    // ── SHATTERED SANCTUM ITEMS ─────────────────────────────────────────────
+
+    // Keys
+    this.addItem('silver_key', {
+      name: 'Silver Key',
+      type: 'key_item', rarity: 'uncommon', value: 0,
+      stackable: true, maxStack: 5,
+      description: 'A tarnished silver key. Opens silver-locked doors.'
+    });
+    this.addItem('gold_key', {
+      name: 'Gold Key',
+      type: 'key_item', rarity: 'rare', value: 0,
+      stackable: true, maxStack: 3,
+      description: 'A heavy gold key. Opens the deepest chambers.'
+    });
+
+    // Quest items
+    this.addItem('patrol_marker', {
+      name: 'Patrol Marker',
+      type: 'key_item', rarity: 'common', value: 0,
+      stackable: true, maxStack: 10,
+      description: 'A rusted tag worn by outpost soldiers. Voss would want to know where you found it.'
+    });
+    this.addItem('seal_fragment_1', {
+      name: 'Seal Fragment I',
+      type: 'key_item', rarity: 'rare', value: 0, stackable: false,
+      description: 'A shard of the First Seal. Warm to the touch despite the cold.'
+    });
+    this.addItem('seal_fragment_2', {
+      name: 'Seal Fragment II',
+      type: 'key_item', rarity: 'rare', value: 0, stackable: false,
+      description: 'A shard of the Second Seal. Pulses faintly with light.'
+    });
+    this.addItem('seal_fragment_3', {
+      name: 'Seal Fragment III',
+      type: 'key_item', rarity: 'rare', value: 0, stackable: false,
+      description: 'A shard of the Third Seal. The final piece — you can feel its weight.'
+    });
+    this.addItem('captain_badge', {
+      name: 'Captain\'s Badge',
+      type: 'key_item', rarity: 'uncommon', value: 0, stackable: false,
+      description: 'Badge of rank from Captain Aldric\'s uniform. Proof of what happened.'
+    });
+    this.addItem('void_rune', {
+      name: 'Void Rune',
+      type: 'key_item', rarity: 'uncommon', value: 0,
+      stackable: true, maxStack: 3,
+      description: 'An ancient glyph carved in obsidian. One of three needed to negotiate with the Hollow King.'
+    });
+    this.addItem('glowing_mushroom', {
+      name: 'Glowing Mushroom',
+      type: 'key_item', rarity: 'common', value: 0,
+      stackable: true, maxStack: 10,
+      description: 'A luminescent fungus from the Warrens. Mira says it has rare alchemical properties.'
+    });
+
+    // Weapons
+    this.addItem('iron_spear', {
+      name: 'Iron Spear',
+      type: 'weapon', rarity: 'uncommon',
+      stats: { ATK: 18, SPD: 1 }, value: 120,
+      description: 'A well-balanced spear. Reach gives an edge in close quarters.'
+    });
+    this.addItem('cursed_shortsword', {
+      name: 'Cursed Shortsword',
+      type: 'weapon', rarity: 'rare',
+      stats: { ATK: 22, SPD: 3 }, value: 0,
+      description: 'A blade that thirsts for shadow. Deals extra dark damage, but slowly saps its bearer.'
+    });
+    this.addItem('sanctum_blade', {
+      name: 'Sanctum Blade',
+      type: 'weapon', rarity: 'epic',
+      stats: { ATK: 35, DEF: 5 }, value: 0,
+      description: 'Forged from crystallised seal energy. Hums with restrained power.'
+    });
+
+    // Armor
+    this.addItem('warden_plate', {
+      name: 'Warden\'s Plate',
+      type: 'armor', rarity: 'uncommon',
+      stats: { DEF: 18, HP: 25 }, value: 200,
+      description: 'Dented plate armor worn by the Outpost Warden. Heavy but solid.'
+    });
+    this.addItem('shadow_cloak', {
+      name: 'Shadow Cloak',
+      type: 'armor', rarity: 'rare',
+      stats: { DEF: 10, SPD: 6 }, value: 250,
+      description: 'Woven from solidified shadow. Offers both protection and evasion.'
+    });
+
+    // Accessories
+    this.addItem('sanctum_amulet', {
+      name: 'Sanctum Amulet',
+      type: 'accessory', rarity: 'rare',
+      stats: { HP: 40, DEF: 6 }, value: 300,
+      description: 'Amulet bearing the Order\'s seal. Reinforces the wearer against dark energy.'
+    });
+    this.addItem('void_ring', {
+      name: 'Void Ring',
+      type: 'accessory', rarity: 'epic',
+      stats: { ATK: 12, SPD: 8 }, value: 0,
+      description: 'Ring forged from the Hollow King\'s own void essence. Strange and powerful.'
+    });
+
+    // Materials
+    this.addItem('fungal_spore', {
+      name: 'Fungal Spore',
+      type: 'material', rarity: 'common', value: 12,
+      stackable: true, maxStack: 99,
+      description: 'Dense spore from a cave mushroom. Used in alchemy.'
+    });
+    this.addItem('void_crystal', {
+      name: 'Void Crystal',
+      type: 'material', rarity: 'rare', value: 180,
+      stackable: true, maxStack: 20,
+      description: 'A fragment of crystallised void energy. Highly sought by mages.'
+    });
+    this.addItem('shadow_core', {
+      name: 'Shadow Core',
+      type: 'material', rarity: 'uncommon', value: 75,
+      stackable: true, maxStack: 30,
+      description: 'Dense shadow essence drawn from corrupted beings.'
+    });
+
+    // Consumables (new)
+    this.addItem('dark_potion', {
+      name: 'Dark Elixir',
+      type: 'consumable', rarity: 'rare',
+      effects: [{ type: 'heal', value: 80 }, { type: 'buff_atk', value: 8, duration: 3 }],
+      value: 180, stackable: true, maxStack: 10,
+      description: 'Dangerous brew of void essence. Heals and empowers, but tastes of dread.'
+    });
   }
 
   /**

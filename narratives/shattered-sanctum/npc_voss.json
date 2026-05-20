@@ -1,0 +1,38 @@
+{
+  "inkVersion": 21,
+  "root": [
+    ["end", null],
+    {
+      "greeting": [
+        "^Commander Voss: You... you are living. I have not seen the living in a long time.", "\n",
+        "^Commander Voss: I am Voss. Or what remains of him. I commanded this outpost before the shadow came.", "\n",
+        "^Commander Voss: Listen carefully. Beneath this ruin lies the Shattered Sanctum. Three seals hold a being of pure void — the Hollow King.", "\n",
+        "^Commander Voss: The seals are breaking. If they fail, he walks free. You must reach the Sanctum and reinforce them with the three Seal Fragments.", "\n",
+        "^Commander Voss: My soldiers... they fell trying. Their patrol markers are still out there. If you find them, bring them to me.", "\n",
+        "^Commander Voss: The first Fragment should be in my old armory — the eastern section. The others lie deeper.", "\n",
+        {"#": "knot_reached:npc_voss_greeting"},
+        {"#": "set_flag:flag_voss_briefed"},
+        "end",
+        null
+      ],
+      "reminder": [
+        "^Commander Voss: The seals will not hold forever. Find the three Seal Fragments and descend.", "\n",
+        "^Commander Voss: My soldiers' patrol markers — three of them, scattered through this floor. Bring them to me if you find them.", "\n",
+        {"#": "knot_reached:npc_voss_reminder"},
+        "end",
+        null
+      ],
+      "patrol_thanks": [
+        "^Commander Voss: You found them. All three markers.", "\n",
+        "^Commander Voss: Sergeant Oram. Private Hess. Young Calder. They were good soldiers.", "\n",
+        "^Commander Voss: Take this — the armory key. I no longer need it. And... thank you.", "\n",
+        "^Commander Voss: Do not let their deaths be for nothing. Seal the Hollow King back in his prison.", "\n",
+        {"#": "knot_reached:npc_voss_patrol_thanks"},
+        {"#": "set_flag:flag_armory_unlocked"},
+        "end",
+        null
+      ]
+    }
+  ],
+  "listDefs": {}
+}

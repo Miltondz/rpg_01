@@ -1,0 +1,38 @@
+{
+  "inkVersion": 21,
+  "root": [
+    ["end", null],
+    {
+      "offer": [
+        "^Shadow Archivist: Ah. The adventurers. I wondered when you would arrive.", "\n",
+        "^Shadow Archivist: I am the Archivist. I catalogued the Order's secrets — including the ones they wished buried.", "\n",
+        "^Shadow Archivist: The Hollow King is not what they told you. He is a mirror — he reflects what is already in your world.", "\n",
+        "^Shadow Archivist: Reinforce those seals and you delay the inevitable. Break them, however... and you absorb his void-energy before it dissipates.", "\n",
+        "^Shadow Archivist: Power. Real power. The kind the Order feared so much they built a prison around it.", "\n",
+        "^Shadow Archivist: I offer you a choice. Fight him on his terms, weakened by your piety... or fight him on yours.", "\n",
+        "^Shadow Archivist: Speak to me again when you have decided.", "\n",
+        {"#": "knot_reached:npc_archivist_offer"},
+        "end",
+        null
+      ],
+      "dark_path_confirmed": [
+        "^Shadow Archivist: Wise. Or perhaps merely honest.", "\n",
+        "^Shadow Archivist: When you defeat the Hollow King with the seals broken, his void-energy flows to the victors.", "\n",
+        "^Shadow Archivist: You will carry a piece of the void from this day forward. Use it well.", "\n",
+        "^Shadow Archivist: I will be watching.", "\n",
+        {"#": "knot_reached:npc_archivist_dark_confirmed"},
+        "end",
+        null
+      ],
+      "aftermath": [
+        "^Shadow Archivist: It is done. Interesting.", "\n",
+        "^Shadow Archivist: Whatever path you chose, you are still standing. That is more than most managed.", "\n",
+        "^Shadow Archivist: The Sanctum will hold. For a time. Everything ends eventually.", "\n",
+        {"#": "knot_reached:npc_archivist_aftermath"},
+        "end",
+        null
+      ]
+    }
+  ],
+  "listDefs": {}
+}

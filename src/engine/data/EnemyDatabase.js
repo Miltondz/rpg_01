@@ -1017,6 +1017,337 @@ export class EnemyDatabase {
       }
     });
 
+    // ── SHATTERED SANCTUM ENEMIES ──────────────────────────────────────────
+
+    this.addEnemy('fungal_spider', {
+      name: 'Fungal Spider',
+      tier: 2,
+      baseLevel: 4,
+      baseStats: { HP: 35, ATK: 12, DEF: 5, SPD: 10, element: 'Poison' },
+      aiType: 'AGGRESSIVE',
+      skills: [
+        {
+          id: 'venom_bite', name: 'Venom Bite', type: 'skill', apCost: 2,
+          targetType: 'single_enemy', effects: ['damage', 'poison'],
+          damageMultiplier: 1.1,
+          statusEffect: { type: 'poison', duration: 4, damage: 4 },
+          description: 'Bite that injects paralytic venom'
+        },
+        {
+          id: 'web_trap', name: 'Web Trap', type: 'skill', apCost: 2,
+          targetType: 'single_enemy', effects: ['debuff'],
+          statusEffect: { type: 'slow', duration: 3, spdReduction: 4 },
+          description: 'Covers target in sticky web, reducing speed'
+        }
+      ],
+      resistances: { 'Poison': 0.0, 'Fire': 1.5, 'Ice': 1.2 },
+      lootTable: {
+        gold: { min: 8, max: 18 }, experience: 38,
+        items: [
+          { itemId: 'fungal_spore', chance: 0.6 },
+          { itemId: 'antidote', chance: 0.4 }
+        ]
+      }
+    });
+
+    this.addEnemy('cave_troll', {
+      name: 'Cave Troll',
+      tier: 2,
+      baseLevel: 5,
+      baseStats: { HP: 65, ATK: 14, DEF: 16, SPD: 3, element: 'Physical' },
+      aiType: 'DEFENSIVE',
+      skills: [
+        {
+          id: 'troll_smash', name: 'Troll Smash', type: 'skill', apCost: 3,
+          targetType: 'single_enemy', effects: ['damage'],
+          damageMultiplier: 1.8, description: 'Slow but devastating club strike'
+        },
+        {
+          id: 'regenerate', name: 'Regenerate', type: 'skill', apCost: 2,
+          targetType: 'self', effects: ['healing'],
+          healAmount: 20, description: 'Trolls heal rapidly between attacks'
+        },
+        {
+          id: 'rock_throw', name: 'Rock Throw', type: 'skill', apCost: 1,
+          targetType: 'single_enemy', effects: ['damage'],
+          damageMultiplier: 0.9, description: 'Hurls a chunk of cave rock'
+        }
+      ],
+      resistances: { 'Physical': 0.7, 'Fire': 1.4, 'Ice': 0.8 },
+      lootTable: {
+        gold: { min: 15, max: 30 }, experience: 55,
+        items: [
+          { itemId: 'iron_ore', chance: 0.7 },
+          { itemId: 'large_health_potion', chance: 0.25 }
+        ]
+      }
+    });
+
+    this.addEnemy('shadow_acolyte', {
+      name: 'Shadow Acolyte',
+      tier: 3,
+      baseLevel: 8,
+      baseStats: { HP: 48, ATK: 22, DEF: 9, SPD: 8, element: 'Dark' },
+      aiType: 'TACTICAL',
+      skills: [
+        {
+          id: 'void_bolt', name: 'Void Bolt', type: 'skill', apCost: 2,
+          targetType: 'single_enemy', effects: ['damage'],
+          damageMultiplier: 1.6, element: 'Dark',
+          description: 'Concentrated void energy projectile'
+        },
+        {
+          id: 'shadow_veil', name: 'Shadow Veil', type: 'skill', apCost: 2,
+          targetType: 'self', effects: ['evasion_boost'],
+          evasionBonus: 25, duration: 3,
+          description: 'Melds into shadows, becoming harder to hit'
+        },
+        {
+          id: 'curse_weakness', name: 'Curse of Weakness', type: 'skill', apCost: 2,
+          targetType: 'single_enemy', effects: ['debuff'],
+          statusEffect: { type: 'weakness', duration: 4, atkReduction: 6 },
+          description: 'Dark curse saps the target\'s strength'
+        }
+      ],
+      resistances: { 'Dark': 0.3, 'Light': 1.6, 'Physical': 0.9 },
+      lootTable: {
+        gold: { min: 28, max: 50 }, experience: 90,
+        items: [
+          { itemId: 'void_crystal', chance: 0.45 },
+          { itemId: 'dark_crystal', chance: 0.35 },
+          { itemId: 'mana_potion', chance: 0.3 }
+        ]
+      }
+    });
+
+    this.addEnemy('corrupted_paladin', {
+      name: 'Corrupted Paladin',
+      tier: 3,
+      baseLevel: 9,
+      baseStats: { HP: 60, ATK: 20, DEF: 18, SPD: 5, element: 'Dark' },
+      aiType: 'DEFENSIVE',
+      skills: [
+        {
+          id: 'tainted_smite', name: 'Tainted Smite', type: 'skill', apCost: 3,
+          targetType: 'single_enemy', effects: ['damage'],
+          damageMultiplier: 1.9, element: 'Dark',
+          description: 'Holy power corrupted by shadow — burns and poisons'
+        },
+        {
+          id: 'void_shield', name: 'Void Barrier', type: 'skill', apCost: 2,
+          targetType: 'self', effects: ['defense_boost'],
+          defenseBonus: 12, duration: 3,
+          description: 'Shadowy barrier absorbs incoming damage'
+        },
+        {
+          id: 'drain_faith', name: 'Drain Faith', type: 'skill', apCost: 2,
+          targetType: 'single_enemy', effects: ['damage', 'life_drain'],
+          damageMultiplier: 1.2, lifeDrain: 0.6, element: 'Dark',
+          description: 'Siphons spiritual energy from foes'
+        }
+      ],
+      resistances: { 'Physical': 0.75, 'Dark': 0.4, 'Light': 1.3 },
+      lootTable: {
+        gold: { min: 35, max: 60 }, experience: 110,
+        items: [
+          { itemId: 'shadow_core', chance: 0.5 },
+          { itemId: 'warden_plate', chance: 0.15 },
+          { itemId: 'large_health_potion', chance: 0.4 }
+        ]
+      }
+    });
+
+    // ── SHATTERED SANCTUM BOSSES ────────────────────────────────────────────
+
+    this.addEnemy('outpost_warden', {
+      name: 'Outpost Warden Grael',
+      tier: 'boss',
+      baseLevel: 6,
+      baseStats: { HP: 140, ATK: 22, DEF: 16, SPD: 5, element: 'Undead' },
+      aiType: 'DEFENSIVE',
+      phases: [
+        { hpThreshold: 1.0, skills: ['warden_strike', 'fortress_stance', 'command_undead'] },
+        { hpThreshold: 0.5, skills: ['warden_strike', 'fortress_stance', 'command_undead', 'death_rattle'] }
+      ],
+      skills: [
+        {
+          id: 'warden_strike', name: 'Warden\'s Strike', type: 'skill', apCost: 2,
+          targetType: 'single_enemy', effects: ['damage'],
+          damageMultiplier: 1.5, description: 'Powerful blow from a veteran commander'
+        },
+        {
+          id: 'fortress_stance', name: 'Fortress Stance', type: 'skill', apCost: 2,
+          targetType: 'self', effects: ['defense_boost'],
+          defenseBonus: 14, duration: 3,
+          description: 'The Warden braces, becoming nearly impervious'
+        },
+        {
+          id: 'command_undead', name: 'Command Undead', type: 'skill', apCost: 2,
+          targetType: 'all_allies', effects: ['buff'],
+          statusEffect: { type: 'command', duration: 3, atkBonus: 4 },
+          description: 'Orders undead allies to fight with renewed fury'
+        },
+        {
+          id: 'death_rattle', name: 'Death Rattle', type: 'skill', apCost: 3,
+          targetType: 'all_enemies', effects: ['damage', 'debuff'],
+          damageMultiplier: 1.3,
+          statusEffect: { type: 'fear', duration: 2, atkReduction: 5 },
+          description: 'A terrifying scream that weakens all who hear it'
+        }
+      ],
+      resistances: { 'Physical': 0.7, 'Dark': 0.5, 'Light': 1.4, 'Poison': 0.0 },
+      lootTable: {
+        gold: { min: 80, max: 120 }, experience: 200,
+        items: [
+          { itemId: 'warden_plate', chance: 0.6 },
+          { itemId: 'iron_spear', chance: 0.5 },
+          { itemId: 'silver_key', chance: 1.0 }
+        ]
+      }
+    });
+
+    this.addEnemy('corrupted_captain', {
+      name: 'Corrupted Captain Aldric',
+      tier: 'boss',
+      baseLevel: 9,
+      baseStats: { HP: 170, ATK: 28, DEF: 14, SPD: 10, element: 'Dark' },
+      aiType: 'TACTICAL',
+      phases: [
+        { hpThreshold: 1.0, skills: ['captain_slash', 'shadow_dash', 'drain_loyalty'] },
+        { hpThreshold: 0.6, skills: ['captain_slash', 'shadow_dash', 'drain_loyalty', 'captain_despair'] },
+        { hpThreshold: 0.3, skills: ['void_cleave', 'shadow_burst', 'captain_despair'] }
+      ],
+      skills: [
+        {
+          id: 'captain_slash', name: 'Captain\'s Slash', type: 'skill', apCost: 2,
+          targetType: 'single_enemy', effects: ['damage'],
+          damageMultiplier: 1.7, description: 'Swift precise strike from a trained officer'
+        },
+        {
+          id: 'shadow_dash', name: 'Shadow Dash', type: 'skill', apCost: 2,
+          targetType: 'self', effects: ['evasion_boost', 'buff'],
+          evasionBonus: 35, spdBonus: 5, duration: 2,
+          description: 'Moves at terrifying speed through shadows'
+        },
+        {
+          id: 'drain_loyalty', name: 'Drain Loyalty', type: 'skill', apCost: 2,
+          targetType: 'single_enemy', effects: ['damage', 'life_drain'],
+          damageMultiplier: 1.3, lifeDrain: 0.7, element: 'Dark',
+          description: 'The corrupted captain steals the will to fight'
+        },
+        {
+          id: 'captain_despair', name: 'Cry of Despair', type: 'skill', apCost: 2,
+          targetType: 'all_enemies', effects: ['debuff'],
+          statusEffect: { type: 'despair', duration: 3, atkReduction: 4, spdReduction: 3 },
+          description: 'Wail of anguish saps enemy resolve'
+        },
+        {
+          id: 'void_cleave', name: 'Void Cleave', type: 'skill', apCost: 3,
+          targetType: 'all_enemies', effects: ['damage'],
+          damageMultiplier: 1.6, element: 'Dark',
+          description: 'Wide shadow arc strikes every enemy'
+        },
+        {
+          id: 'shadow_burst', name: 'Shadow Burst', type: 'skill', apCost: 2,
+          targetType: 'single_enemy', effects: ['damage', 'stun'],
+          damageMultiplier: 2.0, element: 'Dark',
+          statusEffect: { type: 'stun', duration: 1 },
+          description: 'Concentrated shadow explodes on impact'
+        }
+      ],
+      resistances: { 'Dark': 0.4, 'Light': 1.5, 'Physical': 0.85 },
+      lootTable: {
+        gold: { min: 100, max: 160 }, experience: 280,
+        items: [
+          { itemId: 'seal_fragment_2', chance: 1.0 },
+          { itemId: 'captain_badge', chance: 1.0 },
+          { itemId: 'cursed_shortsword', chance: 0.5 }
+        ]
+      }
+    });
+
+    this.addEnemy('hollow_king', {
+      name: 'The Hollow King',
+      tier: 'boss',
+      baseLevel: 12,
+      baseStats: { HP: 320, ATK: 38, DEF: 22, SPD: 7, element: 'Dark' },
+      aiType: 'TACTICAL',
+      phases: [
+        {
+          hpThreshold: 1.0,
+          skills: ['hollow_grasp', 'void_step', 'sanctum_shatter']
+        },
+        {
+          hpThreshold: 0.65,
+          skills: ['hollow_grasp', 'void_step', 'sanctum_shatter', 'call_void', 'hollow_scream']
+        },
+        {
+          hpThreshold: 0.35,
+          skills: ['annihilation_pulse', 'hollow_scream', 'soul_devour', 'void_regeneration']
+        }
+      ],
+      skills: [
+        {
+          id: 'hollow_grasp', name: 'Hollow Grasp', type: 'skill', apCost: 2,
+          targetType: 'single_enemy', effects: ['damage', 'life_drain'],
+          damageMultiplier: 1.6, lifeDrain: 0.5, element: 'Dark',
+          description: 'Spectral hand drains life into the void'
+        },
+        {
+          id: 'void_step', name: 'Void Step', type: 'skill', apCost: 2,
+          targetType: 'self', effects: ['evasion_boost', 'buff'],
+          evasionBonus: 30, duration: 2,
+          description: 'King phases into the void briefly, dodging attacks'
+        },
+        {
+          id: 'sanctum_shatter', name: 'Sanctum Shatter', type: 'skill', apCost: 3,
+          targetType: 'all_enemies', effects: ['damage'],
+          damageMultiplier: 1.5, element: 'Dark',
+          description: 'The sanctum itself cracks around him, raining stone'
+        },
+        {
+          id: 'call_void', name: 'Call the Void', type: 'skill', apCost: 3,
+          targetType: 'battlefield', effects: ['summon'],
+          summonCount: 2, summonType: 'shadow_acolyte', summonLevel: 10,
+          description: 'Rips open the void, pulling acolytes into battle'
+        },
+        {
+          id: 'hollow_scream', name: 'Hollow Scream', type: 'skill', apCost: 2,
+          targetType: 'all_enemies', effects: ['debuff'],
+          statusEffect: { type: 'terror', duration: 3, atkReduction: 7, defReduction: 5 },
+          description: 'A scream from beyond — terror weakens body and mind'
+        },
+        {
+          id: 'annihilation_pulse', name: 'Annihilation Pulse', type: 'skill', apCost: 3,
+          targetType: 'all_enemies', effects: ['damage', 'debuff'],
+          damageMultiplier: 2.0, element: 'Dark',
+          statusEffect: { type: 'doom', duration: 3, damagePerTurn: 12 },
+          description: 'Wave of pure void energy tears through all foes'
+        },
+        {
+          id: 'soul_devour', name: 'Soul Devour', type: 'skill', apCost: 3,
+          targetType: 'single_enemy', effects: ['damage', 'instant_death'],
+          damageMultiplier: 2.8, element: 'Dark', instantDeathChance: 0.12,
+          description: 'Attempts to consume the soul — devastating, rarely lethal outright'
+        },
+        {
+          id: 'void_regeneration', name: 'Void Regeneration', type: 'skill', apCost: 2,
+          targetType: 'self', effects: ['healing'],
+          healAmount: 50,
+          description: 'Draws void energy to mend his hollow form'
+        }
+      ],
+      resistances: { 'Dark': 0.1, 'Light': 2.2, 'Physical': 0.6, 'Fire': 0.7, 'Ice': 0.7 },
+      lootTable: {
+        gold: { min: 300, max: 500 }, experience: 800,
+        items: [
+          { itemId: 'sanctum_blade', chance: 1.0 },
+          { itemId: 'void_ring', chance: 1.0 },
+          { itemId: 'void_crystal', chance: 1.0 }
+        ]
+      }
+    });
+
     console.log('EnemyDatabase initialized with', this.enemies.size, 'enemy types');
   }
 

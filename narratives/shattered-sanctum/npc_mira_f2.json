@@ -1,0 +1,27 @@
+{
+  "inkVersion": 21,
+  "root": [
+    ["end", null],
+    {
+      "greeting": [
+        "^Mira: I made it down here ahead of you. Barely. The spiders are everywhere.", "\n",
+        "^Mira: Found a relatively safe corner — as safe as anything gets in a shadow-infested warren.", "\n",
+        "^Mira: Did you find any Glowing Mushrooms? Three is what I need. They only grow in the deep sections.", "\n",
+        {"#": "knot_reached:npc_mira_f2_greeting"},
+        "end",
+        null
+      ],
+      "mushroom_reward": [
+        "^Mira: Oh, you found them! All three! Perfect specimens.", "\n",
+        "^Mira: These are Lunafungi — extremely rare. I can brew Sanctum Amulets with the residue.", "\n",
+        "^Mira: Here. Take this. It will help against whatever is down there.", "\n",
+        "^Mira: And I restocked my supplies. Take what you need — on the house this time.", "\n",
+        {"#": "knot_reached:npc_mira_f2_mushroom_reward"},
+        {"#": "set_flag:flag_mushroom_quest_done"},
+        "end",
+        null
+      ]
+    }
+  ],
+  "listDefs": {}
+}

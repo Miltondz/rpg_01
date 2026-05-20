@@ -1,0 +1,161 @@
+{
+  "id": "shattered-sanctum-floor-1",
+  "name": "The Ruined Outpost",
+  "width": 20,
+  "height": 20,
+  "theme": "dungeon",
+  "spawn": { "x": 1, "z": 2, "direction": 2 },
+  "tiles": [
+    2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+    2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,2,
+    2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,2,
+    2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,
+    2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,2,
+    2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,2,
+    2,2,2,1,2,2,2,2,2,2,1,2,2,2,2,2,1,2,2,2,
+    2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,2,
+    2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,2,
+    2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,
+    2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,2,
+    2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,2,
+    2,2,2,1,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,
+    2,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1,1,2,
+    2,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1,1,2,
+    2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,
+    2,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1,1,2,
+    2,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1,1,2,
+    2,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1,3,2,
+    2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2
+  ],
+  "doors": [
+    { "x": 3, "z": 6, "orientation": "horizontal", "locked": false, "keyType": null, "description": "Rusted iron gate, hangs open" },
+    { "x": 10, "z": 6, "orientation": "horizontal", "locked": false, "keyType": null, "description": "Broken barracks door" },
+    { "x": 16, "z": 6, "orientation": "horizontal", "locked": false, "keyType": null, "description": "Armory passage, partially collapsed" },
+    { "x": 3, "z": 12, "orientation": "horizontal", "locked": true, "keyType": "bronze", "description": "Bronze-locked gate sealing the lower wing" },
+    { "x": 10, "z": 12, "orientation": "horizontal", "locked": true, "keyType": "silver", "description": "Silver-chained stone door — leads to the Warden's keep" }
+  ],
+  "transitions": [
+    {
+      "x": 18, "z": 18, "type": "stairs", "target": "shattered-sanctum-floor-2",
+      "spawn": { "x": 1, "z": 2, "direction": 2 }
+    }
+  ],
+  "safeZones": [
+    {
+      "x": 2, "z": 2, "type": "altar", "name": "Order's Altar",
+      "description": "An ancient altar of the Order of the Sealed Flame. Faint warmth still radiates from it.",
+      "services": ["save", "heal"], "healAmount": 100, "cooldown": 0
+    }
+  ],
+  "scriptedEncounters": [
+    {
+      "x": 9, "z": 8, "id": "goblin_patrol_upper",
+      "type": "scripted", "oneTime": true,
+      "description": "A goblin patrol that has taken up residence in the ruined barracks",
+      "enemies": [
+        { "type": "goblin", "level": 4 },
+        { "type": "goblin", "level": 4 },
+        { "type": "goblin_shaman", "level": 5 }
+      ],
+      "rewards": {
+        "experience": 90, "gold": { "min": 20, "max": 35 },
+        "loot": []
+      }
+    },
+    {
+      "x": 12, "z": 8, "id": "skeleton_patrol",
+      "type": "scripted", "oneTime": true,
+      "description": "Former outpost guards, now undead",
+      "enemies": [
+        { "type": "skeleton", "level": 5 },
+        { "type": "skeleton", "level": 5 },
+        { "type": "undead_knight", "level": 6 }
+      ],
+      "rewards": {
+        "experience": 130, "gold": { "min": 30, "max": 50 },
+        "loot": [{ "itemId": "bronze_key", "chance": 1.0, "quantity": { "min": 1, "max": 1 } }]
+      }
+    },
+    {
+      "x": 4, "z": 15, "id": "troll_lair",
+      "type": "scripted", "oneTime": true,
+      "description": "A troll that has claimed the lower cells as its den",
+      "enemies": [
+        { "type": "cave_troll", "level": 6 },
+        { "type": "giant_rat", "level": 4 },
+        { "type": "giant_rat", "level": 4 }
+      ],
+      "rewards": {
+        "experience": 120, "gold": { "min": 25, "max": 45 },
+        "loot": [{ "itemId": "silver_key", "chance": 0.8, "quantity": { "min": 1, "max": 1 } }]
+      }
+    },
+    {
+      "x": 13, "z": 16, "id": "outpost_warden_boss",
+      "type": "scripted", "oneTime": true,
+      "description": "The Warden who failed to protect the Outpost. He cannot rest.",
+      "enemies": [
+        { "type": "outpost_warden", "level": 6 },
+        { "type": "undead_knight", "level": 5 },
+        { "type": "skeleton", "level": 4 }
+      ],
+      "rewards": {
+        "experience": 350, "gold": { "min": 80, "max": 120 },
+        "loot": [
+          { "itemId": "warden_plate", "chance": 0.7, "quantity": { "min": 1, "max": 1 } },
+          { "itemId": "iron_spear", "chance": 0.6, "quantity": { "min": 1, "max": 1 } }
+        ]
+      }
+    }
+  ],
+  "keyItems": [
+    { "x": 5, "z": 4, "itemId": "patrol_marker", "respawn": false },
+    { "x": 13, "z": 4, "itemId": "patrol_marker", "respawn": false },
+    { "x": 4, "z": 13, "itemId": "patrol_marker", "respawn": false },
+    { "x": 4, "z": 17, "itemId": "silver_key", "respawn": false },
+    { "x": 17, "z": 9, "itemId": "seal_fragment_1", "respawn": false }
+  ],
+  "lootChests": [
+    {
+      "x": 17, "z": 4,
+      "loot": [
+        { "itemId": "iron_sword", "chance": 0.7, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "health_potion_small", "chance": 0.9, "quantity": { "min": 1, "max": 2 } }
+      ]
+    },
+    {
+      "x": 9, "z": 9,
+      "loot": [
+        { "itemId": "bronze_key", "chance": 1.0, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "mana_potion", "chance": 0.6, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 3, "z": 10,
+      "loot": [
+        { "itemId": "health_potion_small", "chance": 0.8, "quantity": { "min": 1, "max": 2 } },
+        { "itemId": "antidote", "chance": 0.7, "quantity": { "min": 1, "max": 2 } }
+      ]
+    },
+    {
+      "x": 17, "z": 10,
+      "loot": [
+        { "itemId": "large_health_potion", "chance": 0.5, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "strength_elixir", "chance": 0.4, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 16, "z": 14,
+      "loot": [
+        { "itemId": "chain_mail", "chance": 0.4, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "large_health_potion", "chance": 0.6, "quantity": { "min": 1, "max": 2 } },
+        { "itemId": "ap_potion", "chance": 0.5, "quantity": { "min": 1, "max": 2 } }
+      ]
+    }
+  ],
+  "tutorialHints": [
+    { "x": 1, "z": 2, "message": "The Outpost has fallen. Speak with Commander Voss at the altar — he knows what happened here.", "trigger": "first_visit" },
+    { "x": 9, "z": 6, "message": "You found a patrol marker. Voss is looking for word of his soldiers. Collect them all.", "trigger": "near_key" },
+    { "x": 9, "z": 12, "message": "The silver-chained door leads deeper into the Warden's keep. You'll need a silver key.", "trigger": "near_exit" }
+  ]
+}

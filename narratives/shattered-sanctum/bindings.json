@@ -1,0 +1,24 @@
+{
+  "bindings": [
+    { "inkVar": "player_name",    "type": "character",      "path": "members.0.name" },
+    { "inkVar": "player_level",   "type": "character",      "path": "members.0.level" },
+    { "inkVar": "flag_voss_briefed",           "type": "campaignFlag", "flag": "flag_voss_briefed" },
+    { "inkVar": "flag_patrol_complete",        "type": "campaignFlag", "flag": "flag_patrol_complete" },
+    { "inkVar": "flag_armory_unlocked",        "type": "campaignFlag", "flag": "flag_armory_unlocked" },
+    { "inkVar": "flag_mushroom_quest_started", "type": "campaignFlag", "flag": "flag_mushroom_quest_started" },
+    { "inkVar": "flag_mushrooms_collected",    "type": "campaignFlag", "flag": "flag_mushrooms_collected" },
+    { "inkVar": "flag_mushroom_quest_done",    "type": "campaignFlag", "flag": "flag_mushroom_quest_done" },
+    { "inkVar": "flag_aldric_quest_started",   "type": "campaignFlag", "flag": "flag_aldric_quest_started" },
+    { "inkVar": "flag_corrupted_captain_defeated", "type": "campaignFlag", "flag": "flag_corrupted_captain_defeated" },
+    { "inkVar": "flag_aldric_quest_done",      "type": "campaignFlag", "flag": "flag_aldric_quest_done" },
+    { "inkVar": "flag_dark_path_accepted",     "type": "campaignFlag", "flag": "flag_dark_path_accepted" },
+    { "inkVar": "flag_hollow_king_defeated",   "type": "campaignFlag", "flag": "flag_hollow_king_defeated" },
+    { "inkVar": "inventory_has_seal_1",  "type": "inventory", "itemId": "seal_fragment_1" },
+    { "inkVar": "inventory_has_seal_2",  "type": "inventory", "itemId": "seal_fragment_2" },
+    { "inkVar": "inventory_has_seal_3",  "type": "inventory", "itemId": "seal_fragment_3" },
+    { "inkVar": "inventory_has_badge",   "type": "inventory", "itemId": "captain_badge" },
+    { "inkVar": "seals_reinforced",  "type": "campaignVariable", "key": "seals_reinforced" },
+    { "inkVar": "dark_path_taken",   "type": "campaignVariable", "key": "dark_path_taken" },
+    { "inkVar": "runes_activated",   "type": "campaignVariable", "key": "runes_activated" }
+  ]
+}

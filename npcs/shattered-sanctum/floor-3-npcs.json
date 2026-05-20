@@ -1,0 +1,28 @@
+{
+  "dungeonId": "shattered-sanctum-floor-3",
+  "npcs": [
+    {
+      "id": "npc_archivist",
+      "name": "Shadow Archivist",
+      "type": "npc",
+      "faction": "shadow",
+      "isShopkeeper": false,
+      "portrait": "ghost",
+      "position": { "x": 3, "z": 9 },
+      "dialogueStory": "npc_archivist",
+      "dialogueKnot": "offer",
+      "dialogueConditions": {
+        "knotOverrides": [
+          {
+            "condition": { "flag": "flag_dark_path_accepted" },
+            "knot": "dark_path_confirmed"
+          },
+          {
+            "condition": { "flag": "flag_hollow_king_defeated" },
+            "knot": "aftermath"
+          }
+        ]
+      }
+    }
+  ]
+}

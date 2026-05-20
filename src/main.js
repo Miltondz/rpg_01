@@ -1155,7 +1155,10 @@ class DungeonCrawlerEngine {
       const testLevels = [
         './levels/test-room-10x10.json',
         './levels/multi-room-20x20.json',
-        './levels/test-collision.json'
+        './levels/test-collision.json',
+        './levels/shattered-sanctum-floor-1.json',
+        './levels/shattered-sanctum-floor-2.json',
+        './levels/shattered-sanctum-floor-3.json'
       ];
       
       // Get current level index or start with first level

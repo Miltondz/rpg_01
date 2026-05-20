@@ -1,0 +1,158 @@
+{
+  "id": "shattered-sanctum-floor-2",
+  "name": "The Fungal Warrens",
+  "width": 20,
+  "height": 20,
+  "theme": "dungeon",
+  "spawn": { "x": 1, "z": 2, "direction": 2 },
+  "tiles": [
+    2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+    2,1,1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,2,
+    2,1,1,2,1,2,2,1,2,1,2,2,1,2,2,1,1,2,1,2,
+    2,1,1,1,1,2,2,1,1,1,2,2,1,1,1,1,1,1,1,2,
+    2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,
+    2,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,1,1,1,2,
+    2,1,2,2,1,2,1,2,1,2,1,2,1,2,2,2,2,2,1,2,
+    2,1,1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,2,
+    2,2,2,1,2,2,1,2,2,2,1,2,2,2,1,2,2,2,1,2,
+    2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,
+    2,1,2,2,2,1,2,2,2,2,1,2,2,2,2,1,2,2,1,2,
+    2,1,1,2,1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,2,
+    2,2,1,2,1,2,2,1,2,2,2,1,2,2,2,2,1,2,2,2,
+    2,1,1,1,1,2,1,1,2,1,1,1,2,1,1,1,1,1,1,2,
+    2,1,2,2,1,2,1,2,2,1,2,1,2,2,1,2,2,2,1,2,
+    2,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,2,
+    2,2,2,1,2,2,2,2,2,2,2,1,2,2,2,2,1,2,2,2,
+    2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,1,1,2,
+    2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,1,3,2,
+    2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2
+  ],
+  "doors": [
+    { "x": 9, "z": 4, "orientation": "horizontal", "locked": false, "keyType": null, "description": "A passage gnawed through the fungal growth" },
+    { "x": 9, "z": 8, "orientation": "horizontal", "locked": false, "keyType": null, "description": "Low archway, slick with moisture" },
+    { "x": 11, "z": 12, "orientation": "horizontal", "locked": true, "keyType": "bronze", "description": "Overgrown bronze door, vines hold it shut" },
+    { "x": 3, "z": 16, "orientation": "horizontal", "locked": true, "keyType": "silver", "description": "The Captain's sealed chamber. Silver-locked." },
+    { "x": 16, "z": 16, "orientation": "horizontal", "locked": false, "keyType": null, "description": "Passage to the deeper warrens" }
+  ],
+  "transitions": [
+    {
+      "x": 18, "z": 18, "type": "stairs", "target": "shattered-sanctum-floor-3",
+      "spawn": { "x": 1, "z": 2, "direction": 2 }
+    }
+  ],
+  "safeZones": [
+    {
+      "x": 2, "z": 2, "type": "altar", "name": "Mycelium Shrine",
+      "description": "Bioluminescent fungi cluster around an ancient stone marker. Strangely comforting.",
+      "services": ["save", "heal"], "healAmount": 100, "cooldown": 0
+    }
+  ],
+  "scriptedEncounters": [
+    {
+      "x": 9, "z": 6, "id": "spider_ambush",
+      "type": "scripted", "oneTime": false,
+      "description": "Fungal spiders nesting in the upper warrens",
+      "enemies": [
+        { "type": "fungal_spider", "level": 6 },
+        { "type": "fungal_spider", "level": 6 },
+        { "type": "fungal_spider", "level": 7 }
+      ],
+      "rewards": {
+        "experience": 140, "gold": { "min": 25, "max": 45 },
+        "loot": [{ "itemId": "antidote", "chance": 0.8, "quantity": { "min": 1, "max": 3 } }]
+      }
+    },
+    {
+      "x": 10, "z": 10, "id": "shadow_cult_patrol",
+      "type": "scripted", "oneTime": true,
+      "description": "Shadow acolytes performing a ritual near the central chamber",
+      "enemies": [
+        { "type": "shadow_acolyte", "level": 8 },
+        { "type": "shadow_acolyte", "level": 8 },
+        { "type": "shadow_beast", "level": 7 }
+      ],
+      "rewards": {
+        "experience": 270, "gold": { "min": 55, "max": 90 },
+        "loot": [{ "itemId": "void_crystal", "chance": 0.6, "quantity": { "min": 1, "max": 1 } }]
+      }
+    },
+    {
+      "x": 14, "z": 13, "id": "troll_cave",
+      "type": "scripted", "oneTime": true,
+      "description": "A cave troll guards a nest filled with stolen treasure",
+      "enemies": [
+        { "type": "cave_troll", "level": 8 },
+        { "type": "fungal_spider", "level": 6 }
+      ],
+      "rewards": {
+        "experience": 180, "gold": { "min": 45, "max": 75 },
+        "loot": [{ "itemId": "bronze_key", "chance": 1.0, "quantity": { "min": 1, "max": 1 } }]
+      }
+    },
+    {
+      "x": 2, "z": 17, "id": "corrupted_captain_boss",
+      "type": "scripted", "oneTime": true,
+      "description": "The echo of Captain Aldric, twisted by years of shadow corruption.",
+      "enemies": [
+        { "type": "corrupted_captain", "level": 9 },
+        { "type": "shadow_acolyte", "level": 8 }
+      ],
+      "rewards": {
+        "experience": 460, "gold": { "min": 100, "max": 160 },
+        "loot": [
+          { "itemId": "seal_fragment_2", "chance": 1.0, "quantity": { "min": 1, "max": 1 } },
+          { "itemId": "captain_badge", "chance": 1.0, "quantity": { "min": 1, "max": 1 } },
+          { "itemId": "cursed_shortsword", "chance": 0.5, "quantity": { "min": 1, "max": 1 } }
+        ]
+      }
+    }
+  ],
+  "keyItems": [
+    { "x": 17, "z": 3, "itemId": "glowing_mushroom", "respawn": false },
+    { "x": 5, "z": 7, "itemId": "glowing_mushroom", "respawn": false },
+    { "x": 14, "z": 15, "itemId": "glowing_mushroom", "respawn": false },
+    { "x": 15, "z": 17, "itemId": "silver_key", "respawn": false }
+  ],
+  "lootChests": [
+    {
+      "x": 1, "z": 5,
+      "loot": [
+        { "itemId": "health_potion_small", "chance": 0.9, "quantity": { "min": 1, "max": 3 } },
+        { "itemId": "antidote", "chance": 0.8, "quantity": { "min": 1, "max": 2 } }
+      ]
+    },
+    {
+      "x": 17, "z": 7,
+      "loot": [
+        { "itemId": "mana_potion", "chance": 0.7, "quantity": { "min": 1, "max": 2 } },
+        { "itemId": "shadow_core", "chance": 0.5, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 5, "z": 11,
+      "loot": [
+        { "itemId": "bronze_key", "chance": 1.0, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 17, "z": 11,
+      "loot": [
+        { "itemId": "large_health_potion", "chance": 0.6, "quantity": { "min": 1, "max": 2 } },
+        { "itemId": "defense_elixir", "chance": 0.5, "quantity": { "min": 1, "max": 1 } }
+      ]
+    },
+    {
+      "x": 17, "z": 15,
+      "loot": [
+        { "itemId": "shadow_cloak", "chance": 0.4, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "void_crystal", "chance": 0.5, "quantity": { "min": 1, "max": 1 } },
+        { "itemId": "ap_potion", "chance": 0.7, "quantity": { "min": 1, "max": 2 } }
+      ]
+    }
+  ],
+  "tutorialHints": [
+    { "x": 1, "z": 2, "message": "The Fungal Warrens. Watch for poison attacks — bring antidotes.", "trigger": "first_visit" },
+    { "x": 10, "z": 9, "message": "A ghostly presence lingers here. The spirit of someone who died below.", "trigger": "near_npc" },
+    { "x": 2, "z": 16, "message": "The Captain's chamber. Whatever is behind that door, it won't be friendly.", "trigger": "near_exit" }
+  ]
+}

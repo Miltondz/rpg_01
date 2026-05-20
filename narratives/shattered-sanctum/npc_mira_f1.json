@@ -1,0 +1,27 @@
+{
+  "inkVersion": 21,
+  "root": [
+    ["end", null],
+    {
+      "greeting": [
+        "^Mira: Oh! A real party! I thought I was alone in this ruin.", "\n",
+        "^Mira: I am Mira — herbalist, reluctant adventurer. I followed rumours of rare fungi and now I cannot leave.", "\n",
+        "^Mira: The lower floors are thick with bioluminescent mushrooms. Glowing ones — three would be enough for my best restorative formula.", "\n",
+        "^Mira: If you bring me three Glowing Mushrooms from the Warrens below, I will give you something worth more than gold.", "\n",
+        "^Mira: In the meantime — I have potions. Supplies. Take what you need, within reason.", "\n",
+        {"#": "knot_reached:npc_mira_f1_greeting"},
+        {"#": "set_flag:flag_mushroom_quest_started"},
+        "end",
+        null
+      ],
+      "mushroom_reminder": [
+        "^Mira: Still looking for those mushrooms? Three Glowing Mushrooms from the Fungal Warrens.", "\n",
+        "^Mira: I have set up a small camp on the second floor as well — find me there once you have them.", "\n",
+        {"#": "knot_reached:npc_mira_f1_reminder"},
+        "end",
+        null
+      ]
+    }
+  ],
+  "listDefs": {}
+}
