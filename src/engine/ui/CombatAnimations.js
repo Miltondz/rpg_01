@@ -606,19 +606,16 @@ export class CombatAnimations {
   async playCombatStartAnimation() {
     const combatContainer = document.getElementById('combat-container');
     if (!combatContainer) return;
-    
+
     combatContainer.style.opacity = '0';
-    combatContainer.style.transform = 'scale(0.9)';
-    
-    await this.delay(100);
-    
-    combatContainer.style.transition = 'all 0.5s ease-out';
+    await this.delay(80);
+
+    combatContainer.style.transition = 'opacity 0.4s ease-out';
     combatContainer.style.opacity = '1';
-    combatContainer.style.transform = 'scale(1)';
-    
-    await this.delay(500);
-    
-    combatContainer.style.transition = '';
+
+    await this.delay(400);
+
+    combatContainer.style.cssText = '';
   }
 
   /**
@@ -628,28 +625,29 @@ export class CombatAnimations {
   async playCombatEndAnimation(endData) {
     const combatContainer = document.getElementById('combat-container');
     if (!combatContainer) return;
-    
-    // Victory/defeat effect
+
     if (endData.result === 'victory') {
       combatContainer.classList.add('victory-glow');
     } else {
       combatContainer.classList.add('defeat-fade');
     }
-    
-    await this.delay(2000);
-    
-    // Fade out
-    combatContainer.style.transition = 'all 0.5s ease-in';
+
+    await this.delay(1500);
+
+    // Skip fade-out if container was already hidden by hideCombat()
+    if (combatContainer.classList.contains('hidden')) {
+      combatContainer.classList.remove('victory-glow', 'defeat-fade');
+      combatContainer.style.cssText = '';
+      return;
+    }
+
+    combatContainer.style.transition = 'opacity 0.4s ease-in';
     combatContainer.style.opacity = '0';
-    combatContainer.style.transform = 'scale(0.9)';
-    
-    await this.delay(500);
-    
-    // Cleanup
+
+    await this.delay(400);
+
     combatContainer.classList.remove('victory-glow', 'defeat-fade');
-    combatContainer.style.transition = '';
-    combatContainer.style.opacity = '';
-    combatContainer.style.transform = '';
+    combatContainer.style.cssText = '';
   }
 
   /**

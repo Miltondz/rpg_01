@@ -35,6 +35,7 @@ export class CombatUIManager {
    * @param {Object} inventorySystem - Inventory system (for loot distribution)
    */
   async initialize(combatSystem, partyManager = null, inventorySystem = null) {
+    if (this.isInitialized) return true;
     try {
       this.currentCombatSystem = combatSystem;
       this.partyManager = partyManager;
@@ -124,6 +125,12 @@ export class CombatUIManager {
   handleCombatStarted(combatData) {
     if (!this.isInitialized) return;
 
+    // Cancel any pending hide from a previous combat ending
+    if (this._hideTimeout) {
+      clearTimeout(this._hideTimeout);
+      this._hideTimeout = null;
+    }
+
     this.isActive = true;
     this.combatUI.showCombat(combatData);
     this.combatUI.addLogMessage('Combat begins!', 'system');
@@ -144,8 +151,9 @@ export class CombatUIManager {
       window.dispatchEvent(new CustomEvent('combatVictory', { detail: endData }));
     }
 
-    // Hide combat UI after a delay to show final animations
-    setTimeout(() => {
+    // Store timeout ID so it can be cancelled if a new combat starts before it fires
+    this._hideTimeout = setTimeout(() => {
+      this._hideTimeout = null;
       this.combatUI.hideCombat();
       this.isActive = false;
     }, 2000);
@@ -279,8 +287,9 @@ export class CombatUIManager {
   updatePlayerActions(character) {
     if (!this.currentCombatSystem) return;
 
-    // Pass inventorySystem so real consumable items appear as actions
-    const availableActions = this.currentCombatSystem.getAvailableActions(character, this.inventorySystem);
+    // Pass null for inventorySystem — individual item buttons cause layout overflow.
+    // A single "Use Item" button keeps the action menu predictable (max ~6 buttons).
+    const availableActions = this.currentCombatSystem.getAvailableActions(character, null);
 
     this.combatUI.updateActions(availableActions, character);
   }

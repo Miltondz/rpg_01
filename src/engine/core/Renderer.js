@@ -132,8 +132,8 @@ export class Renderer {
   handleResize() {
     if (!this.camera || !this.renderer) return;
     
-    const width = this.canvas.clientWidth;
-    const height = this.canvas.clientHeight;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
     
     // Update camera aspect ratio
     this.camera.aspect = width / height;

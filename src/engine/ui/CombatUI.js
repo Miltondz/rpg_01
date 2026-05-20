@@ -211,10 +211,19 @@ export class CombatUI {
 
   _actionIcon(id) {
     const icons = {
-      attack: '⚔', skill: '✨', item: '🧪',
-      defend: '🛡', flee: '🏃', skip: '⏭'
+      attack: '⚔', basic_attack: '⚔',
+      skill: '✨',
+      item: '🧪', use_item: '🧪',
+      defend: '🛡',
+      flee: '🏃',
+      skip: '⏭'
     };
-    return icons[id] || '●';
+    // For skill or item actions with specific IDs (e.g. 'power_strike', 'use_item_health_potion')
+    if (!icons[id]) {
+      if (id && id.startsWith('use_item')) return '🧪';
+      return '✨'; // generic skill icon for anything else
+    }
+    return icons[id];
   }
 
   createDefaultActionButtons() {
@@ -259,11 +268,16 @@ export class CombatUI {
       console.error('CombatUI not initialized');
       return;
     }
-    
+
     this.isActive = true;
+    // Reset any inline styles left by animations (opacity, transform from end-of-combat effects)
+    this.elements.combatContainer.style.cssText = '';
     this.elements.backdrop?.classList.remove('hidden');
     this.elements.combatContainer.classList.remove('hidden');
-    
+
+    // Clear action menu so stale buttons from previous combat don't show
+    if (this.elements.actionMenu) this.elements.actionMenu.innerHTML = '';
+
     // Clear previous log
     this.clearCombatLog();
     
@@ -289,9 +303,12 @@ export class CombatUI {
    */
   hideCombat() {
     this.isActive = false;
+    // Reset any animation-applied inline styles before hiding
+    this.elements.combatContainer.style.cssText = '';
     this.elements.combatContainer.classList.add('hidden');
     this.elements.backdrop?.classList.add('hidden');
     this.clearCombatLog();
+    if (this.elements.actionMenu) this.elements.actionMenu.innerHTML = '';
   }
 
   /**

@@ -874,7 +874,7 @@ body {
 
 /* ---- Bottom Panel ---- */
 .combat-bottom {
-    flex: 0 0 150px;
+    flex: 0 0 180px;
     flex-shrink: 0;
     display: flex;
     border-top: 1px solid #5a3e08;
@@ -1683,7 +1683,7 @@ body {
     .party-formation { grid-template-columns: 1fr 1fr; gap: 4px; }
     .combatant-card { max-width: 110px; }
     .combatant-avatar { height: 80px; }
-    .combat-bottom { flex-direction: column; flex: 0 0 240px; }
+    .combat-bottom { flex-direction: column; flex: 0 0 280px; }
     .combat-actions-panel { flex: none; width: auto; border-right: none; border-bottom: 1px solid #1b3a1b; }
     .combat-turn-banner { flex: 0 0 40px; }
 }
