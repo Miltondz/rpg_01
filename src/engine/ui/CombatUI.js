@@ -128,10 +128,18 @@ export class CombatUI {
     // VS divider — CENTER
     const vsDivider = document.createElement('div');
     vsDivider.className = 'combat-vs-divider';
+    const vsTop = document.createElement('span');
+    vsTop.className = 'vs-icon';
+    vsTop.textContent = '⚔';
     const vsText = document.createElement('span');
     vsText.className = 'vs-text';
     vsText.textContent = 'VS';
+    const vsBot = document.createElement('span');
+    vsBot.className = 'vs-icon vs-icon-bottom';
+    vsBot.textContent = '⚔';
+    vsDivider.appendChild(vsTop);
     vsDivider.appendChild(vsText);
+    vsDivider.appendChild(vsBot);
 
     // Enemy side — RIGHT
     const enemySide = document.createElement('div');
@@ -282,15 +290,26 @@ export class CombatUI {
   updatePartyDisplay(partyMembers) {
     this.elements.partyHUD.innerHTML = '';
 
-    // Formation: party[0..1] = front row, party[2..3] = back row.
-    // Grid is left=back, right=front (front faces enemies on the right).
-    // CSS grid fills left-to-right per row, so append order: [back0, front0, back1, front1]
+    // Grid is 2 cols × 2 rows: left col = Back row, right col = Front row (faces enemies).
+    // party[0..1] = front row, party[2..3] = back row.
+    // Always emit all 4 cells — empty placeholders keep front-row locked to RIGHT column.
     const front = partyMembers.slice(0, 2);
     const back  = partyMembers.slice(2, 4);
-    const rows  = Math.max(front.length, back.length);
-    for (let i = 0; i < rows; i++) {
-      if (back[i])  this.elements.partyHUD.appendChild(this.createCombatantCard(back[i],  'party', i + 2));
-      if (front[i]) this.elements.partyHUD.appendChild(this.createCombatantCard(front[i], 'party', i));
+    for (let i = 0; i < 2; i++) {
+      // Left col (back)
+      const backCell = document.createElement('div');
+      backCell.className = 'formation-cell';
+      if (back[i]) backCell.appendChild(this.createCombatantCard(back[i], 'party', i + 2));
+      this.elements.partyHUD.appendChild(backCell);
+      // Right col (front — toward enemies)
+      const frontCell = document.createElement('div');
+      frontCell.className = 'formation-cell front-cell';
+      if (front[i]) {
+        const card = this.createCombatantCard(front[i], 'party', i);
+        card.classList.add('front-row-card');
+        frontCell.appendChild(card);
+      }
+      this.elements.partyHUD.appendChild(frontCell);
     }
   }
 

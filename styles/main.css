@@ -563,35 +563,50 @@ body {
     height: min(590px, 88vh);
     margin: auto;
     z-index: 1000;
-    background: #080611;
-    border: 2px solid #7a5c10;
-    border-radius: 8px;
+    background:
+        radial-gradient(ellipse 70% 50% at 25% 40%, rgba(0, 40, 0, 0.28) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 70% at 75% 60%, rgba(50, 5, 5, 0.28) 0%, transparent 60%),
+        repeating-linear-gradient(0deg,   transparent 0px, transparent 23px, rgba(255,255,255,0.012) 23px, rgba(255,255,255,0.012) 24px),
+        repeating-linear-gradient(90deg,  transparent 0px, transparent 35px, rgba(255,255,255,0.008) 35px, rgba(255,255,255,0.008) 36px),
+        #060510;
+    border: 2px solid #8a6518;
+    outline: 1px solid rgba(255, 210, 80, 0.14);
+    outline-offset: -5px;
+    border-radius: 7px;
     display: flex;
     flex-direction: column;
     font-family: 'Courier New', monospace;
     color: #c8b882;
     overflow: hidden;
     box-shadow:
-        0 0 0 2000px rgba(0, 0, 0, 0.72),
-        0 20px 60px rgba(0, 0, 0, 0.95),
-        inset 0 1px 0 rgba(255, 210, 80, 0.07);
+        0 0 0 2000px rgba(0, 0, 0, 0.75),
+        0 24px 80px rgba(0, 0, 0, 0.95),
+        inset 0 0 40px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 210, 80, 0.10);
 }
 .combat-container.hidden { display: none; }
 
 /* ---- Turn Banner ---- */
 .combat-turn-banner {
-    flex: 0 0 42px;
+    flex: 0 0 44px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 20px;
-    background: rgba(0, 0, 0, 0.55);
-    border-bottom: 1px solid #4a3a08;
+    background: linear-gradient(90deg, rgba(0,12,0,0.85) 0%, rgba(8,5,0,0.75) 50%, rgba(12,0,0,0.85) 100%);
+    border-bottom: 1px solid #5a3e06;
     gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
-.combat-turn-banner.player-turn { border-bottom-color: #5a8a28; background: rgba(0, 18, 0, 0.7); }
-.combat-turn-banner.enemy-turn  { border-bottom-color: #8a2828; background: rgba(18, 0, 0, 0.7); }
+.combat-turn-banner.player-turn {
+    border-bottom-color: #4a7820;
+    background: linear-gradient(90deg, rgba(0,25,0,0.9) 0%, rgba(5,18,0,0.8) 50%, rgba(0,5,0,0.85) 100%);
+}
+.combat-turn-banner.enemy-turn  {
+    border-bottom-color: #782020;
+    background: linear-gradient(90deg, rgba(5,0,0,0.85) 0%, rgba(18,5,0,0.8) 50%, rgba(25,0,0,0.9) 100%);
+}
 
 .turn-label { font-size: 10px; color: #6b5510; text-transform: uppercase; letter-spacing: 3px; flex: 0 0 auto; }
 .turn-char  { font-size: 15px; font-weight: bold; color: #e8d890; flex: 1 1 0; text-align: center; letter-spacing: 1px; }
@@ -616,32 +631,40 @@ body {
 }
 .party-side {
     flex: 5 1 0;
-    background: rgba(0, 10, 0, 0.25);
+    background: linear-gradient(135deg, rgba(0,20,5,0.35) 0%, rgba(0,8,0,0.15) 100%);
 }
 .enemies-side {
     flex: 3 1 0;
-    background: rgba(15, 0, 0, 0.25);
-    border-left: 1px solid #2a1408;
+    background: linear-gradient(225deg, rgba(25,3,3,0.4) 0%, rgba(10,0,0,0.15) 100%);
+    border-left: 1px solid #3a1a06;
 }
 
 /* VS divider */
 .combat-vs-divider {
-    flex: 0 0 46px;
+    flex: 0 0 44px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.3);
-    border-left: 1px solid #1a1204;
-    border-right: 1px solid #1a1204;
+    gap: 8px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(20,12,0,0.3) 50%, rgba(0,0,0,0.5) 100%);
+    border-left: 1px solid #251a04;
+    border-right: 1px solid #251a04;
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.6);
     user-select: none;
 }
+.vs-icon {
+    font-size: 14px;
+    opacity: 0.35;
+    line-height: 1;
+}
+.vs-icon-bottom { transform: rotate(180deg); }
 .vs-text {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: bold;
-    color: #5a4010;
-    letter-spacing: 4px;
+    color: #6a5018;
+    letter-spacing: 3px;
     text-transform: uppercase;
     writing-mode: vertical-lr;
     transform: rotate(180deg);
@@ -689,9 +712,19 @@ body {
     grid-template-rows: 1fr 1fr;
     gap: 5px;
     overflow: hidden;
-    padding: 0 0 4px;
+    padding: 6px 0 4px;       /* top margin before first card */
     justify-items: center;
     align-items: start;
+}
+
+/* Wrapper cell — keeps empty slots occupying their grid position */
+.formation-cell {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* Enemy vertical column */
@@ -702,10 +735,26 @@ body {
     flex-direction: column;
     gap: 5px;
     overflow: hidden;
-    padding: 0 0 4px;
+    padding: 10px 0 4px;      /* top margin before first enemy card */
     align-items: center;
     justify-content: flex-start;
 }
+
+/* Front-row cards get subtle right-edge glow (faces enemies) */
+.front-row-card {
+    border-right-color: #5a8028 !important;
+    border-right-width: 2px !important;
+}
+.front-row-card::after {
+    content: '›';
+    position: absolute;
+    right: 3px;
+    top: 3px;
+    font-size: 9px;
+    color: #5a8028;
+    line-height: 1;
+}
+.front-row-card { position: relative; }
 
 /* Legacy row fallback */
 .combatants-row {
@@ -721,7 +770,7 @@ body {
     width: 100%;
     max-width: 126px;
     min-height: 0;
-    background: rgba(4, 12, 4, 0.88);
+    background: linear-gradient(180deg, rgba(10,22,8,0.95) 0%, rgba(4,10,3,0.92) 100%);
     border: 1px solid #2a3e18;
     border-radius: 5px;
     padding: 5px 5px 7px;
@@ -730,21 +779,22 @@ body {
     transition: border-color 0.18s, box-shadow 0.18s, transform 0.15s;
     cursor: default;
     overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 6px rgba(0,0,0,0.55);
 }
 .combatant-card:hover {
     transform: translateY(-2px) scale(1.03);
     border-color: #5a8a28;
-    box-shadow: 0 4px 12px rgba(70, 140, 20, 0.3);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 6px 16px rgba(60,120,15,0.3);
     z-index: 2;
     position: relative;
 }
 .enemy-card {
-    background: rgba(12, 3, 3, 0.88);
+    background: linear-gradient(180deg, rgba(22,6,6,0.95) 0%, rgba(10,2,2,0.92) 100%);
     border-color: #4a1818;
 }
 .enemy-card:hover {
     border-color: #aa3838;
-    box-shadow: 0 4px 12px rgba(160, 30, 30, 0.3);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 6px 16px rgba(140,25,25,0.35);
 }
 .combatant-card.current-turn {
     border-color: #c89010;
@@ -819,9 +869,12 @@ body {
     flex: 0 0 150px;
     flex-shrink: 0;
     display: flex;
-    border-top: 1px solid #2e1e04;
-    background: rgba(0, 0, 0, 0.45);
+    border-top: 1px solid #5a3e08;
+    background:
+        repeating-linear-gradient(90deg, rgba(255,200,80,0.015) 0px, rgba(255,200,80,0.015) 1px, transparent 1px, transparent 55px),
+        linear-gradient(180deg, rgba(10,6,0,0.7) 0%, rgba(5,3,0,0.85) 100%);
     min-height: 0;
+    box-shadow: inset 0 1px 0 rgba(255,200,80,0.08);
 }
 
 .combat-actions-panel {
