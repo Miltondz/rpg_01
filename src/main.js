@@ -40,6 +40,19 @@ import { InventorySystem } from './engine/inventory/InventorySystem.js';
 import { itemDatabase } from './engine/inventory/ItemDatabase.js';
 import { enemyDatabase } from './engine/data/EnemyDatabase.js';
 import { EncounterSystem } from './engine/systems/EncounterSystem.js';
+import { HitFlashSystem } from './engine/combat/HitFlashSystem.js';
+import { ScreenShake } from './engine/core/ScreenShake.js';
+import { combatTextManager } from './engine/ui/CombatTextManager.js';
+import { TargetingOverlay } from './engine/ui/TargetingOverlay.js';
+import { BattleBackgroundManager } from './engine/ui/BattleBackgroundManager.js';
+import { screenShatter } from './engine/ui/ScreenShatter.js';
+import { PropSystem } from './engine/systems/PropSystem.js';
+import { SpriteManager } from './engine/ui/SpriteManager.js';
+import { NavigationLight } from './engine/core/NavigationLight.js';
+import { ZoneTriggerSystem } from './engine/systems/ZoneTriggerSystem.js';
+import { InteractionSystem } from './engine/systems/InteractionSystem.js';
+import { TouchControls } from './engine/ui/TouchControls.js';
+import { ResolutionManager } from './engine/core/ResolutionManager.js';
 
 // Campaign & narrative systems
 import { CampaignManager } from './engine/campaign/CampaignManager.js';
@@ -62,6 +75,10 @@ import { SplashScreen } from './engine/ui/SplashScreen.js';
 import { MainMenuScreen } from './engine/ui/MainMenuScreen.js';
 import { PauseMenuScreen } from './engine/ui/PauseMenuScreen.js';
 import { OptionsScreen } from './engine/ui/OptionsScreen.js';
+import { ExplorationHUD } from './engine/ui/ExplorationHUD.js';
+import { HUDPanels }      from './engine/ui/HUDPanels.js';
+import { ThemeManager }   from './engine/themes/ThemeManager.js';
+import { CryptTheme }     from './engine/themes/CryptTheme.js';
 
 /**
  * Main Game Engine Class
@@ -101,6 +118,18 @@ class DungeonCrawlerEngine {
     this.encounterSystem = null;
     this.currentLevelId = null;
     this._encounterBillboards = [];
+    this._placedEnemyMarkers = []; // { sprite, light, key } — corridor enemy markers
+    this._markerBobTime      = 0;
+    this._splashHideTimer    = null;
+    this.targetingOverlay   = null;
+    this.battleBackground   = null;
+    this.propSystem         = null;
+    this.spriteManager      = null;
+    this.navigationLight    = null;
+    this.zoneTriggerSystem  = null;
+    this.interactionSystem  = null;
+    this.touchControls      = null;
+    this.resolutionManager  = null;
 
     // Campaign & narrative
     this.campaignManager = null;
@@ -122,6 +151,8 @@ class DungeonCrawlerEngine {
     this.mainMenuScreen  = null;
     this.pauseMenuScreen = null;
     this.optionsScreen   = null;
+    this.explorationHUD  = null;
+    this.hudPanels       = null;
 
     // Game state
     this.isInitialized = false;
@@ -163,9 +194,16 @@ class DungeonCrawlerEngine {
     try {
       bootLog.info('Engine initialize() start');
 
+      // Apply theme — CSS vars first (instant), renderer after systems init
+      ThemeManager.apply(CryptTheme);
+      bootLog.info('Theme applied: ' + CryptTheme.meta.name);
+
       // Initialize core systems
       this.initializeSystems();
       bootLog.info(`Core systems ready (+${(performance.now() - t0).toFixed(0)}ms)`);
+
+      // Apply renderer-specific theme settings (fog, lights)
+      this.renderer.applyTheme(CryptTheme);
       
       // Initialize debug UI
       this.debugUI = new DebugUI();
@@ -254,6 +292,11 @@ class DungeonCrawlerEngine {
     // Create core systems
     this.gridSystem = new GridSystem();
     this.renderer = new Renderer(canvas);
+
+    // Apply saved/default resolution immediately after renderer exists
+    this.resolutionManager = new ResolutionManager(this.renderer);
+    this.resolutionManager.initialize();
+
     this.inputManager = new InputManager();
     this.geometryFactory = new GeometryFactory();
     this.doorSystem = new DoorSystem(this.gridSystem, this.renderer);
@@ -272,6 +315,56 @@ class DungeonCrawlerEngine {
     
     // Initialize game systems
     this.combatSystem = new CombatSystem();
+    this.combatSystem.setScene(this.renderer.getScene());
+
+    // Hit feedback systems
+    this.hitFlashSystem = new HitFlashSystem(this.renderer);
+    this.screenShake    = new ScreenShake(this.renderer.getCamera());
+    this.combatSystem.battleExecutor.setVisualSystems({
+      hitFlash:    this.hitFlashSystem,
+      screenShake: this.screenShake,
+      combatText:  combatTextManager,
+    });
+
+    // Initialize combat text overlay
+    combatTextManager.initialize();
+
+    // Targeting overlay (Phase 8)
+    this.targetingOverlay = new TargetingOverlay(this.renderer);
+    this.targetingOverlay.initialize();
+
+    // Battle background (Phase 9)
+    this.battleBackground = new BattleBackgroundManager(this.renderer);
+    this.battleBackground.initialize();
+
+    // Screen shatter transition (Phase 10)
+    screenShatter.initialize();
+
+    // Phase 12 — props & environmental lights
+    this.propSystem = new PropSystem(this.geometryFactory.tileSize);
+
+    // Phase 13 — persistent enemy billboards in dungeon
+    this.spriteManager = new SpriteManager(this.renderer.getScene());
+
+    // Phase 14 — navigation lantern (attaches to camera after renderer ready)
+    this.navigationLight = new NavigationLight();
+    this.navigationLight.initialize(this.renderer.getCamera());
+
+    // Phase 15 — zone triggers + typewriter text
+    this.zoneTriggerSystem = new ZoneTriggerSystem(this.gridSystem);
+    this.zoneTriggerSystem.initialize();
+
+    // Phase 16 — raycaster prop interaction
+    this.interactionSystem = new InteractionSystem(
+      this.renderer.getCamera(),
+      this.renderer.getScene()
+    );
+    this.interactionSystem.initialize();
+
+    // Touch controls — auto-hidden on desktop via CSS media query
+    this.touchControls = new TouchControls(this.inputManager);
+    this.touchControls.initialize();
+
     this.characterSystem = new CharacterSystem();
     this.partyManager = this.characterSystem.partyManager; // single source of truth
     this.saveSystem = new SaveSystem();
@@ -309,6 +402,20 @@ class DungeonCrawlerEngine {
 
     this.uiRouter = new UIRouter();
 
+    // Pixel exploration HUD (party column, compass, quest, log, hotbar)
+    this.explorationHUD = new ExplorationHUD();
+    this.explorationHUD.initialize();
+
+    // Overlay panels: Journal, Bestiary
+    this.hudPanels = new HUDPanels();
+    this.hudPanels.initialize();
+
+    // Wire HUD hotbar click routing
+    this.explorationHUD.onHotbarClick(idx => this._onHotbarClick(idx));
+
+    // Forward all log messages to HUDPanels for full-history journal
+    this.explorationHUD.onMessage(entry => this.hudPanels.appendLog(entry));
+
     // Narrative UI (creates its own DOM panel)
     this.narrativeUI = new NarrativeUI(this.narrativeManager);
 
@@ -322,12 +429,13 @@ class DungeonCrawlerEngine {
     this.partyCreationUI = new PartyCreationUI(this.characterSystem);
     this.combatUIManager = new CombatUIManager();
     await this.combatUIManager.initialize(this.combatSystem, this.partyManager, this.inventorySystem);
+    this.combatUIManager.setTargetingOverlay(this.targetingOverlay);
 
     this.modalDialog     = new ModalDialog();
     this.splashScreen    = new SplashScreen();
     this.mainMenuScreen  = new MainMenuScreen(this.saveSystem);
     this.pauseMenuScreen = new PauseMenuScreen();
-    this.optionsScreen   = new OptionsScreen();
+    this.optionsScreen   = new OptionsScreen(this.resolutionManager);
 
     const blockMove   = () => this.inputManager.blockInput();
     const unblockMove = () => this.inputManager.unblockInput();
@@ -470,12 +578,17 @@ class DungeonCrawlerEngine {
     // EncounterSystem — uses shared partyManager (same ref as CharacterSystem.partyManager)
     this.encounterSystem = new EncounterSystem(this.combatSystem, this.partyManager);
 
-    // movementCompleted → encounter check + NPC proximity hint
+    // movementCompleted → encounter check + NPC proximity + zone triggers + nav light
     window.addEventListener('movementCompleted', async (e) => {
       const pos = e.detail.newPosition;
       if (this.npcEngine && pos) {
         this.npcEngine.checkProximity(pos.x, pos.z, this.debugUI);
       }
+      // Phase 14: navigation light step decay
+      this.navigationLight?.step();
+      // Phase 15: zone trigger check
+      if (pos) this.zoneTriggerSystem?.checkTriggers(pos.x, pos.z);
+
       if (!this.encounterSystem || !this.currentLevelId) return;
       // EncounterSystem expects an object with .id, not a bare string
       await this.encounterSystem.checkForEncounter(
@@ -487,13 +600,57 @@ class DungeonCrawlerEngine {
     window.addEventListener('encounterEvent', (e) => {
       if (e.detail.type === 'encounterTriggered') {
         this.inputManager.blockInput();
+        this.explorationHUD?.addMessage('¡Encuentro enemigo!', 'danger');
+        // Register encountered enemies in bestiary
+        (e.detail.data?.enemies ?? []).forEach(en => this.hudPanels?.registerEncounter(en));
+        // Remove the placed corridor marker that triggered this encounter
+        const tPos = e.detail.data?.position;
+        if (tPos) this._removePlacedEnemyMarkerAt(tPos.x, tPos.z);
         this._spawnEncounterBillboards(e.detail.data?.enemies ?? []);
+        // Show encounter splash (below shatter tiles — visible in center while tiles assemble)
+        this._showEncounterSplash(e.detail.data?.enemies ?? []);
+        // Shatter in — screen fractures as combat begins
+        const palKey = this._shatterPaletteForLevel(this.currentLevelId ?? '');
+        screenShatter.shatterIn(palKey);
         Logger.tag('Event:encounterEvent').info('combat starting');
       } else if (e.detail.type === 'encounterEnded') {
         this.inputManager.unblockInput();
         this._clearEncounterBillboards();
+        // Shatter out — screen reassembles as player returns to dungeon
+        const palKey = this._shatterPaletteForLevel(this.currentLevelId ?? '');
+        screenShatter.shatterOut(palKey);
         Logger.tag('Event:encounterEvent').info('combat ended');
       }
+    });
+
+    // battleInputBlock/Unblock → FSM-driven input gating during ACTION_RESOLUTION etc.
+    window.addEventListener('battleInputBlock',   () => this.inputManager.blockInput());
+    window.addEventListener('battleInputUnblock', () => this.inputManager.unblockInput());
+
+    // Navigation light events
+    window.addEventListener('navLightWarning',  () => {
+      this.debugUI?.showWarning('Your light is fading...');
+      this.explorationHUD?.addMessage('La luz se debilita...', 'danger');
+    });
+    window.addEventListener('navLightDepleted', () => {
+      this.debugUI?.showError('Darkness falls — find a torch!', { system: 'NavLight' });
+      this.explorationHUD?.addMessage('¡Oscuridad total!', 'danger');
+    });
+    window.addEventListener('navLightRestored', () => {
+      this.debugUI?.showSuccess('Light restored.');
+      this.explorationHUD?.addMessage('Luz restaurada.', 'system');
+    });
+
+    // Prop interaction feedback
+    window.addEventListener('propInteract', (e) => {
+      const { propType } = e.detail ?? {};
+      if (propType === 'torch_wall' || propType === 'candle') {
+        this.navigationLight?.restore(NavigationLight.MAX_STEPS);
+        this.explorationHUD?.addMessage('Antorcha encendida.', 'loot');
+      } else if (propType) {
+        this.explorationHUD?.addMessage(`Interactuaste con ${propType}.`, 'system');
+      }
+      this.debugUI?.showSuccess(`Interacted with ${propType ?? 'object'}`);
     });
 
     // combatEvent → clear billboards on start; unblock movement + notify encounter system on end
@@ -501,8 +658,10 @@ class DungeonCrawlerEngine {
       const { type, data } = e.detail ?? {};
       if (type === 'combatStarted') {
         this._clearEncounterBillboards();
+        this.battleBackground?.enter(this.currentLevelId ?? '');
       } else if (type === 'combatEnded') {
         this._clearEncounterBillboards();
+        this.battleBackground?.exit();
         this.encounterSystem?.onCombatEnd(data?.result ?? 'unknown');
       }
     });
@@ -515,8 +674,20 @@ class DungeonCrawlerEngine {
         this.uiRouter.push('main-menu');
       } else if (type === 'loadSave') {
         this.uiRouter.push('load');
+      } else if (type === 'retryCombat') {
+        // Close any open UI panels, restore party to 50% HP, re-trigger last encounter
+        this.uiRouter.closeAll();
+        const party = this.partyManager?.party?.filter(Boolean) ?? [];
+        party.forEach(c => {
+          c.isDead = false;
+          c.currentHP = Math.max(1, Math.floor(c.maxHP * 0.5));
+          if (c.currentAP !== undefined) c.currentAP = c.maxAP ?? 3;
+        });
+        const enc = this.encounterSystem?.lastEncounterData;
+        const pos = this.encounterSystem?.lastEncounterPosition ?? { x: 0, z: 0 };
+        if (enc) this.encounterSystem.triggerEncounter(enc, pos);
       }
-      // 'continueExploration' and 'retryCombat': CombatResultsUI.hideResults() already closes overlay;
+      // 'continueExploration': CombatResultsUI.hideResults() already closes overlay;
       // input is already unblocked via encounterEnded → unblockInput() chain
     });
 
@@ -531,6 +702,7 @@ class DungeonCrawlerEngine {
         const levelData = await response.json();
         this.currentLevelId = levelData.id ?? 'crypt-of-shadows-floor-1';
         await this.dungeonLoader.loadLevel(levelData);
+        this._onLevelLoaded(levelData);
 
         if (levelData.spawn) {
           this.movementController.setPosition(
@@ -601,6 +773,7 @@ class DungeonCrawlerEngine {
         const levelData = await resp.json();
         this.currentLevelId = levelData.id ?? `${dungeon}-floor-${floor}`;
         await this.dungeonLoader.loadLevel(levelData);
+        this._onLevelLoaded(levelData);
 
         // 3. Restore player position
         const pos = saveData.world?.playerPosition ?? { x: 0, z: 0 };
@@ -716,6 +889,75 @@ class DungeonCrawlerEngine {
     });
   }
 
+  /** Called after every level load to rebuild environmental systems. */
+  _onLevelLoaded(levelData) {
+    const scene = this.renderer.getScene();
+
+    // Update pixel HUD location panel
+    const levelName  = levelData?.name ?? (this.currentLevelId ?? '').replace(/-/g, ' ');
+    const questObj   = levelData?.quest?.objective ?? '';
+    this.explorationHUD?.setLocation(levelName, questObj);
+    this.explorationHUD?.addMessage(`Entrando: ${levelName}`, 'ambient');
+
+    // Props + environmental lights
+    this.propSystem?.clear();
+    if (levelData && scene) this.propSystem?.buildForLevel(levelData, scene);
+
+    // Clear encounter sprites — will be repopulated by EncounterSystem
+    this.spriteManager?.clear();
+
+    // Restore navigation light for new floor
+    this.navigationLight?.restore();
+
+    // Place visible enemy markers in corridors
+    this._clearPlacedEnemyMarkers();
+    if (this.encounterSystem && this.gridSystem && levelData) {
+      const spawn = this.dungeonLoader?.getSpawnPoint?.() ?? { x: 0, z: 0 };
+      this.encounterSystem.placeEncountersForLevel(
+        this.gridSystem, levelData.id ?? this.currentLevelId ?? '',
+        spawn.x, spawn.z
+      );
+      this._spawnPlacedEnemyMarkers();
+    }
+  }
+
+  _shatterPaletteForLevel(levelId = '') {
+    const id = levelId.toLowerCase();
+    if (/crypt/.test(id))           return 'dark';
+    if (/fire|volcano|lava/.test(id)) return 'fire';
+    if (/ice|frost|snow/.test(id))  return 'ice';
+    if (/forest/.test(id))          return 'forest';
+    if (/cave/.test(id))            return 'cave';
+    return 'dark';
+  }
+
+  _showEncounterSplash(enemies = []) {
+    const el = document.getElementById('encounter-splash');
+    if (!el) return;
+
+    const names = enemies
+      .map(en => `${en.name ?? 'Enemy'}${en.level ? ` Lv.${en.level}` : ''}`)
+      .join('<br>');
+
+    el.innerHTML = `
+      <div class="encounter-splash-eyebrow">⚔ enemy encounter ⚔</div>
+      <div class="encounter-splash-title">BATTLE!</div>
+      <div class="encounter-splash-divider"></div>
+      <div class="encounter-splash-enemies">${names}</div>
+    `;
+    el.classList.remove('hidden');
+    // Trigger opacity transition on next paint
+    requestAnimationFrame(() => el.classList.add('visible'));
+
+    // Hide before shatter tiles fully reveal combat UI (~1200ms covers shatter assembly)
+    if (this._splashHideTimer) clearTimeout(this._splashHideTimer);
+    this._splashHideTimer = setTimeout(() => {
+      el.classList.remove('visible');
+      setTimeout(() => el.classList.add('hidden'), 150);
+      this._splashHideTimer = null;
+    }, 1200);
+  }
+
   _clearEncounterBillboards() {
     if (!this.renderer?.scene) return;
     for (const sprite of this._encounterBillboards) {
@@ -724,6 +966,66 @@ class DungeonCrawlerEngine {
       sprite.material.dispose();
     }
     this._encounterBillboards = [];
+  }
+
+  /**
+   * Spawn persistent 3D billboard sprites for pre-placed enemy markers.
+   * Each marker also gets a dim red PointLight for atmosphere.
+   */
+  _spawnPlacedEnemyMarkers() {
+    if (!this.encounterSystem || !this.renderer?.scene) return;
+    const scene = this.renderer.scene;
+    const T = 2.0; // world units per tile
+
+    for (const { x, z, enemies } of this.encounterSystem.getPlacedMarkers()) {
+      const leader = enemies[0];
+      const canvas  = CharacterPortrait.createCanvas(leader.type || 'goblin', 96, 120);
+      const texture = new THREE.CanvasTexture(canvas);
+      const mat     = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite  = new THREE.Sprite(mat);
+      sprite.scale.set(0.75, 0.94, 1);
+      const wx = x * T;
+      const wz = z * T;
+      sprite.position.set(wx, 0.9, wz);
+
+      // Atmospheric red point light
+      const light = new THREE.PointLight(0xff2200, 0.7, 4.0);
+      light.position.set(wx, 1.2, wz);
+
+      scene.add(sprite);
+      scene.add(light);
+
+      this._placedEnemyMarkers.push({
+        sprite, light,
+        key:   `${x},${z}`,
+        phase: Math.random() * Math.PI * 2, // random phase for varied bobbing
+      });
+    }
+  }
+
+  /** Remove a single placed marker when its encounter triggers. */
+  _removePlacedEnemyMarkerAt(x, z) {
+    const key = `${Math.round(x)},${Math.round(z)}`;
+    const idx = this._placedEnemyMarkers.findIndex(m => m.key === key);
+    if (idx < 0) return;
+    const { sprite, light } = this._placedEnemyMarkers.splice(idx, 1)[0];
+    this.renderer?.scene?.remove(sprite);
+    this.renderer?.scene?.remove(light);
+    sprite.material.map?.dispose();
+    sprite.material.dispose();
+    this.encounterSystem?.removePlacedMarker(x, z);
+  }
+
+  /** Remove all placed enemy markers (called on level change). */
+  _clearPlacedEnemyMarkers() {
+    if (!this.renderer?.scene) { this._placedEnemyMarkers = []; return; }
+    for (const { sprite, light } of this._placedEnemyMarkers) {
+      this.renderer.scene.remove(sprite);
+      this.renderer.scene.remove(light);
+      sprite.material.map?.dispose();
+      sprite.material.dispose();
+    }
+    this._placedEnemyMarkers = [];
   }
 
   /**
@@ -775,9 +1077,11 @@ class DungeonCrawlerEngine {
     
     window.addEventListener('doorOpened', (event) => {
       this.handleDoorOpened(event.detail);
+      this.explorationHUD?.addMessage('La puerta cruje al abrirse.', 'system');
     });
-    
+
     window.addEventListener('levelTransition', (event) => {
+      this.explorationHUD?.addMessage('Cambiando de nivel...', 'ambient');
       this.handleLevelTransition(event.detail);
     });
     
@@ -800,8 +1104,11 @@ class DungeonCrawlerEngine {
    * Handle window resize
    */
   handleResize() {
-    if (this.renderer) {
-      this.renderer.handleResize();
+    // Fixed resolution — ResolutionManager owns canvas/renderer sizing.
+    // Reapply current preset so a window resize doesn't break the buffer dimensions.
+    if (this.resolutionManager) {
+      const cur = this.resolutionManager.getCurrent();
+      if (cur) this.resolutionManager.apply(cur.w, cur.h, false);
     }
   }
 
@@ -930,6 +1237,15 @@ class DungeonCrawlerEngine {
       this.performanceManager.update(performance.now(), this.frameCount);
     }
     
+    // Bob placed enemy markers
+    if (this._placedEnemyMarkers.length && !this.combatSystem?.isActive) {
+      this._markerBobTime += deltaTime;
+      for (const m of this._placedEnemyMarkers) {
+        m.sprite.position.y = 0.9 + Math.sin(this._markerBobTime * 2.2 + m.phase) * 0.14;
+        if (m.light) m.light.intensity = 0.6 + Math.sin(this._markerBobTime * 3.1 + m.phase) * 0.25;
+      }
+    }
+
     // Update system status and debug UI
     this.updateSystemStatus();
     this.updateDebugUI();
@@ -1044,6 +1360,9 @@ class DungeonCrawlerEngine {
       return;
     }
 
+    // Phase 16: fire interactKey so InteractionSystem can raytrace props
+    window.dispatchEvent(new CustomEvent('interactKey'));
+
     const position = this.movementController.getPosition();
     const direction = this.movementController.getDirection();
     Logger.tag('Interact').debug(`player (${position.x},${position.z}) facing ${Dir.name(direction)}`);
@@ -1129,6 +1448,7 @@ class DungeonCrawlerEngine {
 
       // Set currentLevelId so movementCompleted handler allows encounter checks
       this.currentLevelId = stats.id ?? 'test-room-10x10';
+      this._onLevelLoaded(this.dungeonLoader.getCurrentLevel());
 
       // Ensure encounters can trigger: create a test party if none exists
       if (this.partyManager && !this.partyManager.getAliveMembers().length) {
@@ -1227,16 +1547,48 @@ class DungeonCrawlerEngine {
   render(currentTime = 0) {
     if (!this.renderer) return;
 
-    // Update camera position and rotation from movement controller
-    if (this.movementController) {
+    // Update camera
+    if (this.combatSystem?.isActive) {
+      // Fixed combat viewpoint: centered on battle arena, facing south (+Z)
+      this.renderer.updateCameraPosition({ x: 0, z: -1 });
+      this.renderer.updateCameraRotation(Math.PI);
+      if (this.screenShake) this.screenShake.updateOrigin();
+    } else if (this.movementController) {
       const worldPos = this.movementController.getCurrentWorldPosition();
       const rotation = this.movementController.getCurrentRotation();
       this.renderer.updateCameraPosition(worldPos);
       this.renderer.updateCameraRotation(rotation);
+      // Keep shake origin in sync with intentional camera moves
+      if (this.screenShake && !this.movementController.getIsAnimating()) {
+        this.screenShake.updateOrigin();
+      }
     }
 
     // Animate torch flicker
     this.renderer.updateTorchFlicker(currentTime);
+
+    // Hit flash frame updates
+    if (this.hitFlashSystem) this.hitFlashSystem.update();
+
+    // Battle background UV-warp animation
+    if (this.battleBackground) this.battleBackground.update(currentTime);
+
+    // Phase 12: prop torch flicker
+    if (this.propSystem) this.propSystem.update(currentTime);
+
+    // Phase 14: navigation light dying flicker
+    if (this.navigationLight) this.navigationLight.update(currentTime);
+
+    // Battle entity idle animation
+    if (this.combatSystem?.isActive && this.combatSystem.battleGrid) {
+      const currentId = this.combatSystem.currentCharacter?.id;
+      for (const [id, entity] of this.combatSystem.battleGrid.entities) {
+        entity.updateIdleAnimation(currentTime, id === currentId);
+      }
+    }
+
+    // Screen shake (must run before render, after camera position set)
+    if (this.screenShake) this.screenShake.update();
 
     // Render the Three.js scene
     this.renderer.render();
@@ -1272,79 +1624,45 @@ class DungeonCrawlerEngine {
   }
 
   updateExplorationHUD() {
-    const hudEl  = document.getElementById('exploration-hud');
-    const barEl  = document.getElementById('party-status-bar');
-    const flrEl  = document.getElementById('floor-indicator');
-    if (!hudEl || !barEl) return;
-
-    // Update floor label
-    if (flrEl) {
-      flrEl.textContent = this.currentLevelId
-        ? this.currentLevelId.replace(/-/g, ' ')
-        : '';
-    }
-
+    if (!this.explorationHUD) return;
     const members = this.partyManager?.party?.filter(Boolean) ?? [];
-    if (members.length === 0) { barEl.innerHTML = ''; return; }
+    this.explorationHUD.updateParty(members);
+    const dir = this.movementController?.currentDirection ?? 0;
+    this.explorationHUD.setCompass(dir);
+  }
 
-    // If card count matches, update in-place; else rebuild
-    if (barEl.children.length === members.length) {
-      members.forEach((m, i) => {
-        const card = barEl.children[i];
-        if (!card) return;
-        card.classList.toggle('dead', !m.isAlive());
-        const fill = card.querySelector('.hud-hp-fill');
-        if (fill) {
-          const pct = Math.max(0, (m.currentHP / m.maxHP) * 100);
-          fill.style.width = pct + '%';
-          fill.classList.toggle('critical', pct <= 15);
-          fill.classList.toggle('low', pct > 15 && pct <= 35);
-        }
-        card.querySelectorAll('.hud-ap-dot').forEach((dot, di) => {
-          dot.classList.toggle('empty', di >= (m.currentAP ?? 0));
-        });
-      });
-      return;
+  _onHotbarClick(index) {
+    switch (index) {
+      case 2: // POT — use first consumable on first living member
+        this._useConsumableFromHotbar(); break;
+      case 3: // JRN — journal (full event log)
+        this.hudPanels?.toggle('journal'); break;
+      case 4: // STS — character stats sheet
+        this.uiRouter?.toggle('character-sheet'); break;
+      case 5: // INV — inventory
+        this.uiRouter?.toggle('inventory'); break;
+      case 6: // BES — bestiary
+        this.hudPanels?.toggle('bestiary'); break;
+      case 7: // MNU — pause menu
+        if (this.hudPanels?.isAnyOpen()) this.hudPanels.closeAll();
+        else if (this.uiRouter?.isOpen()) this.uiRouter.pop();
+        else this.uiRouter?.push('pause-menu');
+        break;
     }
+  }
 
-    // Rebuild all cards
-    barEl.innerHTML = '';
-    members.forEach((m) => {
-      const card = document.createElement('div');
-      card.className = 'party-member-hud' + (m.isAlive() ? '' : ' dead');
-
-      const portrait = document.createElement('div');
-      portrait.className = 'hud-portrait';
-      portrait.appendChild(CharacterPortrait.createCanvas(m.class || 'unknown', 38, 48));
-      card.appendChild(portrait);
-
-      const nameEl = document.createElement('div');
-      nameEl.className = 'hud-name';
-      nameEl.textContent = m.name;
-      card.appendChild(nameEl);
-
-      const hpBar = document.createElement('div');
-      hpBar.className = 'hud-hp-bar';
-      const hpFill = document.createElement('div');
-      hpFill.className = 'hud-hp-fill';
-      const pct = Math.max(0, (m.currentHP / m.maxHP) * 100);
-      hpFill.style.width = pct + '%';
-      if (pct <= 15) hpFill.classList.add('critical');
-      else if (pct <= 35) hpFill.classList.add('low');
-      hpBar.appendChild(hpFill);
-      card.appendChild(hpBar);
-
-      const dots = document.createElement('div');
-      dots.className = 'hud-ap-dots';
-      for (let i = 0; i < (m.maxAP || 3); i++) {
-        const dot = document.createElement('div');
-        dot.className = 'hud-ap-dot' + (i >= (m.currentAP ?? m.maxAP ?? 3) ? ' empty' : '');
-        dots.appendChild(dot);
-      }
-      card.appendChild(dots);
-
-      barEl.appendChild(card);
-    });
+  _useConsumableFromHotbar() {
+    const party = this.partyManager?.party?.filter(Boolean) ?? [];
+    const target = party.find(m => m.isAlive?.() !== false);
+    if (!target) return;
+    const inv = this.inventorySystem?.getInventory?.() ?? [];
+    const potion = inv.find(item => item?.type === 'consumable' || item?.category === 'consumable');
+    if (potion) {
+      this.inventorySystem?.useItem?.(potion.id, target);
+      this.explorationHUD?.addMessage(`Used ${potion.name}.`, 'loot');
+    } else {
+      this.explorationHUD?.addMessage('No consumables available.', 'system');
+    }
   }
 
   /**
@@ -2241,6 +2559,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Make engine globally accessible for debugging
     window.dungeonEngine = engine;
+    // Theme switching from DevTools:
+    //   import('/src/engine/themes/CryptTheme.js').then(m => ThemeManager.apply(m.CryptTheme))
+    window.ThemeManager = ThemeManager;
+    // Touch controls toggle from DevTools: dungeonEngine.touchControls.setEnabled(false)
+    window.toggleTouch = (v) => engine.touchControls?.setEnabled(v ?? !engine.touchControls.isEnabled());
     
   } catch (error) {
     console.error('Failed to start engine:', error);

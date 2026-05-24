@@ -8,9 +8,18 @@ Browser-based turn-based RPG / dungeon crawler. Vanilla ES6 modules + Three.js r
 
 ## Status: Active Development
 
-Core exploration + combat loop is playable. Party creation, dungeon exploration (first-person 3D), turn-based combat, shop, save/load, NPCs, and narrative dialogue are all integrated and running.
+Core exploration + combat loop is playable. Party creation, first-person 3D dungeon exploration, turn-based combat, shop, save/load, NPCs, and narrative dialogue are all integrated and running.
 
-Latest: bug fixes — combat UI no longer multiplies buttons after repeated combats (zombie `setTimeout` cancelled on new combat start); window resize during combat no longer leaves undrawn black zones (`Renderer.handleResize` now uses `window.innerWidth/innerHeight` instead of canvas inline-style dimensions).
+**Latest changes:**
+- **Pixel HUD** — exploration HUD redesigned with hot-pink/neon-green pixel RPG aesthetic: party column, compass, quest panel, scrolling event log, 8-slot hotbar, minimap
+- **Combat polish** — battle entry ScreenShatter effect, PBR dungeon textures (normal maps), minimap direction arrows, BattleGrid combatant layout
+- **Bug fixes**:
+  - Poison Blade now correctly applies poison DoT (3 turns, 10 dmg/turn) — `executeSkillAttack` now reads `skill.effects`
+  - Retry Combat from defeat screen restores party to 50% HP and re-triggers the same encounter
+  - Bless `stat_boost` now modifies damage calculations in `applyStatusEffectModifiers`
+  - `processCombatVictory` crash (`distributeExperience is not a function`) fixed
+  - Auto-save validation error after every combat victory fixed
+  - AP banner in combat no longer stuck showing stale value after partial AP use
 
 ## Running
 

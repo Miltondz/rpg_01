@@ -211,10 +211,8 @@ export class Character {
     this.experience += xp;
     
     let leveledUp = false;
-    const nextLevelXP = this.getExperienceForLevel(this.level + 1);
-    
-    // Check for level up (can level multiple times with large XP gains)
-    while (this.experience >= nextLevelXP && this.level < 20) {
+
+    while (this.level < 20 && this.experience >= this.getExperienceForLevel(this.level + 1)) {
       this.levelUp();
       leveledUp = true;
     }
@@ -400,7 +398,8 @@ export class Character {
         description: 'Attacks that apply poison damage over time',
         apCost: 2,
         cooldown: 1,
-        type: 'attack'
+        type: 'attack',
+        effects: [{ type: 'status', statusType: 'poison', duration: 3, value: 10 }]
       },
       'evasion': {
         id: 'evasion',

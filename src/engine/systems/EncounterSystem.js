@@ -20,7 +20,10 @@ export class EncounterSystem {
     this.movesSinceEncounter = 0;
     this.isInCombat = false;
     this.scriptedEncounters = new Map(); // Position-based scripted encounters
-    
+
+    // Pre-placed visible markers — populated by placeEncountersForLevel()
+    this._placedMarkers = new Map(); // key "x,z" → { x, z, enemies[] }
+
     // Encounter tables by dungeon level/area
     this.encounterTables = new Map();
     this.initializeDefaultEncounterTables();
@@ -210,7 +213,19 @@ export class EncounterSystem {
       ]
     });
 
-    console.log('Crypt of Shadows encounter tables initialized');
+    // Test room — used by debug L-key and as campaign-load fallback
+    this.encounterTables.set('test-room-10x10', {
+      minLevel: 1,
+      maxLevel: 3,
+      encounters: [
+        { id: 'test_goblins', weight: 40, enemies: [{ type: 'goblin', level: 1 }, { type: 'goblin', level: 1 }] },
+        { id: 'test_rats',    weight: 30, enemies: [{ type: 'giant_rat', level: 1 }, { type: 'giant_rat', level: 1 }] },
+        { id: 'test_skel',    weight: 20, enemies: [{ type: 'skeleton', level: 2 }] },
+        { id: 'test_duo',     weight: 10, enemies: [{ type: 'goblin', level: 1 }, { type: 'skeleton', level: 1 }] }
+      ]
+    });
+
+    console.log('Encounter tables initialized');
   }
 
   /**
@@ -257,7 +272,7 @@ export class EncounterSystem {
    * @returns {Object|null} Scripted encounter data or null
    */
   checkScriptedEncounter(position, currentLevel) {
-    const positionKey = `${position.x},${position.z}`;
+    const positionKey = `${Math.round(position.x)},${Math.round(position.z)}`;
     
     // Check if there's a scripted encounter at this position
     if (this.scriptedEncounters.has(positionKey)) {
@@ -374,6 +389,7 @@ export class EncounterSystem {
 
     // Set combat state
     this.isInCombat = true;
+    this.lastEncounterData = encounterData;
     this.lastEncounterPosition = { ...position };
     this.movesSinceEncounter = 0;
 
@@ -383,10 +399,22 @@ export class EncounterSystem {
     // Scale enemies based on party level
     this.scaleEnemies(enemies);
 
-    // Initialize combat
+    // Emit encounter event FIRST — shatter + splash must start before combat UI appears
+    this.emitEncounterEvent('encounterTriggered', {
+      encounter: encounterData,
+      position: position,
+      enemies: enemies.map(e => ({
+        id: e.id,
+        name: e.name,
+        level: e.level,
+        type: e.type
+      }))
+    });
+
+    // Initialize combat after the transition has started
     const combatInitialized = this.combatSystem.initializeCombat(
-      this.partyManager, 
-      enemies, 
+      this.partyManager,
+      enemies,
       {
         type: encounterData.type,
         id: encounterData.id,
@@ -398,20 +426,9 @@ export class EncounterSystem {
     if (!combatInitialized) {
       console.error('Failed to initialize combat for encounter');
       this.isInCombat = false;
+      this.emitEncounterEvent('encounterEnded', { result: 'cancelled' });
       return null;
     }
-
-    // Emit encounter event
-    this.emitEncounterEvent('encounterTriggered', {
-      encounter: encounterData,
-      position: position,
-      enemies: enemies.map(e => ({
-        id: e.id,
-        name: e.name,
-        level: e.level,
-        type: e.type
-      }))
-    });
 
     return {
       type: encounterData.type,
@@ -428,17 +445,17 @@ export class EncounterSystem {
    */
   createEnemyInstances(enemyData) {
     const enemies = [];
-    
-    for (let i = 0; i < enemyData.length; i++) {
-      const config = enemyData[i];
-      const enemy = new Enemy(config.type, config.level || 1);
-      
-      // Set unique ID for this encounter
-      enemy.id = `${config.type}_${i}_${Date.now()}`;
-      
-      enemies.push(enemy);
+
+    for (const config of enemyData) {
+      const enemyType = config.id ?? config.type;
+      const count = config.count ?? 1;
+      for (let c = 0; c < count; c++) {
+        const enemy = new Enemy(enemyType, config.level || 1);
+        enemy.id = `${enemyType}_${enemies.length}_${Date.now()}`;
+        enemies.push(enemy);
+      }
     }
-    
+
     return enemies;
   }
 
@@ -641,7 +658,84 @@ export class EncounterSystem {
     this.movesSinceEncounter = 0;
     this.isInCombat = false;
     this.scriptedEncounters.clear();
-    
+    this._placedMarkers.clear();
+
     console.log('EncounterSystem reset');
+  }
+
+  // ── Pre-placed visible enemy markers ────────────────────────────────────────
+
+  /**
+   * Scatter encounter groups across floor tiles at level load.
+   * Registers each as a one-time scripted encounter and tracks positions for 3D rendering.
+   * @param {Object} gridSystem   - GridSystem with getTile(x,z) + width/height
+   * @param {string} levelId      - Level identifier for table lookup
+   * @param {number} spawnX       - Player spawn X (excluded from placement)
+   * @param {number} spawnZ       - Player spawn Z (excluded from placement)
+   */
+  placeEncountersForLevel(gridSystem, levelId, spawnX = 0, spawnZ = 0) {
+    this._placedMarkers.clear();
+    // Clear any previous scripted encounters from prior placement
+    for (const [k, enc] of this.scriptedEncounters) {
+      if (enc._prePlaced) this.scriptedEncounters.delete(k);
+    }
+
+    const table = this.encounterTables.get(levelId);
+    if (!table) return;
+
+    // Collect walkable floor tiles, skip near-spawn and edges
+    const candidates = [];
+    for (let x = 1; x < gridSystem.width - 1; x++) {
+      for (let z = 1; z < gridSystem.height - 1; z++) {
+        const tile = gridSystem.getTile(x, z);
+        if (!tile || tile.type !== 'floor') continue;
+        const dist = Math.abs(x - spawnX) + Math.abs(z - spawnZ);
+        if (dist < 3) continue; // keep spawn area clear
+        candidates.push({ x, z });
+      }
+    }
+
+    if (!candidates.length) return;
+
+    // Shuffle
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+
+    // Place 6–10 markers (≈8% of floor tiles, capped)
+    const count = Math.max(3, Math.min(10, Math.floor(candidates.length * 0.08)));
+    for (let i = 0; i < count && i < candidates.length; i++) {
+      const { x, z } = candidates[i];
+      const enc = this._pickFromTable(table);
+      if (!enc) continue;
+
+      const key = `${x},${z}`;
+      this.scriptedEncounters.set(key, { ...enc, oneTime: true, _prePlaced: true });
+      this._placedMarkers.set(key, { x, z, enemies: enc.enemies });
+    }
+
+    console.log(`[EncounterSystem] Placed ${this._placedMarkers.size} enemy markers in ${levelId}`);
+  }
+
+  /** Pick a weighted-random encounter from a table. */
+  _pickFromTable(table) {
+    const total = table.encounters.reduce((s, e) => s + e.weight, 0);
+    let r = Math.random() * total;
+    for (const enc of table.encounters) {
+      r -= enc.weight;
+      if (r <= 0) return enc;
+    }
+    return table.encounters[0] ?? null;
+  }
+
+  /** All currently active placed markers (for 3D sprite creation). */
+  getPlacedMarkers() {
+    return [...this._placedMarkers.values()];
+  }
+
+  /** Remove a placed marker when the encounter at that tile triggers. */
+  removePlacedMarker(x, z) {
+    this._placedMarkers.delete(`${Math.round(x)},${Math.round(z)}`);
   }
 }

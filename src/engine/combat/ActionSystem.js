@@ -355,9 +355,23 @@ export class ActionSystem {
 
       if (died) {
         result.messages.push(`${target.name} has been defeated!`);
+      } else {
+        // Apply any status effects defined on the skill
+        for (const effect of skill.effects || []) {
+          if (effect.type === 'status') {
+            target.statusEffects.push({
+              type: effect.statusType,
+              value: effect.value,
+              duration: effect.duration,
+              source: skill.id
+            });
+            result.statusEffects.push({ target, effect });
+            result.messages.push(`${target.name} is affected by ${effect.statusType}!`);
+          }
+        }
       }
     }
-    
+
     return result;
   }
 
@@ -641,14 +655,18 @@ export class ActionSystem {
     // Check defender's status effects
     for (const effect of defender.statusEffects || []) {
       if (effect.type === 'defense_boost') {
-        modifiedDamage *= (1 - effect.value); // Reduce damage
+        modifiedDamage *= (1 - effect.value);
+      } else if (effect.type === 'stat_boost') {
+        modifiedDamage *= (1 - effect.value * 0.5); // stat_boost gives 50% of value as defense
       }
     }
-    
+
     // Check attacker's status effects
     for (const effect of attacker.statusEffects || []) {
       if (effect.type === 'attack_boost') {
-        modifiedDamage *= (1 + effect.value); // Increase damage
+        modifiedDamage *= (1 + effect.value);
+      } else if (effect.type === 'stat_boost') {
+        modifiedDamage *= (1 + effect.value * 0.5); // stat_boost gives 50% of value as attack
       }
     }
     
