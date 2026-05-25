@@ -515,7 +515,7 @@ export class EquipmentUI {
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                z-index: 1000;
+                z-index: 3000;
                 font-family: 'Courier New', monospace;
             }
             

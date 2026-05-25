@@ -8,18 +8,19 @@ Browser-based turn-based RPG / dungeon crawler. Vanilla ES6 modules + Three.js r
 
 ## Status: Active Development
 
-Core exploration + combat loop is playable. Party creation, first-person 3D dungeon exploration, turn-based combat, shop, save/load, NPCs, and narrative dialogue are all integrated and running.
+Full game loop is playable end-to-end: main menu → party creation → dungeon exploration → random encounters → turn-based combat → victory/defeat → save/load → continue.
 
 **Latest changes:**
-- **Pixel HUD** — exploration HUD redesigned with hot-pink/neon-green pixel RPG aesthetic: party column, compass, quest panel, scrolling event log, 8-slot hotbar, minimap
-- **Combat polish** — battle entry ScreenShatter effect, PBR dungeon textures (normal maps), minimap direction arrows, BattleGrid combatant layout
+- **Main menu redesign** — full-screen pixel RPG aesthetic with CRT scanlines, animated skull, floating particles, Credits panel, QUIT confirmation
+- **Party presets** — CUSTOM / PRESETS tab toggle in party creation; 4 presets (The Covenant, Iron Vanguard, The Arcanum, Shadow Guild) with instant one-click party setup
+- **Character Sheet** — Daggerfall-style redesign: party tabs, paper-doll silhouette, stat bars with visual fill, equipment anchors, skill tree
+- **Inventory** — Baldur's Gate-style: item grid, detail pane, filter tabs (All/Equipment/Potions/Materials/Misc), hover tooltips
+- **Journal** — BG/Morrowind style: category tabs (ALL / EVENTS / COMBAT / LOCATIONS / ITEMS), timestamped entries, color-coded by type
+- **Bestiary** — Morrowind/X-COM style: two-column research view (creature list + detail pane), tier badges, encounter counter, full stats/resistances/skills/loot
 - **Bug fixes**:
-  - Poison Blade now correctly applies poison DoT (3 turns, 10 dmg/turn) — `executeSkillAttack` now reads `skill.effects`
-  - Retry Combat from defeat screen restores party to 50% HP and re-triggers the same encounter
-  - Bless `stat_boost` now modifies damage calculations in `applyStatusEffectModifiers`
-  - `processCombatVictory` crash (`distributeExperience is not a function`) fixed
-  - Auto-save validation error after every combat victory fixed
-  - AP banner in combat no longer stuck showing stale value after partial AP use
+  - Save validation failed with "No characters in party" when `party.characters` was empty array (constructor default) — now uses whichever array has members
+  - Save slot display showed "0 characters" — `getDisplayMetadata` applies same fix
+  - Equipment selection overlay rendered behind Character Sheet (z-index 1000 < 2500) — raised to 3000
 
 ## Running
 
@@ -41,12 +42,16 @@ Open `http://localhost:8000`.
 | S / ↓ | Move backward |
 | A / ← | Turn left |
 | D / → | Turn right |
-| E / Space | Interact (doors, NPCs) |
-| ESC | Pause menu |
-| I | State dump (debug) |
-| P | Full system diagnosis |
-| F | Performance stats |
-| L | Cycle test levels |
+| Q / E | Strafe left / right |
+| Space | Interact (doors, props, NPCs) |
+| I | Inventory |
+| C | Character sheet |
+| ESC | Pause menu / close panel |
+| F5 / F9 | Quick save / quick load |
+| 1–5 | Combat actions (during combat) |
+| P | Full system diagnosis (debug) |
+| F | Performance stats (debug) |
+| L | Cycle test levels (debug) |
 
 ## Architecture
 

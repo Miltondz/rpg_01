@@ -228,11 +228,15 @@ export class SaveData {
       validation.isValid = false;
     }
 
-    // Check party data
-    if (!this.party || !Array.isArray(this.party.characters)) {
+    // Check party data (key may be 'characters' or 'party' depending on source)
+    // Use whichever array has members (characters may be [] from constructor default)
+    const _chars = this.party?.characters;
+    const _party = this.party?.party;
+    const partyArray = (_chars?.length > 0 ? _chars : null) ?? (_party?.length > 0 ? _party : null) ?? _chars ?? _party;
+    if (!this.party || !Array.isArray(partyArray)) {
       validation.errors.push('Invalid party data');
       validation.isValid = false;
-    } else if (this.party.characters.filter(char => char !== null).length === 0) {
+    } else if (partyArray.filter(char => char !== null).length === 0) {
       validation.errors.push('No characters in party');
       validation.isValid = false;
     }
@@ -270,7 +274,7 @@ export class SaveData {
       location: this.metadata.location,
       partyLevel: this.metadata.partyLevel,
       screenshot: this.metadata.screenshot,
-      partySize: this.party.characters.filter(char => char !== null).length,
+      partySize: (this.party.characters?.length > 0 ? this.party.characters : this.party.party ?? []).filter(char => char !== null).length,
       gold: this.party.gold,
       version: this.metadata.version
     };

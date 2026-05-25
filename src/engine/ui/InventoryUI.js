@@ -32,206 +32,249 @@ export class InventoryUI {
     }
 
     createUI() {
-        // Main container
+        this._injectStyles();
+
+        // Full-screen overlay (hidden until show())
         this.container = document.createElement('div');
-        this.container.className = 'inventory-ui';
-        this.container.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 600px;
-            height: 500px;
-            background: rgba(20, 20, 30, 0.95);
-            border: 2px solid #444;
-            border-radius: 8px;
-            padding: 20px;
-            z-index: 1000;
-            display: none;
-            font-family: 'Courier New', monospace;
-            color: white;
-        `;
+        this.container.className = 'inv-overlay';
 
-        // Header
+        // Inner modal
+        const modal = document.createElement('div');
+        modal.className = 'inv-modal';
+
+        // ── Header ──
         const header = document.createElement('div');
-        header.className = 'inventory-header';
-        header.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #555;
-        `;
+        header.className = 'inv-header';
+        header.innerHTML = `<span class="inv-title">── INVENTORY ──</span>`;
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'inv-close';
+        closeBtn.textContent = '✕';
+        closeBtn.addEventListener('click', () => this.hide());
+        header.appendChild(closeBtn);
 
-        const title = document.createElement('h2');
-        title.textContent = 'Inventory';
-        title.style.cssText = `
-            margin: 0;
-            color: #fff;
-            font-size: 18px;
-        `;
+        // ── Filter bar ──
+        const filterBar = this.createControls();
 
-        const closeButton = document.createElement('button');
-        closeButton.textContent = '×';
-        closeButton.style.cssText = `
-            background: #666;
-            border: none;
-            color: white;
-            font-size: 20px;
-            width: 30px;
-            height: 30px;
-            border-radius: 4px;
-            cursor: pointer;
-        `;
-        closeButton.addEventListener('click', () => this.hide());
+        // ── Two-column body ──
+        const body = document.createElement('div');
+        body.className = 'inv-body';
 
-        header.appendChild(title);
-        header.appendChild(closeButton);
+        // Left: grid + stats
+        const leftPane = document.createElement('div');
+        leftPane.className = 'inv-left';
 
-        // Controls section
-        const controls = this.createControls();
-        
-        // Stats section
-        const stats = this.createStatsSection();
-
-        // Grid container
         this.gridContainer = document.createElement('div');
         this.gridContainer.className = 'inventory-grid';
-        this.gridContainer.style.cssText = `
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(5, 1fr);
-            gap: 2px;
-            width: 100%;
-            height: 300px;
-            margin: 15px 0;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 4px;
-        `;
 
-        // Create slot elements
+        // Stats row
+        const statsRow = this.createStatsSection();
+
+        leftPane.appendChild(this.gridContainer);
+        leftPane.appendChild(statsRow);
+
+        // Right: item detail panel
+        this.detailPanel = document.createElement('div');
+        this.detailPanel.className = 'inv-detail';
+        this.detailPanel.innerHTML = `<p class="inv-detail-empty">Select an item<br>to view details</p>`;
+
+        body.appendChild(leftPane);
+        body.appendChild(this.detailPanel);
+
+        // Assemble
+        modal.appendChild(header);
+        modal.appendChild(filterBar);
+        modal.appendChild(body);
+        this.container.appendChild(modal);
+
+        // Create slot elements (appends to gridContainer)
         this.createSlots();
 
         // Tooltip
         this.createTooltip();
 
-        // Assemble UI
-        this.container.appendChild(header);
-        this.container.appendChild(controls);
-        this.container.appendChild(stats);
-        this.container.appendChild(this.gridContainer);
         // Not appended to body here — deferred to show() so it only enters DOM when opened.
     }
 
     createControls() {
-        const controls = document.createElement('div');
-        controls.className = 'inventory-controls';
-        controls.style.cssText = `
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: center;
-        `;
-
-        // Filter buttons
-        const filterLabel = document.createElement('span');
-        filterLabel.textContent = 'Filter:';
-        filterLabel.style.marginRight = '5px';
+        const bar = document.createElement('div');
+        bar.className = 'inv-filter-bar';
+        this._filterBtns = {};
 
         const filters = [
-            { key: 'all', label: 'All' },
-            { key: 'equipment', label: 'Equipment' },
-            { key: 'consumable', label: 'Consumables' },
-            { key: 'material', label: 'Materials' },
-            { key: 'key_item', label: 'Quest' }
+            { key: 'all',       label: 'ALL' },
+            { key: 'equipment', label: 'EQUIPMENT' },
+            { key: 'consumable',label: 'POTIONS' },
+            { key: 'material',  label: 'MATERIALS' },
+            { key: 'key_item',  label: 'QUEST' }
         ];
 
-        controls.appendChild(filterLabel);
-
-        filters.forEach(filter => {
-            const button = document.createElement('button');
-            button.textContent = filter.label;
-            button.className = `filter-btn ${filter.key === 'all' ? 'active' : ''}`;
-            button.style.cssText = `
-                background: ${filter.key === 'all' ? '#4a90e2' : '#666'};
-                border: none;
-                color: white;
-                padding: 5px 10px;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 12px;
-            `;
-            
-            button.addEventListener('click', () => this.setFilter(filter.key));
-            controls.appendChild(button);
+        filters.forEach(f => {
+            const btn = document.createElement('button');
+            btn.textContent = f.label;
+            btn.className = 'inv-filter-btn' + (f.key === 'all' ? ' inv-filter-active' : '');
+            btn.addEventListener('click', () => this.setFilter(f.key));
+            this._filterBtns[f.key] = btn;
+            bar.appendChild(btn);
         });
 
-        // Sort button
-        const sortButton = document.createElement('button');
-        sortButton.textContent = 'Sort';
-        sortButton.style.cssText = `
-            background: #28a745;
-            border: none;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-left: auto;
-        `;
-        sortButton.addEventListener('click', () => this.sortInventory());
-        controls.appendChild(sortButton);
+        const sortBtn = document.createElement('button');
+        sortBtn.textContent = 'SORT';
+        sortBtn.className = 'inv-sort-btn';
+        sortBtn.addEventListener('click', () => this.sortInventory());
+        bar.appendChild(sortBtn);
 
-        return controls;
+        return bar;
     }
 
     createStatsSection() {
-        const stats = document.createElement('div');
-        stats.className = 'inventory-stats';
-        stats.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 12px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 4px;
-            font-size: 14px;
-        `;
+        const row = document.createElement('div');
+        row.className = 'inv-stats-row';
 
         this.slotsDisplay = document.createElement('span');
         this.itemsDisplay = document.createElement('span');
-        this.goldDisplay = document.createElement('span');
+        this.goldDisplay  = document.createElement('span');
+        this.goldDisplay.className = 'inv-gold';
 
-        stats.appendChild(this.slotsDisplay);
-        stats.appendChild(this.itemsDisplay);
-        stats.appendChild(this.goldDisplay);
+        row.appendChild(this.slotsDisplay);
+        row.appendChild(this.itemsDisplay);
+        row.appendChild(this.goldDisplay);
 
-        return stats;
+        return row;
+    }
+
+    _injectStyles() {
+        if (document.getElementById('inv-bg-styles')) return;
+        const s = document.createElement('style');
+        s.id = 'inv-bg-styles';
+        s.textContent = `
+          /* ── Baldur's Gate style Inventory ── */
+          .inv-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85);
+            display: none; align-items: center; justify-content: center;
+            z-index: 2400;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+          }
+          .inv-modal {
+            background: #090909;
+            border: 1px solid #5C3D00;
+            width: min(98vw, 880px); max-height: 92vh;
+            display: flex; flex-direction: column;
+            box-shadow: 0 0 40px rgba(92,61,0,0.3);
+            color: #C8A84B;
+          }
+          /* Header */
+          .inv-header {
+            display: flex; align-items: center;
+            padding: 8px 14px;
+            border-bottom: 1px solid #2a1800;
+            background: #100c00;
+            flex-shrink: 0;
+          }
+          .inv-title { font-size: 9px; letter-spacing: 3px; color: #5C3D00; flex: 1; text-align: center; }
+          .inv-close {
+            background: none; border: 1px solid #2a1800; color: #5C3D00;
+            width: 26px; height: 26px; cursor: pointer; font-size: 11px; flex-shrink: 0;
+          }
+          .inv-close:hover { border-color: #C8A84B; color: #C8A84B; }
+          /* Filter bar */
+          .inv-filter-bar {
+            display: flex; gap: 4px; padding: 8px 14px;
+            border-bottom: 1px solid #1a1200;
+            background: #0d0900; flex-shrink: 0; flex-wrap: wrap;
+          }
+          .inv-filter-btn {
+            background: none; border: 1px solid #2a1800; color: #5C3D00;
+            padding: 5px 10px; cursor: pointer; font-family: inherit; font-size: 7px;
+            transition: all 0.1s; letter-spacing: 1px;
+          }
+          .inv-filter-btn:hover { border-color: #8B6914; color: #C8A84B; }
+          .inv-filter-active { border-color: #C8A84B !important; color: #FFD700 !important; background: #1a1000 !important; }
+          .inv-sort-btn {
+            background: none; border: 1px solid #1a3a1a; color: #2a7a2a;
+            padding: 5px 12px; cursor: pointer; font-family: inherit; font-size: 7px;
+            margin-left: auto; transition: all 0.1s;
+          }
+          .inv-sort-btn:hover { border-color: #4aCC4a; color: #4aCC4a; }
+          /* Body */
+          .inv-body {
+            display: grid; grid-template-columns: 1fr 220px;
+            flex: 1; overflow: hidden; min-height: 0;
+          }
+          .inv-left { display: flex; flex-direction: column; padding: 12px; border-right: 1px solid #1a1200; }
+          /* Grid */
+          .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 3px; flex: 1;
+          }
+          .inventory-slot {
+            background: #0d0a00;
+            border: 1px solid #2a1800;
+            aspect-ratio: 1;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            cursor: pointer; position: relative;
+            transition: border-color 0.1s;
+            min-height: 44px;
+          }
+          .inventory-slot:hover { border-color: #8B6914; background: #1a1200; }
+          .inv-slot-selected { border-color: #FFD700 !important; background: #1a1400 !important; }
+          /* Stats row */
+          .inv-stats-row {
+            display: flex; gap: 12px; padding: 6px 0;
+            font-size: 7px; color: #5C3D00;
+            border-top: 1px solid #1a1200; margin-top: 6px; flex-shrink: 0;
+          }
+          .inv-gold { color: #FFD700; margin-left: auto; }
+          /* Detail panel */
+          .inv-detail {
+            padding: 14px 12px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 8px;
+          }
+          .inv-detail-empty { font-size: 7px; color: #2a1800; text-align: center; margin: auto; line-height: 2; }
+          .inv-detail-icon { font-size: 32px; text-align: center; }
+          .inv-detail-name { font-size: 8px; font-weight: bold; text-align: center; line-height: 1.6; }
+          .inv-detail-meta { font-size: 6px; color: #5C3D00; text-align: center; letter-spacing: 1px; }
+          .inv-detail-desc { font-size: 7px; color: #8B6914; line-height: 1.7; padding: 6px 0; border-top: 1px solid #1a1200; }
+          .inv-detail-stats { border-top: 1px solid #1a1200; padding-top: 6px; }
+          .inv-detail-stat { display: flex; justify-content: space-between; font-size: 7px; color: #C8A84B; margin-bottom: 4px; }
+          .inv-stat-pos { color: #4aCC4a; }
+          .inv-detail-value { font-size: 7px; color: #5C3D00; border-top: 1px solid #1a1200; padding-top: 6px; }
+          .inv-detail-actions { display: flex; gap: 6px; flex-wrap: wrap; border-top: 1px solid #1a1200; padding-top: 8px; margin-top: auto; }
+          .inv-action-btn {
+            background: none; border: 1px solid #5C3D00; color: #C8A84B;
+            padding: 5px 10px; cursor: pointer; font-family: inherit; font-size: 7px;
+            transition: all 0.1s;
+          }
+          .inv-action-btn:hover { border-color: #C8A84B; color: #FFD700; background: #1a1000; }
+          .inv-action-drop { border-color: #3a0000; color: #883333; }
+          .inv-action-drop:hover { border-color: #CC3333; color: #CC3333; }
+          /* Tooltip (reused from old code but restyled) */
+          .inventory-tooltip {
+            position: fixed; background: #0a0800; border: 1px solid #5C3D00;
+            padding: 10px; color: #C8A84B; font-family: inherit;
+            font-size: 7px; z-index: 10000; pointer-events: none;
+            display: none; max-width: 200px; line-height: 1.8;
+          }
+          /* Scrollbar */
+          .inv-detail::-webkit-scrollbar { width: 4px; }
+          .inv-detail::-webkit-scrollbar-track { background: #090909; }
+          .inv-detail::-webkit-scrollbar-thumb { background: #2a1800; }
+          @media (max-width: 600px) {
+            .inv-body { grid-template-columns: 1fr; }
+            .inventory-grid { grid-template-columns: repeat(5, 1fr); }
+          }
+        `;
+        document.head.appendChild(s);
     }
 
     createSlots() {
         this.slotElements = [];
-        
         for (let i = 0; i < 40; i++) {
             const slot = document.createElement('div');
             slot.className = 'inventory-slot';
             slot.dataset.slotIndex = i;
-            slot.style.cssText = `
-                width: 100%;
-                height: 100%;
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid #555;
-                border-radius: 4px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                position: relative;
-                min-height: 50px;
-            `;
-
-            // Make slots draggable
             slot.draggable = true;
             slot.addEventListener('dragstart', this.handleSlotDragStart);
             slot.addEventListener('dragover', this.handleSlotDragOver);
@@ -239,7 +282,6 @@ export class InventoryUI {
             slot.addEventListener('click', this.handleSlotClick);
             slot.addEventListener('mouseenter', this.handleSlotMouseEnter);
             slot.addEventListener('mouseleave', this.handleSlotMouseLeave);
-
             this.slotElements.push(slot);
             this.gridContainer.appendChild(slot);
         }
@@ -263,6 +305,38 @@ export class InventoryUI {
             line-height: 1.4;
         `;
         // Appended lazily in show() alongside the main container.
+    }
+
+    /** Returns an emoji icon based on item type/subtype. */
+    _itemIcon(item) {
+        const type    = (item?.type    ?? '').toLowerCase();
+        const subtype = (item?.subtype ?? '').toLowerCase();
+        const name    = (item?.name    ?? '').toLowerCase();
+
+        if (type === 'weapon' || subtype === 'weapon') {
+            if (name.includes('bow') || name.includes('arrow'))   return '🏹';
+            if (name.includes('staff') || name.includes('wand'))  return '🪄';
+            if (name.includes('dagger') || name.includes('knife')) return '🗡️';
+            return '⚔️';
+        }
+        if (type === 'armor' || subtype === 'armor') {
+            if (name.includes('helmet') || name.includes('helm')) return '⛑️';
+            if (name.includes('boot'))                            return '🥾';
+            if (name.includes('glove'))                           return '🧤';
+            return '🛡️';
+        }
+        if (type === 'accessory' || subtype === 'accessory')  return '💍';
+        if (type === 'potion' || name.includes('potion'))     return '🧪';
+        if (type === 'scroll' || name.includes('scroll'))     return '📜';
+        if (type === 'key'    || name.includes('key'))        return '🗝️';
+        if (type === 'food'   || name.includes('bread') || name.includes('meat')) return '🍖';
+        if (name.includes('crystal') || name.includes('gem') || name.includes('jewel')) return '💎';
+        if (name.includes('gold') || name.includes('coin'))   return '🪙';
+        if (name.includes('bone') || name.includes('skull'))  return '💀';
+        if (type === 'consumable')                            return '⚗️';
+        if (type === 'material' || type === 'crafting')       return '🔩';
+        if (type === 'quest')                                 return '⭐';
+        return '📦';
     }
 
     /** Returns rarity colour for both Item instances and plain objects. */
@@ -294,32 +368,33 @@ export class InventoryUI {
 
         // Clear slot
         slot.innerHTML = '';
-        slot.style.background = 'rgba(255, 255, 255, 0.1)';
+        slot.style.background = '';
+        slot.style.borderColor = '';
 
         if (slotData) {
             const item = slotData.item;
             const color = this._itemColor(item);
 
             // Set background color based on rarity
-            slot.style.background = `linear-gradient(135deg, ${color}22, rgba(255, 255, 255, 0.1))`;
+            slot.style.background = `${color}11`;
             slot.style.borderColor = color;
 
-            // Item icon (placeholder)
+            // Item icon — emoji based on type/subtype
             const icon = document.createElement('div');
             icon.style.cssText = `
-                width: 24px;
-                height: 24px;
-                background: ${color};
-                border-radius: 2px;
+                width: 28px;
+                height: 28px;
+                background: ${color}33;
+                border: 1px solid ${color}88;
+                border-radius: 4px;
                 margin-bottom: 2px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 10px;
-                color: black;
-                font-weight: bold;
+                font-size: 18px;
+                line-height: 1;
             `;
-            icon.textContent = (item?.name ?? '?').charAt(0).toUpperCase();
+            icon.textContent = this._itemIcon(item);
             
             // Quantity display for stackable items
             if (item.stackable && slotData.quantity > 1) {
@@ -368,29 +443,10 @@ export class InventoryUI {
 
     setFilter(filterType) {
         this.currentFilter = filterType;
-        
-        // Update button states
-        const buttons = this.container.querySelectorAll('.filter-btn');
-        buttons.forEach(btn => {
-            btn.classList.remove('active');
-            btn.style.background = '#666';
+        // Update button states using the new class-based approach
+        Object.entries(this._filterBtns ?? {}).forEach(([key, btn]) => {
+            btn.classList.toggle('inv-filter-active', key === filterType);
         });
-        
-        const activeButton = Array.from(buttons).find(btn => {
-            const btnText = btn.textContent.toLowerCase();
-            if (filterType === 'all' && btnText === 'all') return true;
-            if (filterType === 'equipment' && btnText === 'equipment') return true;
-            if (filterType === 'consumable' && btnText === 'consumables') return true;
-            if (filterType === 'material' && btnText === 'materials') return true;
-            if (filterType === 'key_item' && btnText === 'quest') return true;
-            return false;
-        });
-        
-        if (activeButton) {
-            activeButton.classList.add('active');
-            activeButton.style.background = '#4a90e2';
-        }
-        
         this.applyFilter();
     }
 
@@ -424,7 +480,7 @@ export class InventoryUI {
             }
         }
         this.isVisible = true;
-        this.container.style.display = 'block';
+        this.container.style.display = 'flex';
         this.updateAllSlots();
     }
 
@@ -447,11 +503,43 @@ export class InventoryUI {
     handleSlotClick(event) {
         const slotIndex = parseInt(event.currentTarget.dataset.slotIndex);
         const slotData = this.inventorySystem.getSlot(slotIndex);
-        
-        if (slotData) {
-            console.log(`Clicked item: ${slotData.item.name} (x${slotData.quantity})`);
-            // Could trigger item use, equipment, etc.
+
+        // Highlight selected slot
+        this.slotElements.forEach(s => s.classList.remove('inv-slot-selected'));
+        event.currentTarget.classList.add('inv-slot-selected');
+
+        this._updateDetailPanel(slotData);
+    }
+
+    _updateDetailPanel(slotData) {
+        if (!this.detailPanel) return;
+        if (!slotData) {
+            this.detailPanel.innerHTML = `<p class="inv-detail-empty">Select an item<br>to view details</p>`;
+            return;
         }
+        const item    = slotData.item;
+        const tooltip = this._itemTooltip(item);
+        const color   = this._itemColor(item);
+        const icon    = this._itemIcon(item);
+        const stats   = tooltip.stats ?? {};
+        const statsHtml = Object.entries(stats)
+            .map(([k, v]) => `<div class="inv-detail-stat"><span>${k.toUpperCase()}</span><span class="${v > 0 ? 'inv-stat-pos' : ''}">${v > 0 ? '+' : ''}${v}</span></div>`)
+            .join('');
+        const qty = slotData.quantity > 1 ? ` ×${slotData.quantity}` : '';
+
+        this.detailPanel.innerHTML = `
+          <div class="inv-detail-icon" style="color:${color}">${icon}</div>
+          <div class="inv-detail-name" style="color:${color}">${tooltip.name}${qty}</div>
+          <div class="inv-detail-meta">${tooltip.type.toUpperCase()} &nbsp;·&nbsp; ${(tooltip.rarity || 'COMMON').toUpperCase()}</div>
+          ${tooltip.description ? `<div class="inv-detail-desc">${tooltip.description}</div>` : ''}
+          ${statsHtml ? `<div class="inv-detail-stats">${statsHtml}</div>` : ''}
+          <div class="inv-detail-value">💰 Value: ${tooltip.value ?? 0}</div>
+          <div class="inv-detail-actions">
+            ${item.type === 'consumable' || item.type === 'potion' ? '<button class="inv-action-btn" onclick="this.closest(\'.inv-overlay\').__invUI.useSelected()">USE</button>' : ''}
+            ${item.type === 'weapon' || item.type === 'armor' || item.type === 'accessory' ? '<button class="inv-action-btn">EQUIP</button>' : ''}
+            <button class="inv-action-btn inv-action-drop">DROP</button>
+          </div>
+        `;
     }
 
     handleSlotDragStart(event) {

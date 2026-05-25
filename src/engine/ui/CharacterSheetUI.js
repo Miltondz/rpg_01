@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CharacterSheetUI - User interface for displaying detailed character information
  * Shows stats, equipment, skills, and level progression
  */
@@ -77,163 +77,174 @@ export class CharacterSheetUI {
   createUI() {
     this.container = document.createElement('div');
     this.container.className = 'character-sheet-overlay';
-    
+
     this.container.innerHTML = `
-      <div class="character-sheet-modal">
-        <div class="modal-header">
-          <h2 id="character-name">Character Sheet</h2>
-          <button class="close-btn" id="close-character-sheet">×</button>
+      <div class="cs-modal">
+
+        <!-- Header: party tabs + close -->
+        <div class="cs-header">
+          <div class="cs-party-tabs" id="cs-party-tabs"></div>
+          <span id="character-name" class="cs-char-title">CHARACTER</span>
+          <button class="cs-close" id="close-character-sheet">âœ•</button>
         </div>
-        
-        <div class="modal-content">
-          <div class="character-info-section">
-            <div class="character-portrait">
-              <div class="portrait-placeholder" id="character-portrait">
-                <span id="character-class-icon">⚔</span>
-              </div>
-              <div class="character-basic-info">
-                <h3 id="character-display-name">Character Name</h3>
-                <p id="character-class-name">Class</p>
-                <p id="character-level-info">Level 1</p>
+
+        <!-- Three-column body -->
+        <div class="cs-body">
+
+          <!-- LEFT: portrait + stats -->
+          <div class="cs-left">
+            <div class="cs-portrait" id="character-portrait">
+              <span class="cs-portrait-icon" id="character-class-icon">âš”</span>
+            </div>
+            <div class="cs-identity">
+              <div class="cs-char-name" id="character-display-name">â€”</div>
+              <div class="cs-char-meta">
+                <span id="character-class-name">â€”</span>
+                &nbsp;Â·&nbsp;
+                <span id="character-level-info">Lv.1</span>
               </div>
             </div>
-            
-            <div class="experience-section">
-              <h4>Experience Progress</h4>
-              <div class="xp-bar-container">
-                <div class="xp-bar">
-                  <div class="xp-fill" id="xp-fill"></div>
-                  <span class="xp-text" id="xp-text">0 / 100 XP</span>
-                </div>
-                <div class="xp-info">
-                  <span id="xp-to-next">50 XP to next level</span>
-                </div>
+
+            <div class="cs-divider"></div>
+
+            <!-- Stat rows -->
+            <div class="cs-stat-row">
+              <span class="cs-stat-lbl">HP</span>
+              <div class="cs-bar-wrap">
+                <div class="cs-bar cs-bar-hp" id="hp-bar"></div>
+              </div>
+              <span class="cs-stat-val"><span id="hp-current">0</span>/<span id="hp-max">0</span></span>
+            </div>
+            <div class="cs-stat-row">
+              <span class="cs-stat-lbl">ATK</span>
+              <div class="cs-bar-wrap">
+                <div class="cs-bar cs-bar-atk" id="atk-bar-visual"></div>
+              </div>
+              <span class="cs-stat-val"><span id="atk-total">0</span><small id="atk-bonus" class="cs-bonus"></small></span>
+            </div>
+            <div class="cs-stat-row">
+              <span class="cs-stat-lbl">DEF</span>
+              <div class="cs-bar-wrap">
+                <div class="cs-bar cs-bar-def" id="def-bar-visual"></div>
+              </div>
+              <span class="cs-stat-val"><span id="def-total">0</span><small id="def-bonus" class="cs-bonus"></small></span>
+            </div>
+            <div class="cs-stat-row">
+              <span class="cs-stat-lbl">SPD</span>
+              <div class="cs-bar-wrap">
+                <div class="cs-bar cs-bar-spd" id="spd-bar-visual"></div>
+              </div>
+              <span class="cs-stat-val"><span id="spd-total">0</span><small id="spd-bonus" class="cs-bonus"></small></span>
+            </div>
+
+            <!-- Hidden compat spans (updateStatsDisplay reads these) -->
+            <span id="atk-base" style="display:none">0</span>
+            <span id="def-base" style="display:none">0</span>
+            <span id="spd-base" style="display:none">0</span>
+
+            <div class="cs-divider"></div>
+
+            <!-- XP bar -->
+            <div class="cs-xp-label">
+              <span>XP</span>
+              <span id="xp-to-next" class="cs-xp-hint"></span>
+            </div>
+            <div class="cs-xp-track">
+              <div class="cs-xp-fill" id="xp-fill"></div>
+              <span class="cs-xp-text" id="xp-text"></span>
+            </div>
+
+            <div class="cs-divider"></div>
+            <div class="cs-formation-row" id="formation-effects">
+              <span class="cs-sect-lbl">FORMATION</span>
+              <span id="formation-description" class="cs-formation-val">â€”</span>
+            </div>
+          </div><!-- /cs-left -->
+
+          <!-- CENTER: paper-doll equipment -->
+          <div class="cs-center">
+            <div class="cs-sect-lbl" style="text-align:center;margin-bottom:8px">EQUIPMENT</div>
+            <div class="cs-paperdoll">
+              <!-- Top: head slot -->
+              <div class="cs-doll-slot cs-doll-head" data-slot="weapon">
+                <div class="cs-doll-label">WEAPON</div>
+                <div class="cs-doll-icon">âš”</div>
+                <div class="cs-slot-content" id="weapon-slot"><span class="cs-empty-slot">â€”</span></div>
+              </div>
+
+              <!-- Silhouette -->
+              <div class="cs-doll-body">
+                <svg viewBox="0 0 60 120" class="cs-silhouette" xmlns="http://www.w3.org/2000/svg">
+                  <!-- head -->
+                  <circle cx="30" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+                  <!-- body -->
+                  <rect x="18" y="24" width="24" height="36" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                  <!-- left arm -->
+                  <rect x="4" y="24" width="12" height="28" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                  <!-- right arm -->
+                  <rect x="44" y="24" width="12" height="28" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                  <!-- legs -->
+                  <rect x="18" y="62" width="10" height="36" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                  <rect x="32" y="62" width="10" height="36" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </div>
+
+              <!-- Armor slot -->
+              <div class="cs-doll-slot cs-doll-armor" data-slot="armor">
+                <div class="cs-doll-label">ARMOR</div>
+                <div class="cs-doll-icon">ðŸ›¡</div>
+                <div class="cs-slot-content" id="armor-slot"><span class="cs-empty-slot">â€”</span></div>
+              </div>
+
+              <!-- Accessory slot below -->
+              <div class="cs-doll-slot cs-doll-acc" data-slot="accessory">
+                <div class="cs-doll-label">ACCESSORY</div>
+                <div class="cs-doll-icon">ðŸ’</div>
+                <div class="cs-slot-content" id="accessory-slot"><span class="cs-empty-slot">â€”</span></div>
               </div>
             </div>
-          </div>
-          
-          <div class="stats-section">
-            <h4>Character Stats</h4>
-            <div class="stats-grid">
-              <div class="stat-block">
-                <div class="stat-header">
-                  <span class="stat-icon">❤</span>
-                  <span class="stat-name">Health Points</span>
-                </div>
-                <div class="stat-values">
-                  <span class="current-stat" id="hp-current">60</span>
-                  <span class="stat-separator">/</span>
-                  <span class="max-stat" id="hp-max">60</span>
-                </div>
-                <div class="stat-bar">
-                  <div class="stat-fill hp-fill" id="hp-bar"></div>
-                </div>
-              </div>
-              
-              <div class="stat-block">
-                <div class="stat-header">
-                  <span class="stat-icon">⚔</span>
-                  <span class="stat-name">Attack Power</span>
-                </div>
-                <div class="stat-values">
-                  <span class="base-stat" id="atk-base">12</span>
-                  <span class="bonus-stat" id="atk-bonus">+0</span>
-                </div>
-                <div class="stat-total" id="atk-total">12</div>
-              </div>
-              
-              <div class="stat-block">
-                <div class="stat-header">
-                  <span class="stat-icon">🛡</span>
-                  <span class="stat-name">Defense</span>
-                </div>
-                <div class="stat-values">
-                  <span class="base-stat" id="def-base">10</span>
-                  <span class="bonus-stat" id="def-bonus">+0</span>
-                </div>
-                <div class="stat-total" id="def-total">10</div>
-              </div>
-              
-              <div class="stat-block">
-                <div class="stat-header">
-                  <span class="stat-icon">⚡</span>
-                  <span class="stat-name">Speed</span>
-                </div>
-                <div class="stat-values">
-                  <span class="base-stat" id="spd-base">5</span>
-                  <span class="bonus-stat" id="spd-bonus">+0</span>
-                </div>
-                <div class="stat-total" id="spd-total">5</div>
-              </div>
-            </div>
-            
-            <div class="formation-effects" id="formation-effects">
-              <h5>Formation Effects</h5>
-              <p id="formation-description">No formation effects</p>
-            </div>
-          </div>
-          
-          <div class="skills-section">
-            <h4>Skills & Abilities</h4>
-            <div class="skills-container">
-              <div class="unlocked-skills">
-                <h5>Unlocked Skills</h5>
-                <div class="skills-list" id="unlocked-skills">
-                  <!-- Skills will be populated here -->
-                </div>
-              </div>
-              
-              <div class="skill-progression">
-                <h5>Skill Tree</h5>
-                <div class="skill-tree" id="skill-tree">
-                  <!-- Skill progression will be populated here -->
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="equipment-section">
-            <h4>Equipment</h4>
-            <div class="equipment-slots">
-              <div class="equipment-slot" data-slot="weapon">
-                <div class="slot-icon">⚔</div>
-                <div class="slot-label">Weapon</div>
-                <div class="slot-content" id="weapon-slot">
-                  <div class="empty-slot">No weapon equipped</div>
-                </div>
-              </div>
-              
-              <div class="equipment-slot" data-slot="armor">
-                <div class="slot-icon">🛡</div>
-                <div class="slot-label">Armor</div>
-                <div class="slot-content" id="armor-slot">
-                  <div class="empty-slot">No armor equipped</div>
-                </div>
-              </div>
-              
-              <div class="equipment-slot" data-slot="accessory">
-                <div class="slot-icon">💍</div>
-                <div class="slot-label">Accessory</div>
-                <div class="slot-content" id="accessory-slot">
-                  <div class="empty-slot">No accessory equipped</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          </div><!-- /cs-center -->
+
+          <!-- RIGHT: skills -->
+          <div class="cs-right">
+            <div class="cs-sect-lbl">ABILITIES</div>
+            <div class="cs-skills-list" id="unlocked-skills"></div>
+            <div class="cs-divider" style="margin:10px 0"></div>
+            <div class="cs-sect-lbl">UPCOMING</div>
+            <div class="cs-skill-tree" id="skill-tree"></div>
+          </div><!-- /cs-right -->
+
+        </div><!-- /cs-body -->
+
+        <!-- Footer -->
+        <div class="cs-footer">
+          <button class="cs-btn cs-btn-lvl" id="level-up-btn" disabled>â–² LEVEL UP</button>
+          <button class="cs-btn cs-btn-heal" id="heal-character-btn">âœš HEAL</button>
+          <button class="cs-btn cs-btn-close" id="close-sheet-btn">âœ• CLOSE</button>
         </div>
-        
-        <div class="modal-footer">
-          <div class="character-actions">
-            <button class="btn secondary" id="level-up-btn" disabled>Level Up</button>
-            <button class="btn secondary" id="heal-character-btn">Heal Character</button>
-            <button class="btn primary" id="close-sheet-btn">Close</button>
-          </div>
-        </div>
+
       </div>
     `;
-    
-    // Add CSS styles
+
     this.addStyles();
+  }
+
+  _buildPartyTabs() {
+    const tabsEl = this.container?.querySelector('#cs-party-tabs');
+    if (!tabsEl) return;
+    const party = this.characterSystem.partyManager?.party?.filter(Boolean) ?? [];
+    tabsEl.innerHTML = '';
+    for (const member of party) {
+      const btn = document.createElement('button');
+      btn.className = 'cs-party-tab' + (member.id === this.currentCharacter?.id ? ' cs-tab-active' : '');
+      btn.textContent = member.name.toUpperCase();
+      btn.addEventListener('click', () => {
+        this.currentCharacter = member;
+        this.updateDisplay();
+        this._buildPartyTabs();
+      });
+      tabsEl.appendChild(btn);
+    }
   }
 
   /**
@@ -298,11 +309,14 @@ export class CharacterSheetUI {
    */
   updateDisplay() {
     if (!this.currentCharacter) return;
-    
+
     const char = this.currentCharacter;
-    
+
+    // Rebuild party tabs
+    this._buildPartyTabs();
+
     // Update basic info
-    this.container.querySelector('#character-name').textContent = `${char.name} - Character Sheet`;
+    this.container.querySelector('#character-name').textContent = char.name.toUpperCase();
     this.container.querySelector('#character-display-name').textContent = char.name;
     this.container.querySelector('#character-class-name').textContent = 
       char.class.charAt(0).toUpperCase() + char.class.slice(1);
@@ -310,13 +324,13 @@ export class CharacterSheetUI {
     
     // Update class icon
     const classIcons = {
-      warrior: '⚔',
-      rogue: '🗡',
-      mage: '🔮',
-      cleric: '✨'
+      warrior: 'âš”',
+      rogue: 'ðŸ—¡',
+      mage: 'ðŸ”®',
+      cleric: 'âœ¨'
     };
     this.container.querySelector('#character-class-icon').textContent = 
-      classIcons[char.class] || '⚔';
+      classIcons[char.class] || 'âš”';
     
     // Update experience
     this.updateExperienceDisplay();
@@ -382,9 +396,18 @@ export class CharacterSheetUI {
     this.container.querySelector('#def-total').textContent = totalStats.DEF;
     
     this.container.querySelector('#spd-base').textContent = baseStats.SPD;
-    this.container.querySelector('#spd-bonus').textContent = 
+    this.container.querySelector('#spd-bonus').textContent =
       totalStats.SPD > baseStats.SPD ? `+${totalStats.SPD - baseStats.SPD}` : '';
     this.container.querySelector('#spd-total').textContent = totalStats.SPD;
+
+    // Visual stat bars (Daggerfall style) â€” scale ATK/DEF/SPD bars against 30 max
+    const pct = (v, max) => Math.min(100, Math.round(v / max * 100)) + '%';
+    const atkBar = this.container.querySelector('#atk-bar-visual');
+    const defBar = this.container.querySelector('#def-bar-visual');
+    const spdBar = this.container.querySelector('#spd-bar-visual');
+    if (atkBar) atkBar.style.width = pct(totalStats.ATK, 30);
+    if (defBar) defBar.style.width = pct(totalStats.DEF, 30);
+    if (spdBar) spdBar.style.width = pct(totalStats.SPD, 20);
   }
 
   /**
@@ -428,7 +451,7 @@ export class CharacterSheetUI {
           <div class="skill-level">Lv.${skillInfo.level}</div>
           <div class="skill-name">${skillInfo.name}</div>
           <div class="skill-status">
-            ${hasSkill ? '✓ Learned' : isUnlocked ? '○ Available' : '✗ Locked'}
+            ${hasSkill ? 'âœ“ Learned' : isUnlocked ? 'â—‹ Available' : 'âœ— Locked'}
           </div>
         </div>
       `;
@@ -589,29 +612,29 @@ export class CharacterSheetUI {
    */
   getSkillIcon(skillId) {
     const icons = {
-      power_strike: '💥',
-      taunt: '🛡',
-      cleave: '⚔',
-      iron_will: '💪',
-      execute: '💀',
-      backstab: '🗡',
-      poison_blade: '☠',
-      evasion: '💨',
-      multi_strike: '⚡',
-      assassinate: '🎯',
-      fireball: '🔥',
-      ice_shard: '❄',
-      lightning_storm: '⚡',
-      mana_shield: '🔮',
-      meteor: '☄',
-      heal: '💚',
-      bless: '✨',
-      mass_heal: '💖',
-      resurrect: '👼',
-      divine_shield: '🛡'
+      power_strike: 'ðŸ’¥',
+      taunt: 'ðŸ›¡',
+      cleave: 'âš”',
+      iron_will: 'ðŸ’ª',
+      execute: 'ðŸ’€',
+      backstab: 'ðŸ—¡',
+      poison_blade: 'â˜ ',
+      evasion: 'ðŸ’¨',
+      multi_strike: 'âš¡',
+      assassinate: 'ðŸŽ¯',
+      fireball: 'ðŸ”¥',
+      ice_shard: 'â„',
+      lightning_storm: 'âš¡',
+      mana_shield: 'ðŸ”®',
+      meteor: 'â˜„',
+      heal: 'ðŸ’š',
+      bless: 'âœ¨',
+      mass_heal: 'ðŸ’–',
+      resurrect: 'ðŸ‘¼',
+      divine_shield: 'ðŸ›¡'
     };
     
-    return icons[skillId] || '⭐';
+    return icons[skillId] || 'â­';
   }
 
   /**
@@ -802,7 +825,7 @@ export class CharacterSheetUI {
       <div class="comparison-content">
         <div class="modal-header">
           <h3>Equipment Comparison - ${slot.charAt(0).toUpperCase() + slot.slice(1)}</h3>
-          <button class="close-comparison">×</button>
+          <button class="close-comparison">Ã—</button>
         </div>
         
         <div class="comparison-grid">
@@ -954,9 +977,9 @@ export class CharacterSheetUI {
     const upgrades = Object.values(comparison).filter(stat => stat.isUpgrade).length;
     const downgrades = Object.values(comparison).filter(stat => !stat.isUpgrade).length;
     
-    if (upgrades > downgrades) return `↑ ${upgrades} stats improved`;
-    if (downgrades > upgrades) return `↓ ${downgrades} stats decreased`;
-    return `± Mixed changes`;
+    if (upgrades > downgrades) return `â†‘ ${upgrades} stats improved`;
+    if (downgrades > upgrades) return `â†“ ${downgrades} stats decreased`;
+    return `Â± Mixed changes`;
   }
 
   /**
@@ -1093,7 +1116,7 @@ export class CharacterSheetUI {
               const changePercent = Math.round((Math.abs(diff) / comparisonData[stat].current) * 100);
               
               statDisplay += `
-                <span class="stat-arrow">→</span>
+                <span class="stat-arrow">â†’</span>
                 <span class="stat-new ${isUpgrade ? 'better' : 'worse'}">+${comparisonData[stat].new}</span>
                 <span class="stat-diff ${isUpgrade ? 'positive' : 'negative'}">(${diff > 0 ? '+' : ''}${diff})</span>
                 <span class="stat-percent ${isUpgrade ? 'positive' : 'negative'}">[${changePercent}%]</span>
@@ -1132,7 +1155,7 @@ export class CharacterSheetUI {
       
       ${isEquipped ? `
         <div class="equipped-indicator">
-          <span style="color: #00ff00;">✓ Currently Equipped</span>
+          <span style="color: #00ff00;">âœ“ Currently Equipped</span>
         </div>
       ` : ''}
     `;
@@ -1188,7 +1211,7 @@ export class CharacterSheetUI {
     if (hasBetterItem) {
       const indicator = document.createElement('div');
       indicator.className = 'stat-indicator upgrade-available';
-      indicator.innerHTML = '↑';
+      indicator.innerHTML = 'â†‘';
       indicator.title = `Better items available in inventory (${upgradeCount} stat${upgradeCount > 1 ? 's' : ''} improved)`;
       
       // Add upgrade count badge for multiple upgrades
@@ -1380,1030 +1403,192 @@ export class CharacterSheetUI {
    */
   addStyles() {
     if (document.getElementById('character-sheet-styles')) return;
-    
     const style = document.createElement('style');
     style.id = 'character-sheet-styles';
     style.textContent = `
+      /* â”€â”€ Daggerfall-style Character Sheet â”€â”€ */
       .character-sheet-overlay {
         position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-        font-family: 'Courier New', monospace;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.88);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 2500;
+        font-family: 'Press Start 2P', 'Courier New', monospace;
       }
-      
-      .character-sheet-modal {
-        background: #1a1a1a;
-        border: 2px solid #00ff00;
-        border-radius: 10px;
-        width: 90%;
-        max-width: 1000px;
-        max-height: 90%;
-        overflow-y: auto;
-        color: #00ff00;
-      }
-      
-      .character-info-section {
-        display: grid;
-        grid-template-columns: 1fr 2fr;
-        gap: 20px;
-        margin-bottom: 20px;
-      }
-      
-      .character-portrait {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-      }
-      
-      .portrait-placeholder {
-        width: 80px;
-        height: 80px;
-        border: 2px solid #00ff00;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 32px;
-        margin-bottom: 15px;
+      /* â”€â”€ Modal shell â”€â”€ */
+      .cs-modal {
         background: #0a0a0a;
+        border: 1px solid #8B6914;
+        width: min(98vw,1020px); max-height: 92vh;
+        display: flex; flex-direction: column;
+        box-shadow: 0 0 40px rgba(139,105,20,0.25), inset 0 0 40px rgba(0,0,0,0.5);
+        color: #C8A84B;
       }
-      
-      .character-basic-info h3 {
-        margin: 0 0 5px 0;
-        color: #00ff00;
-      }
-      
-      .character-basic-info p {
-        margin: 2px 0;
-        color: #00aa00;
-        font-size: 14px;
-      }
-      
-      .experience-section h4 {
-        margin: 0 0 10px 0;
-        color: #00ff00;
-      }
-      
-      .xp-bar-container {
-        width: 100%;
-      }
-      
-      .xp-bar {
-        position: relative;
-        height: 20px;
-        background: #333;
-        border: 1px solid #00ff00;
-        border-radius: 10px;
-        overflow: hidden;
-        margin-bottom: 5px;
-      }
-      
-      .xp-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #0066ff, #00aaff, #00ffff);
-        transition: width 0.5s ease;
-      }
-      
-      .xp-text {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        color: #fff;
-        text-shadow: 1px 1px 1px #000;
-      }
-      
-      .xp-info {
-        text-align: center;
-        font-size: 12px;
-        color: #00aa00;
-      }
-      
-      .stats-section {
-        margin-bottom: 20px;
-      }
-      
-      .stats-section h4 {
-        margin: 0 0 15px 0;
-        color: #00ff00;
-        border-bottom: 1px solid #333;
-        padding-bottom: 5px;
-      }
-      
-      .stats-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-        margin-bottom: 15px;
-      }
-      
-      .stat-block {
-        background: #0a0a0a;
-        border: 1px solid #333;
-        border-radius: 5px;
-        padding: 15px;
-      }
-      
-      .stat-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-      }
-      
-      .stat-icon {
-        font-size: 18px;
-        margin-right: 8px;
-      }
-      
-      .stat-name {
-        color: #00aa00;
-        font-size: 14px;
-      }
-      
-      .stat-values {
-        display: flex;
-        align-items: center;
-        margin-bottom: 5px;
-      }
-      
-      .current-stat, .base-stat {
-        color: #00ff00;
-        font-size: 18px;
-        font-weight: bold;
-      }
-      
-      .max-stat {
-        color: #00aa00;
-        font-size: 18px;
-      }
-      
-      .stat-separator {
-        color: #666;
-        margin: 0 5px;
-        font-size: 18px;
-      }
-      
-      .bonus-stat {
-        color: #ffff00;
-        font-size: 14px;
-        margin-left: 5px;
-      }
-      
-      .stat-total {
-        color: #00ff00;
-        font-size: 18px;
-        font-weight: bold;
-        text-align: right;
-      }
-      
-      .stat-bar {
-        height: 8px;
-        background: #333;
-        border-radius: 4px;
-        overflow: hidden;
-      }
-      
-      .stat-fill {
-        height: 100%;
-        transition: width 0.3s ease;
-      }
-      
-      .hp-fill {
-        background: linear-gradient(90deg, #ff4444, #ffaa44, #44ff44);
-      }
-      
-      .formation-effects {
-        background: #0a0a0a;
-        border: 1px solid #333;
-        border-radius: 5px;
-        padding: 10px;
-      }
-      
-      .formation-effects h5 {
-        margin: 0 0 5px 0;
-        color: #00ff00;
-        font-size: 14px;
-      }
-      
-      .formation-effects p {
-        margin: 0;
-        color: #00aa00;
-        font-size: 12px;
-        font-style: italic;
-      }
-      
-      .skills-section {
-        margin-bottom: 20px;
-      }
-      
-      .skills-section h4 {
-        margin: 0 0 15px 0;
-        color: #00ff00;
-        border-bottom: 1px solid #333;
-        padding-bottom: 5px;
-      }
-      
-      .skills-container {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-      }
-      
-      .unlocked-skills h5, .skill-progression h5 {
-        margin: 0 0 10px 0;
-        color: #00aa00;
-        font-size: 14px;
-      }
-      
-      .skills-list {
-        max-height: 200px;
-        overflow-y: auto;
-      }
-      
-      .skill-item {
-        display: flex;
-        align-items: flex-start;
-        background: #0a0a0a;
-        border: 1px solid #333;
-        border-radius: 5px;
-        padding: 10px;
-        margin-bottom: 10px;
-      }
-      
-      .skill-icon {
-        font-size: 20px;
-        margin-right: 10px;
+      /* â”€â”€ Header â”€â”€ */
+      .cs-header {
+        display: flex; align-items: center; gap: 10px;
+        padding: 8px 12px;
+        border-bottom: 1px solid #3D2E0A;
+        background: #111007;
         flex-shrink: 0;
       }
-      
-      .skill-info h6 {
-        margin: 0 0 5px 0;
-        color: #00ff00;
-        font-size: 14px;
+      .cs-char-title {
+        font-size: 9px; letter-spacing: 3px; color: #8B6914; flex: 1; text-align: center;
       }
-      
-      .skill-description {
-        margin: 0 0 5px 0;
-        color: #00aa00;
-        font-size: 12px;
+      .cs-close {
+        background: none; border: 1px solid #3D2E0A; color: #5a4510;
+        width: 26px; height: 26px; cursor: pointer; font-size: 12px;
+        flex-shrink: 0;
       }
-      
-      .skill-stats {
-        display: flex;
-        gap: 10px;
-        font-size: 10px;
-        color: #666;
+      .cs-close:hover { border-color: #C8A84B; color: #C8A84B; }
+      /* Party tabs */
+      .cs-party-tabs { display: flex; gap: 4px; flex-shrink: 0; }
+      .cs-party-tab {
+        background: none; border: 1px solid #3D2E0A; color: #5a4510;
+        padding: 4px 10px; cursor: pointer; font-family: inherit; font-size: 7px;
+        letter-spacing: 1px; transition: all 0.1s;
       }
-      
-      .no-skills {
-        text-align: center;
-        color: #666;
-        font-style: italic;
-        margin: 20px 0;
+      .cs-party-tab:hover { border-color: #8B6914; color: #C8A84B; }
+      .cs-tab-active { border-color: #C8A84B !important; color: #FFD700 !important; background: #1a1400 !important; }
+      /* â”€â”€ Three-column body â”€â”€ */
+      .cs-body {
+        display: grid; grid-template-columns: 220px 1fr 220px;
+        flex: 1; overflow: hidden; min-height: 0;
       }
-      
-      .skill-tree {
-        max-height: 200px;
-        overflow-y: auto;
+      .cs-left, .cs-right {
+        overflow-y: auto; padding: 14px 12px;
       }
-      
-      .skill-tree-item {
-        display: flex;
+      .cs-left { border-right: 1px solid #2a1f05; }
+      .cs-right { border-left: 1px solid #2a1f05; }
+      .cs-center { overflow-y: auto; padding: 14px; display: flex; flex-direction: column; align-items: center; }
+      /* Divider */
+      .cs-divider { border: none; border-top: 1px solid #2a1f05; margin: 10px 0; }
+      /* Portrait */
+      .cs-portrait {
+        width: 64px; height: 80px; border: 1px solid #8B6914; background: #0d0d0a;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 28px; margin: 0 auto 8px;
+      }
+      .cs-identity { text-align: center; margin-bottom: 10px; }
+      .cs-char-name { font-size: 9px; color: #FFD700; letter-spacing: 1px; margin-bottom: 4px; }
+      .cs-char-meta { font-size: 7px; color: #8B6914; letter-spacing: 1px; }
+      /* Stat rows */
+      .cs-sect-lbl { font-size: 7px; color: #5a4510; letter-spacing: 2px; display: block; margin-bottom: 4px; }
+      .cs-stat-row {
+        display: grid; grid-template-columns: 28px 1fr 56px;
+        align-items: center; gap: 6px; margin-bottom: 6px;
+      }
+      .cs-stat-lbl { font-size: 7px; color: #8B6914; }
+      .cs-bar-wrap { background: #1a1200; border: 1px solid #2a1f05; height: 8px; position: relative; }
+      .cs-bar { height: 100%; transition: width 0.3s; }
+      .cs-bar-hp  { background: linear-gradient(90deg, #8B0000, #CC2222); }
+      .cs-bar-atk { background: linear-gradient(90deg, #8B4500, #CC6622); }
+      .cs-bar-def { background: linear-gradient(90deg, #1a4a1a, #2a8B2a); }
+      .cs-bar-spd { background: linear-gradient(90deg, #1a2a8B, #2255CC); }
+      .cs-stat-val { font-size: 8px; color: #C8A84B; text-align: right; }
+      .cs-bonus { font-size: 6px; color: #4a8B4a; }
+      /* XP bar */
+      .cs-xp-label { display: flex; justify-content: space-between; margin-bottom: 4px; }
+      .cs-xp-label span { font-size: 7px; color: #8B6914; }
+      .cs-xp-hint { font-size: 6px; color: #5a4510; }
+      .cs-xp-track { position: relative; background: #1a1200; border: 1px solid #2a1f05; height: 10px; overflow: hidden; }
+      .cs-xp-fill { height: 100%; background: linear-gradient(90deg, #2244AA, #4488FF); transition: width 0.4s; }
+      .cs-xp-text {
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        font-size: 6px; color: #C8A84B;
+      }
+      /* Formation */
+      .cs-formation-row { margin-top: 8px; }
+      .cs-formation-val { font-size: 7px; color: #8B6914; display: block; margin-top: 4px; line-height: 1.6; }
+      /* â”€â”€ Paper-doll â”€â”€ */
+      .cs-paperdoll {
+        display: grid; grid-template-columns: 1fr auto 1fr;
+        grid-template-rows: 1fr auto 1fr;
+        gap: 8px; width: 100%; max-width: 380px;
         align-items: center;
-        justify-content: space-between;
-        background: #0a0a0a;
-        border: 1px solid #333;
-        border-radius: 3px;
-        padding: 8px;
-        margin-bottom: 5px;
-        font-size: 12px;
       }
-      
-      .skill-tree-item.unlocked {
-        border-color: #00aa00;
-      }
-      
-      .skill-tree-item.locked {
-        opacity: 0.5;
-      }
-      
-      .skill-level {
-        color: #00aa00;
-        font-weight: bold;
-        min-width: 40px;
-      }
-      
-      .skill-name {
-        color: #00ff00;
-        flex-grow: 1;
-        margin: 0 10px;
-      }
-      
-      .skill-status {
-        color: #666;
-        font-size: 10px;
-      }
-      
-      .skill-tree-item.unlocked .skill-status {
-        color: #00aa00;
-      }
-      
-      .equipment-section {
-        margin-bottom: 20px;
-      }
-      
-      .equipment-section h4 {
-        margin: 0 0 15px 0;
-        color: #00ff00;
-        border-bottom: 1px solid #333;
-        padding-bottom: 5px;
-      }
-      
-      .equipment-slots {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 15px;
-      }
-      
-      .equipment-slot {
-        background: #0a0a0a;
-        border: 1px solid #333;
-        border-radius: 5px;
-        padding: 15px;
-        text-align: center;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        position: relative;
-      }
-      
-      .equipment-slot:hover {
-        border-color: #00aa00;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 170, 0, 0.2);
-      }
-      
-      .equipment-slot.has-item {
-        border-color: #00ff00;
-      }
-      
-      .equipment-slot.hover-equipped {
-        border-color: #00ff00;
-        background: #0f1f0f;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 255, 0, 0.3);
-      }
-      
-      .equipment-slot.hover-empty {
-        border-color: #666;
-        background: #1a1a1a;
-        transform: translateY(-1px);
-      }
-      
-      /* Rarity-based visual indicators */
-      .equipment-slot.common {
-        border-left: 4px solid #FFFFFF;
-      }
-      
-      .equipment-slot.uncommon {
-        border-left: 4px solid #00FF00;
-        box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.1);
-      }
-      
-      .equipment-slot.rare {
-        border-left: 4px solid #0080FF;
-        box-shadow: inset 0 0 10px rgba(0, 128, 255, 0.1);
-      }
-      
-      .equipment-slot.epic {
-        border-left: 4px solid #8000FF;
-        box-shadow: inset 0 0 10px rgba(128, 0, 255, 0.1);
-        animation: epic-glow 2s ease-in-out infinite alternate;
-      }
-      
-      @keyframes epic-glow {
-        from { box-shadow: inset 0 0 10px rgba(128, 0, 255, 0.1); }
-        to { box-shadow: inset 0 0 20px rgba(128, 0, 255, 0.3); }
-      }
-      
-      .equipment-slot.epic-glow {
-        animation: epic-glow 2s ease-in-out infinite alternate;
-        border: 2px solid #8000FF;
-      }
-      
-      .equipment-slot.rare-glow {
-        box-shadow: inset 0 0 15px rgba(0, 128, 255, 0.2);
-        border: 2px solid #0080FF;
-      }
-      
-      .slot-icon {
-        font-size: 24px;
-        margin-bottom: 5px;
-      }
-      
-      .slot-label {
-        color: #00aa00;
-        font-size: 12px;
-        margin-bottom: 10px;
-      }
-      
-      .equipped-item {
-        position: relative;
-        padding: 12px;
-        border-radius: 5px;
-        background: linear-gradient(135deg, #111, #1a1a1a);
-        border: 1px solid #333;
-      }
-      
-      .item-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 8px;
-      }
-      
-      .equipped-item h6 {
-        margin: 0;
-        color: #00ff00;
-        font-size: 14px;
-        font-weight: bold;
-      }
-      
-      .item-level {
-        color: #666;
-        font-size: 10px;
-        text-align: right;
-      }
-      
-      .item-stats {
-        margin-bottom: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-      
-      .stat-bonus {
-        color: #00aa00;
-        font-size: 11px;
-        display: block;
-      }
-      
-      .item-actions {
-        display: flex;
-        gap: 5px;
-        justify-content: space-between;
-      }
-      
-      .unequip-btn, .equip-btn, .compare-btn {
-        background: #333;
-        border: 1px solid #00aa00;
-        color: #00aa00;
-        padding: 4px 8px;
-        border-radius: 3px;
-        font-size: 10px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        flex: 1;
-      }
-      
-      .compare-btn {
-        border-color: #0080ff;
-        color: #0080ff;
-      }
-      
-      .unequip-btn:hover, .equip-btn:hover {
-        background: #00aa00;
-        color: #000;
-        transform: translateY(-1px);
-      }
-      
-      .compare-btn:hover {
-        background: #0080ff;
-        color: #000;
-        transform: translateY(-1px);
-      }
-      
-      .empty-slot {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        min-height: 80px;
-      }
-      
-      .empty-message {
-        text-align: center;
-        margin-bottom: 10px;
-      }
-      
-      .empty-message p {
-        margin: 0 0 5px 0;
-        color: #666;
-        font-size: 12px;
-        font-style: italic;
-      }
-      
-      .slot-hint {
-        color: #444;
-        font-size: 10px;
-        font-style: italic;
-      }
-      
-      /* Equipment Tooltip Styles */
-      .equipment-tooltip {
-        background: #1a1a1a;
-        border: 2px solid #00ff00;
-        border-radius: 5px;
-        padding: 15px;
-        max-width: 300px;
-        color: #00ff00;
-        font-family: 'Courier New', monospace;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-        z-index: 1002;
-      }
-      
-      .equipment-tooltip.enhanced {
-        max-width: 350px;
-        background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
-        border: 2px solid #00ff00;
-        box-shadow: 0 8px 16px rgba(0, 255, 0, 0.2);
-      }
-      
-      .tooltip-header h6 {
-        margin: 0 0 5px 0;
-        font-size: 16px;
-      }
-      
-      .tooltip-header .item-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-      }
-      
-      .item-type {
-        color: #00aa00;
-        font-size: 12px;
-        text-transform: capitalize;
-      }
-      
-      .item-rarity {
-        font-size: 11px;
-        font-weight: bold;
-        text-transform: uppercase;
-      }
-      
-      .tooltip-stats {
-        margin-bottom: 10px;
-        border-top: 1px solid #333;
-        padding-top: 10px;
-      }
-      
-      .stat-comparison {
-        display: flex;
-        align-items: center;
-        margin-bottom: 5px;
-        font-size: 12px;
-      }
-      
-      .stat-name {
-        min-width: 40px;
-        color: #00aa00;
-      }
-      
-      .stat-current {
-        color: #fff;
-        margin: 0 5px;
-      }
-      
-      .stat-arrow {
-        color: #666;
-        margin: 0 5px;
-      }
-      
-      .stat-new.better {
-        color: #00ff00;
-      }
-      
-      .stat-new.worse {
-        color: #ff4444;
-      }
-      
-      .stat-diff.positive {
-        color: #00ff00;
-        margin-left: 5px;
-      }
-      
-      .stat-diff.negative {
-        color: #ff4444;
-        margin-left: 5px;
-      }
-      
-      .stat-percent {
-        font-size: 10px;
-        margin-left: 5px;
-        font-weight: bold;
-      }
-      
-      .stat-percent.positive {
-        color: #00ff00;
-      }
-      
-      .stat-percent.negative {
-        color: #ff4444;
-      }
-      
-      .tooltip-requirements {
-        margin-bottom: 10px;
-        padding: 5px;
-        background: #330000;
-        border: 1px solid #ff4444;
-        border-radius: 3px;
-      }
-      
-      .requirement-error {
-        margin: 0;
-        color: #ff4444;
-        font-size: 11px;
-      }
-      
-      .tooltip-description {
-        border-top: 1px solid #333;
-        padding-top: 10px;
-      }
-      
-      .tooltip-description p {
-        margin: 0;
-        color: #00aa00;
-        font-size: 11px;
-        font-style: italic;
-      }
-      
-      /* Enhanced Equipment Slot Indicators */
-      .stat-indicator {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        font-weight: bold;
-        z-index: 10;
-      }
-      
-      .stat-indicator.upgrade-available {
-        background: #00ff00;
-        color: #000;
-        animation: pulse-upgrade 2s ease-in-out infinite;
-        position: relative;
-      }
-      
-      .upgrade-count-badge {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background: #ff6600;
-        color: #fff;
-        border-radius: 50%;
-        width: 12px;
-        height: 12px;
-        font-size: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-      }
-      
-      @keyframes pulse-upgrade {
-        0%, 100% { transform: scale(1); opacity: 0.8; }
-        50% { transform: scale(1.1); opacity: 1; }
-      }
-      
-      .equipment-slot.equipment-equipped {
-        animation: equipment-equipped 0.6s ease-out;
-      }
-      
-      .equipment-slot.equipment-unequipped {
-        animation: equipment-unequipped 0.6s ease-out;
-      }
-      
-      @keyframes equipment-equipped {
-        0% { transform: scale(1); }
-        25% { transform: scale(1.1); box-shadow: 0 0 20px rgba(0, 255, 0, 0.6); }
-        50% { transform: scale(1.05); box-shadow: 0 0 15px rgba(0, 255, 0, 0.4); }
-        100% { transform: scale(1); box-shadow: none; }
-      }
-      
-      @keyframes equipment-unequipped {
-        0% { transform: scale(1); }
-        25% { transform: scale(0.9); box-shadow: 0 0 20px rgba(255, 68, 68, 0.6); }
-        50% { transform: scale(0.95); box-shadow: 0 0 15px rgba(255, 68, 68, 0.4); }
-        100% { transform: scale(1); box-shadow: none; }
-      }
-      
-      .quick-stats-preview {
-        position: absolute;
-        bottom: -25px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.9);
-        border: 1px solid #00aa00;
-        border-radius: 3px;
-        padding: 4px 8px;
-        font-size: 10px;
-        color: #00aa00;
-        white-space: nowrap;
-        z-index: 5;
-        pointer-events: none;
-      }
-      
-      .available-items-hint {
-        position: absolute;
-        bottom: -20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 170, 0, 0.2);
-        border: 1px solid #00aa00;
-        border-radius: 3px;
-        padding: 2px 6px;
-        font-size: 9px;
-        color: #00aa00;
-        white-space: nowrap;
-        z-index: 5;
-        pointer-events: none;
-      }
-      
-      .equipped-indicator {
-        margin-top: 10px;
-        padding: 5px;
-        background: rgba(0, 255, 0, 0.1);
-        border: 1px solid #00ff00;
-        border-radius: 3px;
-        text-align: center;
-        font-size: 11px;
-      }
-      
-      .comparison-summary {
-        margin-top: 10px;
-        padding: 8px;
-        border-radius: 3px;
-        text-align: center;
-        font-size: 11px;
-        font-weight: bold;
-      }
-      
-      .upgrade-indicator.overall-upgrade {
-        background: rgba(0, 255, 0, 0.1);
-        border: 1px solid #00ff00;
-        color: #00ff00;
-      }
-      
-      .upgrade-indicator.overall-downgrade {
-        background: rgba(255, 68, 68, 0.1);
-        border: 1px solid #ff4444;
-        color: #ff4444;
-      }
-      
-      .upgrade-indicator.overall-mixed {
-        background: rgba(255, 170, 0, 0.1);
-        border: 1px solid #ffaa00;
-        color: #ffaa00;
-      }
-      
-      .character-actions {
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-      }
-      
-      /* Equipment Comparison Modal Styles */
-      .equipment-comparison-modal {
-        font-family: 'Courier New', monospace;
-      }
-      
-      .comparison-content {
-        background: #1a1a1a;
-        border: 2px solid #00ff00;
-        border-radius: 10px;
-        width: 90%;
-        max-width: 900px;
-        max-height: 80%;
-        overflow-y: auto;
-        color: #00ff00;
-      }
-      
-      .comparison-content .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 15px 20px;
-        border-bottom: 1px solid #333;
-      }
-      
-      .comparison-content h3 {
-        margin: 0;
-        color: #00ff00;
-        font-size: 18px;
-      }
-      
-      .close-comparison {
-        background: #666;
-        border: none;
-        color: white;
-        font-size: 20px;
-        width: 30px;
-        height: 30px;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background 0.3s ease;
-      }
-      
-      .close-comparison:hover {
-        background: #ff4444;
-      }
-      
-      .comparison-grid {
-        display: grid;
-        grid-template-columns: 1fr 2fr;
-        gap: 20px;
-        padding: 20px;
-      }
-      
-      .current-item-section h4,
-      .inventory-items-section h4 {
-        margin: 0 0 15px 0;
-        color: #00ff00;
-        border-bottom: 1px solid #333;
-        padding-bottom: 5px;
-      }
-      
-      .item-comparison-card {
-        background: #0a0a0a;
-        border: 1px solid #333;
-        border-radius: 5px;
-        padding: 15px;
-        margin-bottom: 15px;
-      }
-      
-      .item-card-header {
-        padding: 10px;
-        border-radius: 3px;
-        margin-bottom: 10px;
-        background: #111;
-      }
-      
-      .item-card-header h5 {
-        margin: 0 0 5px 0;
-        font-size: 16px;
-      }
-      
-      .item-meta {
-        display: flex;
-        justify-content: space-between;
-        font-size: 11px;
-        color: #666;
-      }
-      
-      .item-stats-section {
-        margin-bottom: 10px;
-      }
-      
-      .stat-line {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 3px;
-        font-size: 12px;
-      }
-      
-      .stat-name {
-        color: #00aa00;
-        min-width: 40px;
-      }
-      
-      .stat-value {
-        color: #00ff00;
-        font-weight: bold;
-      }
-      
-      .stat-change.positive {
-        color: #00ff00;
-        font-weight: bold;
-      }
-      
-      .stat-change.negative {
-        color: #ff4444;
-        font-weight: bold;
-      }
-      
-      .comparison-summary {
-        margin-top: 10px;
-        padding: 8px;
-        border-radius: 3px;
-        text-align: center;
-        font-size: 11px;
-        font-weight: bold;
-      }
-      
-      .upgrade-indicator.overall-upgrade {
-        background: rgba(0, 255, 0, 0.1);
-        border: 1px solid #00ff00;
-        color: #00ff00;
-      }
-      
-      .upgrade-indicator.overall-downgrade {
-        background: rgba(255, 68, 68, 0.1);
-        border: 1px solid #ff4444;
-        color: #ff4444;
-      }
-      
-      .upgrade-indicator.overall-mixed {
-        background: rgba(255, 170, 0, 0.1);
-        border: 1px solid #ffaa00;
-        color: #ffaa00;
-      }
-      
-      .comparison-actions {
-        margin-top: 10px;
-        text-align: center;
-      }
-      
-      .equip-from-comparison {
-        background: #333;
-        border: 1px solid #00aa00;
-        color: #00aa00;
-        padding: 8px 15px;
-        border-radius: 3px;
-        font-size: 12px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        width: 100%;
-      }
-      
-      .equip-from-comparison:hover {
-        background: #00aa00;
-        color: #000;
-        transform: translateY(-1px);
-      }
-      
-      .inventory-items-list {
-        max-height: 400px;
-        overflow-y: auto;
-      }
-      
-      .empty-equipment-slot {
-        text-align: center;
-        padding: 20px;
-        color: #666;
-        font-style: italic;
-      }
-      
-      .empty-equipment-slot p {
-        margin: 0 0 10px 0;
-        font-size: 14px;
-      }
-      
-      .empty-stats {
-        font-size: 12px;
-        color: #444;
-      }
-      
-      @media (max-width: 768px) {
-        .character-info-section,
-        .skills-container,
-        .stats-grid,
-        .equipment-slots {
-          grid-template-columns: 1fr;
-        }
-        
-        .comparison-grid {
-          grid-template-columns: 1fr;
-        }
-        
-        .comparison-content {
-          width: 95%;
-          max-height: 90%;
-        }
+      .cs-doll-body {
+        grid-column: 2; grid-row: 1 / 4;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .cs-silhouette {
+        width: 80px; height: 160px; color: #3D2E0A;
+      }
+      .cs-doll-slot {
+        background: #0d0d0a; border: 1px solid #3D2E0A;
+        padding: 8px; text-align: center; cursor: pointer;
+        transition: border-color 0.15s;
+        min-width: 100px;
+      }
+      .cs-doll-slot:hover { border-color: #8B6914; }
+      .cs-doll-head { grid-column: 1; grid-row: 1; }
+      .cs-doll-armor { grid-column: 3; grid-row: 1; }
+      .cs-doll-acc { grid-column: 1 / 4; grid-row: 3; justify-self: center; min-width: 180px; }
+      .cs-doll-label { font-size: 6px; color: #5a4510; letter-spacing: 1px; margin-bottom: 4px; }
+      .cs-doll-icon { font-size: 18px; margin-bottom: 4px; }
+      .cs-slot-content { font-size: 7px; color: #C8A84B; min-height: 14px; }
+      .cs-empty-slot { color: #2a1f05; }
+      /* Existing equipment-slot class compat */
+      .equipment-slot { } /* neutralize old styles */
+      /* â”€â”€ Skills â”€â”€ */
+      .cs-skills-list, .cs-skill-tree { display: flex; flex-direction: column; gap: 6px; }
+      /* skill-item from old code */
+      .skill-item { background: #0d0d0a; border: 1px solid #2a1f05; padding: 8px; border-left: 3px solid #5a4510; }
+      .skill-item.unlocked { border-left-color: #C8A84B; }
+      .skill-item h6 { margin: 0 0 2px; font-size: 8px; color: #FFD700; }
+      .skill-item .skill-description { font-size: 7px; color: #8B6914; margin: 0 0 4px; line-height: 1.5; }
+      .skill-item .skill-stats { font-size: 6px; color: #5a4510; display: flex; gap: 8px; }
+      .skill-icon { font-size: 14px; margin-bottom: 2px; }
+      /* skill tree items */
+      .skill-tree-item { display: flex; gap: 8px; align-items: center; padding: 4px 6px; border-left: 2px solid #2a1f05; }
+      .skill-tree-item.unlocked { border-left-color: #8B6914; }
+      .skill-tree-item.locked { opacity: 0.4; }
+      .skill-level { font-size: 7px; color: #5a4510; flex-shrink: 0; }
+      .skill-name { font-size: 7px; color: #C8A84B; flex: 1; }
+      .skill-status { font-size: 6px; color: #5a4510; }
+      /* â”€â”€ Footer â”€â”€ */
+      .cs-footer {
+        display: flex; gap: 8px; padding: 10px 14px;
+        border-top: 1px solid #3D2E0A; background: #111007;
+        flex-shrink: 0;
+      }
+      .cs-btn {
+        cursor: pointer; font-family: inherit; font-size: 7px; letter-spacing: 1px;
+        padding: 8px 14px; border: 1px solid; background: none; transition: all 0.1s;
+      }
+      .cs-btn-lvl { border-color: #4a3a0a; color: #8B6914; }
+      .cs-btn-lvl:not(:disabled):hover { background: #1a1400; border-color: #C8A84B; color: #FFD700; }
+      .cs-btn-lvl:disabled { opacity: 0.3; cursor: not-allowed; }
+      .cs-btn-heal { border-color: #1a3a1a; color: #2a8B2a; }
+      .cs-btn-heal:hover { background: #0d1a0d; border-color: #4aCC4a; color: #4aCC4a; }
+      .cs-btn-close { border-color: #3D2E0A; color: #5a4510; margin-left: auto; }
+      .cs-btn-close:hover { border-color: #C8A84B; color: #C8A84B; }
+      /* Scrollbars */
+      .cs-left::-webkit-scrollbar, .cs-right::-webkit-scrollbar, .cs-center::-webkit-scrollbar { width: 4px; }
+      .cs-left::-webkit-scrollbar-track, .cs-right::-webkit-scrollbar-track, .cs-center::-webkit-scrollbar-track { background: #0a0a0a; }
+      .cs-left::-webkit-scrollbar-thumb, .cs-right::-webkit-scrollbar-thumb, .cs-center::-webkit-scrollbar-thumb { background: #3D2E0A; }
+      /* Comparison modal still needed */
+      .comparison-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:3000;display:flex;align-items:center;justify-content:center; }
+      .comparison-content { background:#0a0a0a;border:1px solid #8B6914;padding:20px;min-width:300px;max-width:90vw;color:#C8A84B; }
+      .comparison-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:12px; }
+      .comparison-title { font-family:inherit;font-size:9px;letter-spacing:2px; }
+      .comparison-close { background:none;border:1px solid #3D2E0A;color:#5a4510;cursor:pointer;font-size:12px;padding:2px 6px; }
+      .comparison-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+      .comparison-item-name { font-size:8px;color:#FFD700;margin-bottom:6px; }
+      .comparison-stat { font-size:7px;color:#C8A84B;margin:3px 0; }
+      .comparison-better { color:#4aCC4a; }
+      .comparison-worse  { color:#CC4a4a; }
+      /* compat â€“ old slot tooltip */
+      .equipment-tooltip { display:none; }
+      @media (max-width:700px) {
+        .cs-body { grid-template-columns: 1fr; }
+        .cs-left, .cs-right { border: none; border-bottom: 1px solid #2a1f05; }
+        .cs-paperdoll { grid-template-columns: 1fr; }
+        .cs-doll-body { grid-column:1; }
       }
     `;
-    
     document.head.appendChild(style);
   }
 }

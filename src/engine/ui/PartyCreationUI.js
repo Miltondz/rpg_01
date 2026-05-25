@@ -7,6 +7,7 @@
  */
 
 import { CharacterClasses } from '../character/CharacterClasses.js';
+import { PARTY_PRESETS } from '../character/PartyPresets.js';
 
 export class PartyCreationUI {
   constructor(characterSystem) {
@@ -15,6 +16,8 @@ export class PartyCreationUI {
     this.isVisible = false;
     this.selectedClass = 'warrior';
     this.draggedCharacter = null;
+    this._statBonuses = null;
+    this._mode = 'custom'; // 'custom' | 'preset'
   }
 
   show() {
@@ -45,10 +48,20 @@ export class PartyCreationUI {
 
         <div class="pc-header">
           <span class="pc-title">⚔ Create Your Party</span>
+          <div class="pc-mode-tabs">
+            <button class="pc-tab pc-tab-active" id="pc-tab-custom">CUSTOM</button>
+            <button class="pc-tab" id="pc-tab-preset">PRESETS</button>
+          </div>
           <button class="pc-close" id="pc-close">✕</button>
         </div>
 
-        <div class="pc-body">
+        <!-- PRESET PANEL (hidden by default) -->
+        <div class="pc-presets-panel hidden" id="pc-presets-panel">
+          <p class="pc-presets-intro">Choose a predefined party to jump straight into the dungeon.</p>
+          <div class="pc-preset-cards" id="pc-preset-cards"></div>
+        </div>
+
+        <div class="pc-body" id="pc-custom-body">
 
           <!-- LEFT PANEL -->
           <div class="pc-left">
@@ -70,6 +83,10 @@ export class PartyCreationUI {
                 </select>
               </div>
               <div class="pc-preview" id="pc-preview"></div>
+              <div class="pc-reroll-row">
+                <button class="pc-btn pc-btn-reroll" id="pc-reroll">🎲 Reroll Stats</button>
+                <span class="pc-reroll-hint" id="pc-reroll-hint"></span>
+              </div>
               <button class="pc-btn pc-btn-create" id="pc-create">+ Create Character</button>
             </section>
 
@@ -128,11 +145,18 @@ export class PartyCreationUI {
 
     q('#pc-close').addEventListener('click', () => this.hide());
     q('#pc-create').addEventListener('click', () => this._createCharacter());
+    q('#pc-reroll').addEventListener('click', () => this._rerollStats());
     q('#pc-test').addEventListener('click', () => this._testParty());
     q('#pc-start').addEventListener('click', () => this._startGame());
 
+    q('#pc-tab-custom').addEventListener('click', () => this._setMode('custom'));
+    q('#pc-tab-preset').addEventListener('click', () => this._setMode('preset'));
+
+    this._renderPresetCards();
+
     q('#pc-class').addEventListener('change', e => {
       this.selectedClass = e.target.value;
+      this._statBonuses = null;
       this._renderPreview();
     });
 
@@ -173,16 +197,109 @@ export class PartyCreationUI {
 
   // ── Actions ──────────────────────────────────────────────────────────────────
 
+  _rerollStats() {
+    const def = CharacterClasses.getClassDefinition(this.selectedClass);
+    if (!def) return;
+    const s = def.baseStats;
+    // 4d6-drop-lowest yields 3-18, average ~12.24; normalize to ±15% of base stat
+    const roll4d6 = () => {
+      const dice = [1,2,3,4].map(() => Math.ceil(Math.random() * 6));
+      dice.sort((a,b) => a - b);
+      return dice[1] + dice[2] + dice[3]; // drop lowest
+    };
+    const norm = (base, roll) => Math.round(base * ((roll - 10.5) / 10.5) * 0.15);
+    this._statBonuses = {
+      HP:  norm(s.HP,  roll4d6()),
+      ATK: norm(s.ATK, roll4d6()),
+      DEF: norm(s.DEF, roll4d6()),
+      SPD: norm(s.SPD, roll4d6()),
+    };
+    this._renderPreview();
+    const hint = this.container.querySelector('#pc-reroll-hint');
+    if (hint) hint.textContent = 'Click again to reroll';
+  }
+
   _createCharacter() {
     const input = this.container.querySelector('#pc-name');
     const name  = input.value.trim() || null;
     try {
-      this.characterSystem.createCharacter(this.selectedClass, name);
+      const char = this.characterSystem.createCharacter(this.selectedClass, name);
+      if (char && this._statBonuses) {
+        const b = this._statBonuses;
+        char.baseStats.HP  = Math.max(1, char.baseStats.HP  + b.HP);
+        char.baseStats.ATK = Math.max(1, char.baseStats.ATK + b.ATK);
+        char.baseStats.DEF = Math.max(0, char.baseStats.DEF + b.DEF);
+        char.baseStats.SPD = Math.max(1, char.baseStats.SPD + b.SPD);
+        char.recalculateStats();
+        char.currentHP = char.maxHP;
+      }
+      this._statBonuses = null;
       input.value = '';
       this._refresh();
     } catch (err) {
       this._setValidation(`⚠ ${err.message}`, 'warn');
     }
+  }
+
+  _setMode(mode) {
+    this._mode = mode;
+    const customBody  = this.container.querySelector('#pc-custom-body');
+    const presetPanel = this.container.querySelector('#pc-presets-panel');
+    const tabCustom   = this.container.querySelector('#pc-tab-custom');
+    const tabPreset   = this.container.querySelector('#pc-tab-preset');
+
+    const isPreset = mode === 'preset';
+    customBody?.classList.toggle('hidden', isPreset);
+    presetPanel?.classList.toggle('hidden', !isPreset);
+    tabCustom?.classList.toggle('pc-tab-active', !isPreset);
+    tabPreset?.classList.toggle('pc-tab-active', isPreset);
+  }
+
+  _renderPresetCards() {
+    const container = this.container.querySelector('#pc-preset-cards');
+    if (!container) return;
+    container.innerHTML = '';
+    for (const preset of PARTY_PRESETS) {
+      const card = document.createElement('div');
+      card.className = 'pc-preset-card';
+      card.style.setProperty('--preset-color', preset.color);
+      card.innerHTML = `
+        <div class="pc-preset-name">${preset.name}</div>
+        <div class="pc-preset-desc">${preset.description}</div>
+        <div class="pc-preset-tags">${preset.tags.map(t => `<span class="pc-preset-tag">${t}</span>`).join('')}</div>
+        <div class="pc-preset-members">${preset.members.map(m =>
+          `<span class="pc-preset-member">${m.name}<br><small>${m.class.toUpperCase()}</small></span>`
+        ).join('')}</div>
+        <button class="pc-btn pc-preset-use-btn">▶ USE THIS PARTY</button>
+      `;
+      card.querySelector('.pc-preset-use-btn').addEventListener('click', () => this._applyPreset(preset));
+      container.appendChild(card);
+    }
+  }
+
+  _applyPreset(preset) {
+    // Clear all existing characters from party and roster
+    const existing = this.characterSystem.getAllCharacters();
+    for (const c of existing) {
+      try { this.characterSystem.deleteCharacter(c.id); } catch (_) {}
+    }
+    // Reset party to empty so addCharacter length check passes
+    if (this.characterSystem.partyManager) {
+      this.characterSystem.partyManager.party = [];
+    }
+
+    // Create and assign preset characters
+    for (const member of preset.members) {
+      try {
+        const char = this.characterSystem.createCharacter(member.class, member.name);
+        if (char) this.characterSystem.partyManager.addCharacter(char, member.slot);
+      } catch (e) {
+        // ignore duplicate errors during repeated preset clicks
+      }
+    }
+
+    this._setMode('custom');
+    this._refresh();
   }
 
   _testParty() {
@@ -248,14 +365,25 @@ export class PartyCreationUI {
     const def = CharacterClasses.getClassDefinition(this.selectedClass);
     if (!def) { preview.innerHTML = ''; return; }
     const s = def.baseStats;
+    const b = this._statBonuses;
+    const statHtml = (label, base, bonus) => {
+      const val = base + (bonus || 0);
+      const bonusStr = bonus
+        ? `<span class="pc-stat-bonus ${bonus > 0 ? 'pos' : 'neg'}">${bonus > 0 ? '+' : ''}${bonus}</span>`
+        : '';
+      return `<span>${label} <b>${val}</b>${bonusStr}</span>`;
+    };
     preview.innerHTML = `
       <div class="pc-preview-inner">
         <strong>${def.name}</strong>
         <p class="pc-preview-desc">${def.description}</p>
         <div class="pc-stat-row">
-          <span>HP <b>${s.HP}</b></span><span>ATK <b>${s.ATK}</b></span>
-          <span>DEF <b>${s.DEF}</b></span><span>SPD <b>${s.SPD}</b></span>
+          ${statHtml('HP',  s.HP,  b?.HP)}
+          ${statHtml('ATK', s.ATK, b?.ATK)}
+          ${statHtml('DEF', s.DEF, b?.DEF)}
+          ${statHtml('SPD', s.SPD, b?.SPD)}
         </div>
+        ${b ? '<p class="pc-reroll-active">🎲 Custom stats — create to apply</p>' : ''}
         <div class="pc-skill-list">
           ${(def.skillProgression || []).slice(0,3).map(sk => `<span>Lv${sk.level}: ${sk.name}</span>`).join('')}
         </div>
@@ -459,6 +587,17 @@ export class PartyCreationUI {
       .pc-stat-row b { color: #00cc44; }
       .pc-skill-list { display: flex; flex-direction: column; gap: 2px; }
       .pc-skill-list span { font-size: 10px; color: #556; }
+      .pc-stat-bonus { font-size: 10px; margin-left: 2px; }
+      .pc-stat-bonus.pos { color: #44ff88; }
+      .pc-stat-bonus.neg { color: #ff6644; }
+      .pc-reroll-active { font-size: 10px; color: #ffcc44; margin: 4px 0 0; }
+      .pc-reroll-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+      .pc-reroll-hint { font-size: 10px; color: #555; }
+      .pc-btn-reroll {
+        background: #1a1000; border-color: #cc9900; color: #ffcc44;
+        flex-shrink: 0;
+      }
+      .pc-btn-reroll:hover { background: #cc9900; color: #000; }
 
       /* Buttons */
       .pc-btn {
@@ -581,6 +720,57 @@ export class PartyCreationUI {
         .pc-body { grid-template-columns: 1fr; }
         .pc-left { border-right: none; border-bottom: 1px solid #222; max-height: 50vh; }
       }
+
+      /* Mode tabs */
+      .pc-mode-tabs { display: flex; gap: 4px; }
+      .pc-tab {
+        cursor: pointer; padding: 5px 14px; border-radius: 4px;
+        font-family: inherit; font-size: 11px; font-weight: bold; letter-spacing: 1px;
+        background: #0a0a0a; border: 1px solid #333; color: #555;
+        transition: all 0.15s;
+      }
+      .pc-tab:hover { border-color: #00cc44; color: #00cc44; }
+      .pc-tab-active { border-color: #00cc44 !important; color: #00ff55 !important; background: #001a00 !important; }
+
+      /* Presets panel */
+      .pc-presets-panel {
+        flex: 1; overflow-y: auto; padding: 16px;
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .pc-presets-intro { font-size: 12px; color: #666; margin: 0 0 8px; }
+      .pc-preset-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+      .pc-preset-card {
+        background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 6px;
+        padding: 14px; display: flex; flex-direction: column; gap: 8px;
+        border-top: 3px solid var(--preset-color, #00cc44);
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      .pc-preset-card:hover { box-shadow: 0 0 12px rgba(0,0,0,0.5); border-color: var(--preset-color, #00cc44); }
+      .pc-preset-name {
+        font-size: 12px; font-weight: bold; color: var(--preset-color, #00ff55);
+        letter-spacing: 1px;
+      }
+      .pc-preset-desc { font-size: 11px; color: #777; line-height: 1.5; }
+      .pc-preset-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+      .pc-preset-tag {
+        font-size: 9px; padding: 2px 6px; border-radius: 10px;
+        border: 1px solid var(--preset-color, #00cc44);
+        color: var(--preset-color, #00cc44); opacity: 0.7;
+      }
+      .pc-preset-members {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 4px 0;
+      }
+      .pc-preset-member {
+        font-size: 10px; color: #999; background: #111; border-radius: 3px;
+        padding: 4px 6px; text-align: center; line-height: 1.4;
+      }
+      .pc-preset-member small { font-size: 8px; color: #555; }
+      .pc-preset-use-btn {
+        background: #001800; border-color: var(--preset-color, #00cc44);
+        color: var(--preset-color, #00ff55); font-size: 10px;
+        padding: 7px 10px; width: 100%; text-align: center; margin-top: auto;
+      }
+      .pc-preset-use-btn:hover { background: var(--preset-color, #00cc44); color: #000; }
     `;
     document.head.appendChild(s);
   }
