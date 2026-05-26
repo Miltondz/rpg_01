@@ -72,7 +72,10 @@ export class DungeonLoader {
       if (level.transitions) {
         this.registerTransitions(level.transitions);
       }
-      
+
+      // Register pickups (lootChests, keyItems) as tile metadata
+      this._registerPickups(level);
+
       this.currentLevel = level;
 
       // Parse dungeon + floor from level id: "dungeon-name-floor-N"
@@ -120,52 +123,81 @@ export class DungeonLoader {
   }
 
   /**
-   * Build grid data structure from tiles array (requirement 6.2)
-   * @param {Object} level - Level data containing tiles array
+   * Build grid data structure from tiles array (requirement 6.2).
+   *
+   * Tile integer codes: 0=empty, 1=floor, 2=wall, 3=transition (treated as floor;
+   * actual transition data is applied later by registerTransitions).
+   *
+   * Optional level.tileMetadata — sparse array of enriched per-tile overrides:
+   *   [{ x, z, ceilingHeight, environment }, ...]
+   *   environment: 'interior' (default) | 'exterior' (no ceiling generated)
+   *   ceilingHeight: number > 0 overrides ceiling Y; 0 = no ceiling (same as exterior)
    */
   buildGrid(level) {
     const { width, height, tiles } = level;
-    
+
+    // Build fast lookup: flat-index → metadata object
+    const metaByIndex = new Map();
+    if (Array.isArray(level.tileMetadata)) {
+      for (const m of level.tileMetadata) {
+        if (typeof m.x === 'number' && typeof m.z === 'number') {
+          metaByIndex.set(m.z * width + m.x, m);
+        }
+      }
+    }
+
     console.log(`Building grid from ${width}x${height} tile array`);
-    
+
     for (let z = 0; z < height; z++) {
       for (let x = 0; x < width; x++) {
-        const index = z * width + x;
+        const index    = z * width + x;
         const tileType = tiles[index];
-        
+
         let tileData;
         switch (tileType) {
-          case 0: // Empty/void
-            tileData = {
-              type: 'empty',
-              walkable: false
-            };
+          case 0:
+            tileData = { type: 'empty',  walkable: false };
             break;
-          case 1: // Floor
-            tileData = {
-              type: 'floor',
-              walkable: true
-            };
+          case 1:
+            tileData = { type: 'floor',  walkable: true };
             break;
-          case 2: // Wall
-            tileData = {
-              type: 'wall',
-              walkable: false
-            };
+          case 2:
+            tileData = { type: 'wall',   walkable: false };
+            break;
+          case 3:
+            // Transition marker — walkable floor; registerTransitions() fills the rest
+            tileData = { type: 'floor',  walkable: true };
             break;
           default:
-            // Unknown tile type, treat as wall for safety
             console.warn(`Unknown tile type ${tileType} at (${x}, ${z}), treating as wall`);
-            tileData = {
-              type: 'wall',
-              walkable: false
-            };
+            tileData = { type: 'wall',   walkable: false };
         }
-        
+
+        // Merge optional enriched metadata
+        const meta = metaByIndex.get(index);
+        if (meta) {
+          if (meta.environment)         tileData.environment   = meta.environment;
+          if (meta.ceilingHeight != null) tileData.ceilingHeight = meta.ceilingHeight;
+          if (Array.isArray(meta.triggers)) tileData.triggers  = meta.triggers;
+        }
+
         this.gridSystem.setTile(x, z, tileData);
       }
     }
-    
+
+    // Promote root-level tutorialHints to tile triggers so ZoneTriggerSystem picks them up.
+    // tutorialHints schema: { x, z, message, trigger } — trigger field is a semantic label,
+    // not a ZoneTrigger type; all become flavor_text with once:true.
+    if (Array.isArray(level.tutorialHints)) {
+      for (const h of level.tutorialHints) {
+        const tile = this.gridSystem.getTile(h.x, h.z);
+        if (!tile) continue;
+        const newTrigger = { type: 'flavor_text', text: h.message, once: true };
+        tile.triggers = [...(tile.triggers ?? []), newTrigger];
+        this.gridSystem.setTile(h.x, h.z, tile);
+      }
+    }
+
     console.log('Grid data structure built successfully');
   }
 
@@ -180,7 +212,11 @@ export class DungeonLoader {
     }
     
     console.log('Generating 3D geometry from tile data...');
-    
+
+    if (this.geometryFactory.setTheme) {
+      this.geometryFactory.setTheme(level.theme || 'stone');
+    }
+
     const { width, height } = level;
     let floorCount = 0;
     let wallCount = 0;
@@ -196,12 +232,16 @@ export class DungeonLoader {
           this.renderer.addToScene(floorMesh);
           this.trackGeometry(`floor_${x}_${z}`, floorMesh);
           floorCount++;
-          
-          // Create ceiling mesh above floor tiles
-          const ceilingMesh = this.geometryFactory.createCeiling(x, z);
-          this.renderer.addToScene(ceilingMesh);
-          this.trackGeometry(`ceiling_${x}_${z}`, ceilingMesh);
-          ceilingCount++;
+
+          // Ceiling — skip for exterior tiles or explicit ceilingHeight === 0
+          const isExterior = tile.environment === 'exterior';
+          const skipCeiling = isExterior || tile.ceilingHeight === 0;
+          if (!skipCeiling) {
+            const ceilingMesh = this.geometryFactory.createCeiling(x, z, tile.ceilingHeight ?? null);
+            this.renderer.addToScene(ceilingMesh);
+            this.trackGeometry(`ceiling_${x}_${z}`, ceilingMesh);
+            ceilingCount++;
+          }
         }
         
         if (tile && tile.type === 'wall') {
@@ -492,6 +532,33 @@ export class DungeonLoader {
    */
   isLevelLoaded() {
     return this.currentLevel !== null;
+  }
+
+  /**
+   * Register lootChests and keyItems from level JSON as tile pickup metadata.
+   * main.js checks tile.pickup on movementCompleted.
+   */
+  _registerPickups(level) {
+    const chests  = level.lootChests  ?? [];
+    const keys    = level.keyItems    ?? [];
+
+    for (const chest of chests) {
+      const tile = this.gridSystem.getTile(chest.x, chest.z);
+      if (tile) {
+        tile.pickup = { type: 'chest', loot: chest.loot ?? [], taken: false };
+      }
+    }
+
+    for (const ki of keys) {
+      const tile = this.gridSystem.getTile(ki.x, ki.z);
+      if (tile) {
+        tile.pickup = { type: 'keyItem', itemId: ki.itemId, respawn: ki.respawn ?? false, taken: false };
+      }
+    }
+
+    if (chests.length + keys.length > 0) {
+      console.log(`Registered ${chests.length} chests, ${keys.length} key items`);
+    }
   }
 
   /**

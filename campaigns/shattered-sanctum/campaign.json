@@ -1,0 +1,129 @@
+{
+  "id": "shattered-sanctum",
+  "version": "1.0",
+  "variables": {
+    "seals_reinforced": false,
+    "dark_path_accepted": false,
+    "all_runes_activated": false,
+    "hollow_king_weakened": false
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "The Ruined Outpost",
+      "phases": [
+        {
+          "id": "phase-1-1",
+          "name": "Arrival",
+          "autoPlayStory": "ss_intro",
+          "autoPlayKnot": null,
+          "entryConditions": { "type": "auto", "onCampaignStart": true },
+          "exitTriggers": [
+            {
+              "type": "event",
+              "eventName": "narrative:knot_reached",
+              "eventPayload": { "knot": "ss_prologue_complete" }
+            }
+          ],
+          "contentGates": {
+            "dungeons": ["shattered-sanctum-floor-1"],
+            "quests": [],
+            "npcs": [],
+            "narrativeKnots": ["ss_intro"]
+          },
+          "worldFlags": {
+            "setOnEntry": ["flag_ss_started"],
+            "setOnExit": ["flag_ss_prologue_done"]
+          }
+        },
+        {
+          "id": "phase-1-2",
+          "name": "The Fungal Warrens",
+          "autoPlayStory": "ss_floor2_intro",
+          "autoPlayKnot": null,
+          "entryConditions": {
+            "type": "sequential",
+            "previousPhase": "phase-1-1"
+          },
+          "exitTriggers": [
+            {
+              "type": "event",
+              "eventName": "player:floor_cleared",
+              "eventPayload": { "dungeonId": "shattered-sanctum", "floor": 2 }
+            }
+          ],
+          "contentGates": {
+            "dungeons": ["shattered-sanctum-floor-1", "shattered-sanctum-floor-2"],
+            "quests": [],
+            "npcs": [],
+            "narrativeKnots": ["ss_floor2_intro"]
+          },
+          "worldFlags": {
+            "setOnEntry": ["flag_warrens_open"],
+            "setOnExit": ["flag_warrens_cleared"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "act-2",
+      "name": "The Shattered Sanctum",
+      "phases": [
+        {
+          "id": "phase-2-1",
+          "name": "The Final Chamber",
+          "autoPlayStory": "ss_floor3_intro",
+          "autoPlayKnot": null,
+          "entryConditions": {
+            "type": "sequential",
+            "previousPhase": "phase-1-2"
+          },
+          "exitTriggers": [
+            {
+              "type": "event",
+              "eventName": "combat:encounter_complete",
+              "eventPayload": { "isBossVictory": true }
+            }
+          ],
+          "contentGates": {
+            "dungeons": ["shattered-sanctum-floor-1", "shattered-sanctum-floor-2", "shattered-sanctum-floor-3"],
+            "quests": [],
+            "npcs": [],
+            "narrativeKnots": ["ss_floor3_intro", "ss_hollow_king_pre"]
+          },
+          "worldFlags": {
+            "setOnEntry": ["flag_sanctum_open"],
+            "setOnExit": ["flag_hollow_king_defeated"]
+          }
+        },
+        {
+          "id": "phase-2-2",
+          "name": "Epilogue",
+          "autoPlayStory": "ss_epilogue",
+          "autoPlayKnot": null,
+          "entryConditions": {
+            "type": "sequential",
+            "previousPhase": "phase-2-1"
+          },
+          "exitTriggers": [
+            {
+              "type": "event",
+              "eventName": "narrative:knot_reached",
+              "eventPayload": { "knot": "ss_epilogue_complete" }
+            }
+          ],
+          "contentGates": {
+            "dungeons": [],
+            "quests": [],
+            "npcs": [],
+            "narrativeKnots": ["ss_epilogue"]
+          },
+          "worldFlags": {
+            "setOnEntry": ["flag_ss_epilogue_active"],
+            "setOnExit": ["flag_ss_complete"]
+          }
+        }
+      ]
+    }
+  ]
+}

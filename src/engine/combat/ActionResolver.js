@@ -99,8 +99,8 @@ export class ActionResolver {
       return validation;
     }
 
-    // Validate AP cost
-    const apCost = action.apCost || 1;
+    // Validate AP cost (use ?? so 0-cost actions like flee are preserved)
+    const apCost = action.apCost ?? 1;
     if (!caster.hasAP(apCost)) {
       validation.isValid = false;
       validation.errors.push(`Insufficient AP: need ${apCost}, have ${caster.currentAP}`);

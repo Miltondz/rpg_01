@@ -1,0 +1,18 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^The Shattered Sanctum. The air hums with void energy.",
+      "\n",
+      "^At the center of this chamber, the Hollow King waits — patient, ancient, and aware of you.",
+      "\n",
+      "^Three paths. One choice. No second chances.",
+      "\n",
+      {"#": "knot_reached:ss_floor3_intro_complete"},
+      "end",
+      null
+    ],
+    null
+  ],
+  "listDefs": {}
+}

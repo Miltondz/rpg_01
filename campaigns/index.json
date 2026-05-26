@@ -1,0 +1,24 @@
+[
+  {
+    "id": "crypt-of-shadows",
+    "name": "Crypt of Shadows",
+    "tagline": "Descend into the ancient crypt. Defeat the Shadow Lord.",
+    "floors": 5,
+    "recommendedLevel": 1,
+    "difficulty": "Normal",
+    "tags": ["Classic", "Story"],
+    "color": "#FF0055",
+    "startLevel": "crypt-of-shadows-floor-1"
+  },
+  {
+    "id": "shattered-sanctum",
+    "name": "The Shattered Sanctum",
+    "tagline": "Three seals. One prisoner. Every path leads to the same chamber.",
+    "floors": 3,
+    "recommendedLevel": 4,
+    "difficulty": "Hard",
+    "tags": ["Branching", "Choices Matter"],
+    "color": "#AA44FF",
+    "startLevel": "shattered-sanctum-floor-1"
+  }
+]

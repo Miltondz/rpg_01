@@ -2,11 +2,58 @@ import { TextureGenerator } from './TextureGenerator.js';
 
 // Geometry Factory - Three.js geometry creation utilities
 export class GeometryFactory {
+  // Maps level theme → explicit pixel-art texture names.
+  // Using explicit names avoids the HEAD-check collision with old generic PNGs
+  // (ruin_wall.png, fungal_wall.png, etc.) which are preserved for special zones.
+  static THEME_TEXTURES = {
+    stone:  { wall: 'shadow_wall',  floor: 'cracked_floor' },
+    ruin:   { wall: 'slate_wall',   floor: 'cracked_tile'  },
+    crypt:  { wall: 'shadow_wall',  floor: 'cracked_floor' },
+    cave:   { wall: 'rough_wall',   floor: 'dark_floor'    },
+    fungal: { wall: 'stained_wall', floor: 'dark_floor'    },
+    void:   { wall: 'stained_wall', floor: 'arcane_floor'  },
+  };
+
   constructor() {
     this.tileSize  = 2.0;  // 2×2 metre tiles
     this.wallHeight = 3.0; // 3-metre walls
+    this._theme = 'stone';
 
     this.texGen = new TextureGenerator();
+  }
+
+  setTheme(theme) {
+    this._theme = theme || 'stone';
+  }
+
+  _wallTex() {
+    const map = GeometryFactory.THEME_TEXTURES[this._theme];
+    const tex = this.texGen.get(map?.wall ?? 'shadow_wall');
+    if (tex) tex.repeat.set(1, 1);
+    return tex;
+  }
+
+  _wallNormalTex() {
+    const map = GeometryFactory.THEME_TEXTURES[this._theme];
+    const name = (map?.wall ?? 'shadow_wall') + '_normal';
+    const tex = this.texGen.get(name);
+    if (tex) tex.repeat.set(1, 1);
+    return tex;
+  }
+
+  _floorTex() {
+    const map = GeometryFactory.THEME_TEXTURES[this._theme];
+    const tex = this.texGen.get(map?.floor ?? 'cracked_floor');
+    if (tex) tex.repeat.set(1, 1);
+    return tex;
+  }
+
+  _floorNormalTex() {
+    const map = GeometryFactory.THEME_TEXTURES[this._theme];
+    const name = (map?.floor ?? 'cracked_floor') + '_normal';
+    const tex = this.texGen.get(name);
+    if (tex) tex.repeat.set(1, 1);
+    return tex;
   }
 
   // Cheap hash-based per-tile colour variation — keeps identical tiles from looking cloned
@@ -14,13 +61,14 @@ export class GeometryFactory {
     return ((x * 31 + z * 17) & 0xff) / 255; // 0..1
   }
 
-  // Warm tint that subtly varies per tile while staying near-white (lets texture dominate)
-  _tileColor(x, z, rBase = 1.0, gBase = 0.97, bBase = 0.91) {
-    const v = this._tileVariation(x, z) * 0.06 - 0.03; // ±0.03
+  // Near-white with slight blue-gray bias — lets pixel-art show true colors.
+  // Subtle per-tile variation breaks repetition without shifting the palette.
+  _tileColor(x, z, rBase = 0.90, gBase = 0.90, bBase = 0.96) {
+    const v = this._tileVariation(x, z) * 0.05 - 0.025; // ±0.025
     return new THREE.Color(
       Math.min(1, rBase + v),
-      Math.min(1, gBase + v * 0.8),
-      Math.min(1, bBase + v * 0.6)
+      Math.min(1, gBase + v),
+      Math.min(1, bBase + v)
     );
   }
 
@@ -30,14 +78,17 @@ export class GeometryFactory {
     const geometry = new THREE.PlaneGeometry(this.tileSize, this.tileSize);
     geometry.rotateX(-Math.PI / 2);
 
-    const map = this.texGen.get('stoneFloor');
-    if (map) map.repeat.set(1, 1);
+    const map       = this._floorTex();
+    const normalMap = this._floorNormalTex();
 
-    const material = new THREE.MeshPhongMaterial({
+    const material = new THREE.MeshStandardMaterial({
       map,
-      color:    this._tileColor(x, z, 0.95, 0.90, 0.82),
-      shininess: 28,
-      specular:  new THREE.Color(0.05, 0.04, 0.03),
+      normalMap,
+      normalScale: new THREE.Vector2(1.4, 1.4),
+      color:     this._tileColor(x, z, 0.88, 0.88, 0.94),
+      roughness: 0.70,   // worn stone — slight wet sheen from torch
+      metalness: 0.02,
+      envMapIntensity: 0.4,
       side: THREE.DoubleSide,
     });
 
@@ -49,15 +100,19 @@ export class GeometryFactory {
   // ── Wall ─────────────────────────────────────────────────────────────────
 
   createWall(x, z) {
-    const map = this.texGen.get('stoneWall');
-    // One texture unit spans the full wall face — stones look naturally sized
-    if (map) map.repeat.set(1, 1.4);
+    const map       = this._wallTex();
+    const normalMap = this._wallNormalTex();
 
-    const wallMat = new THREE.MeshPhongMaterial({
+    const wallMat = new THREE.MeshStandardMaterial({
       map,
-      color:    this._tileColor(x, z, 0.98, 0.93, 0.84),
-      shininess: 6,
-      specular:  new THREE.Color(0.03, 0.02, 0.01),
+      normalMap,
+      normalScale: new THREE.Vector2(1.8, 1.8),  // strong relief on rough stone
+      color:     this._tileColor(x, z, 0.80, 0.78, 0.86),
+      roughness: 0.88,   // rough dry stone
+      metalness: 0.00,
+      // Very faint blue-cyan emissive — arcane crypt atmosphere
+      emissive:          new THREE.Color(0.00, 0.005, 0.012),
+      emissiveIntensity: 1.0,
     });
 
     const wallGeo = new THREE.BoxGeometry(this.tileSize, this.wallHeight, this.tileSize);
@@ -66,9 +121,10 @@ export class GeometryFactory {
 
     // Base trim — darker stone at floor level
     const trimGeo = new THREE.BoxGeometry(this.tileSize + 0.04, 0.14, this.tileSize + 0.04);
-    const trimMat = new THREE.MeshPhongMaterial({
-      color: 0x14100c,
-      shininess: 2,
+    const trimMat = new THREE.MeshStandardMaterial({
+      color:     0x14100c,
+      roughness: 0.95,
+      metalness: 0.0,
     });
     const trim = new THREE.Mesh(trimGeo, trimMat);
     trim.position.set(0, -(this.wallHeight / 2) + 0.07, 0);
@@ -79,7 +135,14 @@ export class GeometryFactory {
 
   // ── Ceiling ───────────────────────────────────────────────────────────────
 
-  createCeiling(x, z) {
+  /**
+   * @param {number} x
+   * @param {number} z
+   * @param {number} [height] - Y position of ceiling; defaults to wallHeight
+   */
+  createCeiling(x, z, height = null) {
+    const y = (height != null && height > 0) ? height : this.wallHeight;
+
     const geometry = new THREE.PlaneGeometry(this.tileSize, this.tileSize);
     geometry.rotateX(Math.PI / 2);
 
@@ -87,16 +150,16 @@ export class GeometryFactory {
     if (map) map.repeat.set(1, 1);
 
     const v = this._tileVariation(x, z) * 0.02;
-    const material = new THREE.MeshPhongMaterial({
+    const material = new THREE.MeshStandardMaterial({
       map,
-      color:    new THREE.Color(0.28 + v, 0.25 + v, 0.22 + v),
-      shininess: 3,
-      specular:  new THREE.Color(0.01, 0.01, 0.01),
+      color:    new THREE.Color(0.72 + v, 0.72 + v, 0.80 + v),
+      roughness: 0.96,
+      metalness: 0.0,
       side: THREE.DoubleSide,
     });
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(x * this.tileSize, this.wallHeight, z * this.tileSize);
+    mesh.position.set(x * this.tileSize, y, z * this.tileSize);
     return mesh;
   }
 
@@ -113,9 +176,9 @@ export class GeometryFactory {
     const map = this.texGen.get('woodDoor');
     const material = new THREE.MeshPhongMaterial({
       map,
-      color:    new THREE.Color(0.90, 0.75, 0.60),
-      shininess: 14,
-      specular:  new THREE.Color(0.05, 0.03, 0.01),
+      color:    new THREE.Color(0.88, 0.88, 0.94),  // near-white, slight blue bias
+      shininess: 20,
+      specular:  new THREE.Color(0.00, 0.06, 0.08),  // faint cyan specular
     });
 
     const mesh = new THREE.Mesh(geometry, material);

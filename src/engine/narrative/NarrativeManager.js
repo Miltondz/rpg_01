@@ -161,6 +161,11 @@ export class NarrativeManager {
     };
   }
 
+  async loadSaveData(data) {
+    if (!data?.currentStoryId) return;
+    await this.loadStory(data.currentStoryId, data.currentKnot ?? null);
+  }
+
   // ─── Private ───────────────────────────────────────────────────────────────
 
   _inkAvailable() {
@@ -320,7 +325,7 @@ export class NarrativeManager {
 
   _onPhaseChanged({ actId, phaseId }) {
     const phase = this.campaignManager?.getCurrentPhase();
-    if (!phase?.autoPlayKnot) return;
+    if (!phase?.autoPlayStory && !phase?.autoPlayKnot) return;
     const storyId = phase.autoPlayStory ?? this.currentStoryId;
     if (storyId) {
       this.loadStory(storyId, phase.autoPlayKnot);

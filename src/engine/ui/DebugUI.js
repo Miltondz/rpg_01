@@ -95,7 +95,15 @@ export class DebugUI {
     
     // Add walkability status element if it doesn't exist
     this.addWalkabilityDisplay();
-    
+
+    // Click [i] icon button to expand / collapse panel body
+    const toggleBtn = document.getElementById('debug-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        this.elements.panel.classList.toggle('debug-expanded');
+      });
+    }
+
     // Verify all critical elements exist
     const missingElements = [];
     Object.entries(this.elements).forEach(([key, element]) => {

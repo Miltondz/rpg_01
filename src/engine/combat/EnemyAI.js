@@ -745,7 +745,7 @@ export class EnemyAI {
     const ai = new EnemyAI(archetype);
     
     // Mark as boss AI for special behavior
-    if (enemyType.includes('lord') || enemyType.includes('lich') || enemyType.includes('overlord')) {
+    if (enemyType && (enemyType.includes('lord') || enemyType.includes('lich') || enemyType.includes('overlord'))) {
       ai.isBossAI = true;
     }
     

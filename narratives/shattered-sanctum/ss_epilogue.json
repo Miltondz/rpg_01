@@ -1,0 +1,20 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^The Hollow King is gone. The void energy dissipates.",
+      "\n",
+      "^The Sanctum is silent for the first time in centuries.",
+      "\n",
+      "^What you did here — the choice you made — will echo for generations.",
+      "\n",
+      "^Whether anyone will remember your names is another matter.",
+      "\n",
+      {"#": "knot_reached:ss_epilogue_complete"},
+      "end",
+      null
+    ],
+    null
+  ],
+  "listDefs": {}
+}

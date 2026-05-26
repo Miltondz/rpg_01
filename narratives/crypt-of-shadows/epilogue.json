@@ -1,0 +1,22 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^The Shadow Lord crumbles to ash.",
+      "\n",
+      "^Light — real light — floods the crypt for the first time in centuries.",
+      "\n",
+      "^The shadows retreat. The walls stop breathing.",
+      "\n",
+      "^You ascend the stone steps, blinking, into a world that does not yet know what you have done.",
+      "\n",
+      "^It will.",
+      "\n",
+      {"#": "knot_reached:epilogue_complete"},
+      "end",
+      null
+    ],
+    null
+  ],
+  "listDefs": {}
+}

@@ -1,0 +1,18 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^The Hollow King rises. Void pours from every crack in the stone.",
+      "\n",
+      "^\"The seals... shatter or hold, it does not matter. I have been here before time. I will be here after.\"",
+      "\n",
+      "^\"But you — you will not.\"",
+      "\n",
+      {"#": "knot_reached:ss_hollow_king_monologue_complete"},
+      "end",
+      null
+    ],
+    null
+  ],
+  "listDefs": {}
+}

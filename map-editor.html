@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DarkBit — Map Editor</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#050005;--panel:#0a000a;--border:#FF0055;--border-dim:#330011;
+  --pink:#FF0055;--pink-lt:#FF3377;--green:#00FF44;--dim:#550022;
+  --text:#FF3377;--text-dim:#880033;--gold:#FFD700;--blue:#0088FF;
+  --font:'Courier New',monospace;
+  --cell:32px;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);font-size:11px}
+
+/* ── Layout ── */
+#app{display:grid;grid-template-rows:36px 1fr;grid-template-columns:180px 1fr 230px;height:100vh}
+#toolbar{grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 10px}
+#left-panel{background:var(--panel);border-right:1px solid var(--border-dim);overflow-y:auto;display:flex;flex-direction:column}
+#canvas-wrap{position:relative;overflow:hidden;background:#000;cursor:crosshair}
+#map-canvas{display:block;image-rendering:pixelated}
+#right-panel{background:var(--panel);border-left:1px solid var(--border-dim);overflow-y:auto;display:flex;flex-direction:column}
+
+/* ── Toolbar ── */
+.tb-btn{background:none;border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:10px;padding:3px 8px;cursor:pointer;white-space:nowrap}
+.tb-btn:hover{border-color:var(--pink);color:#fff}
+.tb-btn.active{border-color:var(--pink);background:rgba(255,0,85,.15);color:#fff}
+.tb-sep{width:1px;height:20px;background:var(--border-dim);margin:0 2px}
+#level-id-input{background:rgba(255,0,85,.08);border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:10px;padding:3px 6px;width:160px}
+#level-id-input:focus{outline:none;border-color:var(--pink)}
+.tb-label{font-size:9px;color:var(--text-dim);white-space:nowrap}
+
+/* ── Sections ── */
+.panel-section{border-bottom:1px solid var(--border-dim);padding:8px}
+.panel-section h4{font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border-dim)}
+
+/* ── Tool buttons ── */
+.tool-btn{display:flex;align-items:center;gap:6px;padding:5px 6px;border:1px solid var(--border-dim);cursor:pointer;margin-bottom:3px;font-size:10px;color:var(--text-dim);background:none;width:100%;text-align:left;font-family:var(--font)}
+.tool-btn:hover{border-color:var(--pink-lt);color:var(--text)}
+.tool-btn.active{border-color:var(--pink);color:var(--pink);background:rgba(255,0,85,.08)}
+.tool-btn .key{margin-left:auto;font-size:8px;color:var(--dim);border:1px solid var(--border-dim);padding:1px 3px}
+
+/* ── Tile palette ── */
+.tile-btn{display:flex;align-items:center;gap:7px;padding:5px 6px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;font-size:10px;background:none;width:100%;text-align:left;font-family:var(--font);color:var(--text-dim)}
+.tile-btn:hover{border-color:var(--pink-lt);color:var(--text)}
+.tile-btn.active{border-color:var(--pink);color:var(--pink);background:rgba(255,0,85,.08)}
+.tile-swatch{width:14px;height:14px;border:1px solid #333;flex-shrink:0}
+
+/* ── Object palette ── */
+.obj-btn{display:flex;align-items:center;gap:7px;padding:5px 6px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;font-size:10px;background:none;width:100%;text-align:left;font-family:var(--font);color:var(--text-dim)}
+.obj-btn:hover{border-color:var(--pink-lt);color:var(--text)}
+.obj-btn.active{border-color:var(--green);color:var(--green);background:rgba(0,255,68,.06)}
+.obj-icon{font-size:12px;width:16px;text-align:center;flex-shrink:0}
+
+/* ── Properties ── */
+.prop-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.prop-row label{font-size:9px;color:var(--text-dim);width:70px;flex-shrink:0}
+.prop-row input,.prop-row select,.prop-row textarea{flex:1;background:rgba(255,0,85,.06);border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:9px;padding:3px 5px}
+.prop-row input:focus,.prop-row select:focus,.prop-row textarea:focus{outline:none;border-color:var(--pink)}
+.prop-row input[type=checkbox]{flex:none;width:14px;height:14px;accent-color:var(--pink)}
+.prop-row select option{background:var(--panel)}
+.prop-row textarea{resize:vertical;min-height:40px}
+
+/* ── Objects list ── */
+.obj-list-item{padding:4px 6px;border:1px solid var(--border-dim);margin-bottom:2px;cursor:pointer;font-size:9px;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center}
+.obj-list-item:hover{border-color:var(--pink-lt);color:var(--text)}
+.obj-list-item.selected{border-color:var(--pink);color:var(--pink);background:rgba(255,0,85,.08)}
+.obj-list-item .del-btn{background:none;border:none;color:var(--dim);cursor:pointer;font-size:11px;padding:0 3px;font-family:var(--font)}
+.obj-list-item .del-btn:hover{color:#FF4444}
+
+/* ── Minimap ── */
+#minimap-canvas{display:block;border:1px solid var(--border-dim);cursor:pointer}
+
+/* ── Status bar ── */
+#statusbar{position:absolute;bottom:0;left:0;right:0;height:20px;background:rgba(0,0,0,.7);border-top:1px solid var(--border-dim);display:flex;align-items:center;padding:0 8px;gap:16px;font-size:9px;color:var(--text-dim);pointer-events:none}
+
+/* ── Scroll ── */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--dim)}
+
+/* ── Modal ── */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:1000}
+#modal-overlay.open{display:flex}
+#modal-box{background:var(--panel);border:1px solid var(--pink);padding:20px 24px;min-width:320px;max-width:520px}
+#modal-box h3{font-size:11px;color:var(--pink);margin-bottom:14px;letter-spacing:2px;text-transform:uppercase}
+#modal-btns{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+#modal-content{display:flex;flex-direction:column;gap:8px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── Toolbar ── -->
+<div id="toolbar">
+  <span style="color:var(--pink);font-size:12px;letter-spacing:1px;font-weight:bold;margin-right:4px">DARKBIT MAP EDITOR</span>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="newLevel()">NEW</button>
+  <button class="tb-btn" onclick="openFile()">OPEN</button>
+  <button class="tb-btn" onclick="loadFromServer()">LOAD…</button>
+  <button class="tb-btn" onclick="saveFile()">SAVE</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-undo" onclick="undo()">UNDO</button>
+  <button class="tb-btn" id="btn-redo" onclick="redo()">REDO</button>
+  <div class="tb-sep"></div>
+  <span class="tb-label">ID:</span>
+  <input id="level-id-input" type="text" value="new-level" onchange="state.level.id=$('#level-id-input').value;markDirty()">
+  <span class="tb-label">W:</span>
+  <input id="w-input" type="number" min="5" max="40" value="10" style="width:44px;background:rgba(255,0,85,.08);border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:10px;padding:3px 4px">
+  <span class="tb-label">H:</span>
+  <input id="h-input" type="number" min="5" max="40" value="10" style="width:44px;background:rgba(255,0,85,.08);border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:10px;padding:3px 4px">
+  <button class="tb-btn" onclick="resizeLevel()">RESIZE</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="toggleGrid()" id="btn-grid">GRID ON</button>
+  <button class="tb-btn" onclick="zoomIn()">+</button>
+  <button class="tb-btn" onclick="zoomOut()">−</button>
+  <button class="tb-btn" onclick="resetZoom()">1:1</button>
+  <div class="tb-sep"></div>
+  <span id="dirty-indicator" style="color:var(--dim);font-size:9px"></span>
+  <button class="tb-btn" onclick="testInGame()" style="margin-left:auto;border-color:var(--green);color:var(--green)">▶ TEST</button>
+</div>
+
+<!-- ── Left Panel ── -->
+<div id="left-panel">
+
+  <div class="panel-section">
+    <h4>Tools</h4>
+    <button class="tool-btn active" id="tool-paint" onclick="setTool('paint')">
+      <span>✏</span> Paint <span class="key">P</span>
+    </button>
+    <button class="tool-btn" id="tool-erase" onclick="setTool('erase')">
+      <span>✕</span> Erase <span class="key">E</span>
+    </button>
+    <button class="tool-btn" id="tool-fill" onclick="setTool('fill')">
+      <span>▣</span> Fill <span class="key">F</span>
+    </button>
+    <button class="tool-btn" id="tool-select" onclick="setTool('select')">
+      <span>▷</span> Select <span class="key">S</span>
+    </button>
+    <button class="tool-btn" id="tool-pan" onclick="setTool('pan')">
+      <span>✥</span> Pan <span class="key">Space</span>
+    </button>
+  </div>
+
+  <div class="panel-section">
+    <h4>Tiles</h4>
+    <button class="tile-btn active" id="tile-1" onclick="setPaintTile(1)">
+      <span class="tile-swatch" style="background:#1a0010"></span>Floor
+    </button>
+    <button class="tile-btn" id="tile-2" onclick="setPaintTile(2)">
+      <span class="tile-swatch" style="background:#FF0055"></span>Wall
+    </button>
+    <button class="tile-btn" id="tile-0" onclick="setPaintTile(0)">
+      <span class="tile-swatch" style="background:#000"></span>Empty
+    </button>
+    <button class="tile-btn" id="tile-3" onclick="setPaintTile(3)">
+      <span class="tile-swatch" style="background:#FF9900"></span>Transition
+    </button>
+  </div>
+
+  <div class="panel-section">
+    <h4>Objects</h4>
+    <button class="obj-btn active" id="obj-none" onclick="setObjTool(null)">
+      <span class="obj-icon">—</span>None
+    </button>
+    <button class="obj-btn" id="obj-spawn" onclick="setObjTool('spawn')">
+      <span class="obj-icon" style="color:var(--green)">▲</span>Spawn Point
+    </button>
+    <button class="obj-btn" id="obj-door" onclick="setObjTool('door')">
+      <span class="obj-icon" style="color:#88DDFF">D</span>Door
+    </button>
+    <button class="obj-btn" id="obj-transition" onclick="setObjTool('transition')">
+      <span class="obj-icon" style="color:var(--gold)">⇒</span>Transition
+    </button>
+    <button class="obj-btn" id="obj-encounter" onclick="setObjTool('encounter')">
+      <span class="obj-icon" style="color:#FF4444">⚔</span>Encounter
+    </button>
+    <button class="obj-btn" id="obj-safezone" onclick="setObjTool('safezone')">
+      <span class="obj-icon" style="color:var(--gold)">★</span>Safe Zone
+    </button>
+    <button class="obj-btn" id="obj-prop" onclick="setObjTool('prop')">
+      <span class="obj-icon" style="color:#888">⚓</span>Prop
+    </button>
+    <button class="obj-btn" id="obj-chest" onclick="setObjTool('chest')">
+      <span class="obj-icon" style="color:var(--gold)">📦</span>Chest
+    </button>
+    <button class="obj-btn" id="obj-keyitem" onclick="setObjTool('keyitem')">
+      <span class="obj-icon" style="color:var(--gold)">🔑</span>Key Item
+    </button>
+    <button class="obj-btn" id="obj-npc" onclick="setObjTool('npc')">
+      <span class="obj-icon" style="color:#88FF88">👤</span>NPC
+    </button>
+    <button class="obj-btn" id="obj-tutorialhint" onclick="setObjTool('tutorialhint')">
+      <span class="obj-icon" style="color:#88DDFF">?</span>Hint Zone
+    </button>
+  </div>
+
+  <div class="panel-section" style="flex:1">
+    <h4>Minimap</h4>
+    <canvas id="minimap-canvas" width="164" height="164"></canvas>
+  </div>
+</div>
+
+<!-- ── Canvas ── -->
+<div id="canvas-wrap">
+  <canvas id="map-canvas"></canvas>
+  <div id="statusbar">
+    <span id="sb-pos">x:0 z:0</span>
+    <span id="sb-tile">—</span>
+    <span id="sb-zoom">100%</span>
+    <span id="sb-dims">10×10</span>
+  </div>
+</div>
+
+<!-- ── Right Panel ── -->
+<div id="right-panel">
+  <div class="panel-section">
+    <h4>Level Properties</h4>
+    <div class="prop-row">
+      <label>Name</label>
+      <input type="text" id="prop-name" value="New Level" onchange="state.level.name=$('#prop-name').value;markDirty()">
+    </div>
+    <div class="prop-row">
+      <label>Campaign</label>
+      <input type="text" id="prop-campaign" placeholder="crypt-of-shadows" onchange="state.level.campaign=$('#prop-campaign').value;markDirty()">
+    </div>
+    <div class="prop-row">
+      <label>Floor #</label>
+      <input type="number" id="prop-floor" min="1" max="99" value="1" style="width:50px" onchange="state.level.floor=parseInt($('#prop-floor').value)||1;markDirty()">
+    </div>
+    <div class="prop-row">
+      <label>Theme</label>
+      <select id="prop-theme" onchange="state.level.theme=$('#prop-theme').value;markDirty()">
+        <option>ruin</option>
+        <option>crypt</option>
+        <option>cave</option>
+        <option>dungeon</option>
+        <option>forest</option>
+        <option>sanctum</option>
+      </select>
+    </div>
+    <div class="prop-row">
+      <label>Music</label>
+      <select id="prop-music" onchange="state.level.musicTheme=$('#prop-music').value;markDirty()">
+        <option value="dungeon_ambient">Dungeon Ambient</option>
+        <option value="crypt_theme">Crypt Theme</option>
+        <option value="boss_theme">Boss Theme</option>
+        <option value="safe_zone">Safe Zone</option>
+        <option value="silence">Silence</option>
+      </select>
+    </div>
+    <div class="prop-row">
+      <label>Quest Obj.</label>
+      <input type="text" id="prop-quest" placeholder="(optional)" onchange="state.level.questObjective=$('#prop-quest').value;markDirty()">
+    </div>
+  </div>
+
+  <div class="panel-section" id="spawn-section">
+    <h4>Spawn Point</h4>
+    <div class="prop-row"><label>X</label><input type="number" id="spawn-x" value="1" onchange="updateSpawn()"></div>
+    <div class="prop-row"><label>Z</label><input type="number" id="spawn-z" value="1" onchange="updateSpawn()"></div>
+    <div class="prop-row">
+      <label>Direction</label>
+      <select id="spawn-dir" onchange="updateSpawn()">
+        <option value="0">N (0)</option>
+        <option value="1">E (1)</option>
+        <option value="2">S (2)</option>
+        <option value="3">W (3)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="panel-section" id="selection-section" style="display:none">
+    <h4 id="sel-title">Selection</h4>
+    <div id="sel-props"></div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="tb-btn" onclick="deleteSelected()" style="border-color:#FF4444;color:#FF4444">DELETE</button>
+      <button class="tb-btn" onclick="applySelected()">APPLY</button>
+    </div>
+  </div>
+
+  <div class="panel-section" id="objects-section">
+    <h4>Objects <span id="obj-count" style="color:var(--text-dim);font-size:8px"></span></h4>
+    <div id="objects-list"></div>
+  </div>
+
+  <div class="panel-section">
+    <h4>Layers</h4>
+    <div class="prop-row"><label>Tiles</label><input type="checkbox" id="layer-tiles" checked onchange="renderCanvas()"></div>
+    <div class="prop-row"><label>Doors</label><input type="checkbox" id="layer-doors" checked onchange="renderCanvas()"></div>
+    <div class="prop-row"><label>Objects</label><input type="checkbox" id="layer-objects" checked onchange="renderCanvas()"></div>
+    <div class="prop-row"><label>Grid</label><input type="checkbox" id="layer-grid" checked onchange="renderCanvas()"></div>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<!-- ── Modal ── -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <h3 id="modal-title">Dialog</h3>
+    <div id="modal-content"></div>
+    <div id="modal-btns"></div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="loadFile(this)">
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
+const EMPTY_LEVEL = () => ({
+  id: 'new-level', name: 'New Level', theme: 'ruin',
+  width: 10, height: 10,
+  campaign: '', floor: 1,
+  musicTheme: 'dungeon_ambient',
+  spawn: { x:1, z:1, direction:0 },
+  tiles: Array(100).fill(2),
+  doors: [], tileMetadata: [], transitions: [],
+  safeZones: [], scriptedEncounters: [], keyItems: [], lootChests: [],
+  npcs: [],
+  questObjective: '',
+  quest: null,
+});
+
+const PROP_TYPES = ['torch_wall','candle','bones','altar','pillar','bookshelf','barrel','crate','statue','fountain','chest_closed','sign'];
+const NPC_TYPES  = ['merchant','guard','elder','ghost','sage','innkeeper','blacksmith','quest_giver'];
+
+const state = {
+  level: EMPTY_LEVEL(),
+  tool: 'paint',       // paint erase fill select pan
+  paintTile: 1,
+  objTool: null,       // null | 'spawn'|'door'|'transition'|'encounter'|'safezone'|'prop'|'chest'|'keyitem'
+  selected: null,      // { type, index } of selected object
+  cam: { x:0, y:0, zoom:1 },
+  history: [], future: [],
+  isDirty: false,
+  isPainting: false,
+  isPanning: false,
+  panStart: null,
+  hoverCell: null,
+};
+
+// Tile values → colors
+const TILE_COLOR = { 0:'#050005', 1:'#140008', 2:'#660022', 3:'#7F4800' };
+const TILE_BORDER = { 0:'#0a000a', 1:'#2a000f', 2:'#990033', 3:'#BB6600' };
+const TILE_LABEL = { 0:'empty', 1:'floor', 2:'wall', 3:'transition' };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Canvas
+// ─────────────────────────────────────────────────────────────────────────────
+const canvas = $('#map-canvas');
+const ctx = canvas.getContext('2d');
+const miniCanvas = $('#minimap-canvas');
+const miniCtx = miniCanvas.getContext('2d');
+const wrap = $('#canvas-wrap');
+
+function resizeCanvas() {
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight - 20; // statusbar
+  renderCanvas();
+}
+
+function worldToScreen(wx, wz) {
+  const cs = 32 * state.cam.zoom;
+  return { x: wx * cs + state.cam.x, y: wz * cs + state.cam.y };
+}
+
+function screenToCell(sx, sy) {
+  const cs = 32 * state.cam.zoom;
+  const wx = Math.floor((sx - state.cam.x) / cs);
+  const wz = Math.floor((sy - state.cam.y) / cs);
+  return { x: wx, z: wz };
+}
+
+function renderCanvas() {
+  const { width, height, tiles } = state.level;
+  const cs = 32 * state.cam.zoom;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const showTiles   = $('#layer-tiles').checked;
+  const showDoors   = $('#layer-doors').checked;
+  const showObjects = $('#layer-objects').checked;
+  const showGrid    = $('#layer-grid').checked;
+
+  if (showTiles) {
+    for (let z = 0; z < height; z++) {
+      for (let x = 0; x < width; x++) {
+        const idx = z * width + x;
+        const t = tiles[idx];
+        const sx = x * cs + state.cam.x;
+        const sy = z * cs + state.cam.y;
+        if (sx + cs < 0 || sy + cs < 0 || sx > canvas.width || sy > canvas.height) continue;
+
+        ctx.fillStyle = TILE_COLOR[t] ?? '#000';
+        ctx.fillRect(sx, sy, cs, cs);
+
+        if (showGrid && cs > 6) {
+          ctx.strokeStyle = TILE_BORDER[t] ?? '#111';
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(sx + 0.5, sy + 0.5, cs - 1, cs - 1);
+        }
+      }
+    }
+  }
+
+  if (showObjects) {
+    // Tile metadata props
+    if (state.level.tileMetadata) {
+      for (const m of state.level.tileMetadata) {
+        if (!m.props) continue;
+        const sx = m.x * cs + state.cam.x;
+        const sy = m.z * cs + state.cam.y;
+        drawCellMarker(sx, sy, cs, '#888', '⚓', '⚓');
+      }
+    }
+    // Encounters
+    for (const enc of (state.level.scriptedEncounters ?? [])) {
+      const sx = enc.x * cs + state.cam.x;
+      const sy = enc.z * cs + state.cam.y;
+      drawCellMarker(sx, sy, cs, '#FF4444', '⚔', '⚔');
+    }
+    // Safe zones
+    for (const sz of (state.level.safeZones ?? [])) {
+      const sx = sz.x * cs + state.cam.x;
+      const sy = sz.z * cs + state.cam.y;
+      drawCellMarker(sx, sy, cs, '#FFD700', '★', '★');
+    }
+    // Key items
+    for (const ki of (state.level.keyItems ?? [])) {
+      const sx = ki.x * cs + state.cam.x;
+      const sy = ki.z * cs + state.cam.y;
+      drawCellMarker(sx, sy, cs, '#FFD700', '🔑', 'K');
+    }
+    // Loot chests
+    for (const ch of (state.level.lootChests ?? [])) {
+      const sx = ch.x * cs + state.cam.x;
+      const sy = ch.z * cs + state.cam.y;
+      drawCellMarker(sx, sy, cs, '#FFD700', '📦', 'C');
+    }
+    // NPCs
+    for (const npc of (state.level.npcs ?? [])) {
+      const sx = npc.x * cs + state.cam.x;
+      const sy = npc.z * cs + state.cam.y;
+      drawCellMarker(sx, sy, cs, '#88FF88', '👤', 'N');
+    }
+    // Tutorial hints
+    for (const th of (state.level.tutorialHints ?? [])) {
+      const sx = th.x * cs + state.cam.x;
+      const sy = th.z * cs + state.cam.y;
+      drawCellMarker(sx, sy, cs, '#88DDFF', '?', '?');
+    }
+    // Transitions
+    for (const tr of (state.level.transitions ?? [])) {
+      const sx = tr.x * cs + state.cam.x;
+      const sy = tr.z * cs + state.cam.y;
+      drawCellMarker(sx, sy, cs, '#FFD700', '⇒', '>');
+    }
+    // Spawn
+    {
+      const sp = state.level.spawn;
+      const sx = sp.x * cs + state.cam.x;
+      const sy = sp.z * cs + state.cam.y;
+      const cx = sx + cs/2, cy = sy + cs/2;
+      ctx.save();
+      ctx.fillStyle = '#00FF44';
+      ctx.shadowColor = '#00FF44'; ctx.shadowBlur = 8;
+      const r = Math.max(4, cs * 0.18);
+      ctx.beginPath();
+      // Arrow pointing in direction
+      const dir = sp.direction ?? 0;
+      const angle = [0, Math.PI/2, Math.PI, -Math.PI/2][dir];
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+      ctx.moveTo(0, -r);
+      ctx.lineTo(r*0.6, r*0.7);
+      ctx.lineTo(-r*0.6, r*0.7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  if (showDoors) {
+    for (const door of (state.level.doors ?? [])) {
+      const sx = door.x * cs + state.cam.x;
+      const sy = door.z * cs + state.cam.y;
+      ctx.save();
+      const color = door.locked ? '#FF9900' : '#88DDFF';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(2, cs * 0.1);
+      ctx.shadowColor = color; ctx.shadowBlur = 6;
+      if (door.orientation === 'vertical') {
+        ctx.beginPath(); ctx.moveTo(sx + cs/2, sy + cs*0.15); ctx.lineTo(sx + cs/2, sy + cs*0.85); ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.moveTo(sx + cs*0.15, sy + cs/2); ctx.lineTo(sx + cs*0.85, sy + cs/2); ctx.stroke();
+      }
+      if (door.locked && cs > 16) {
+        ctx.font = `${Math.max(8, cs*0.3)}px monospace`;
+        ctx.fillStyle = '#FF9900';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText('🔒', sx + cs/2, sy + cs - 2);
+      }
+      ctx.restore();
+    }
+  }
+
+  // Selection highlight
+  if (state.selected) {
+    const obj = getSelectedObj();
+    if (obj) {
+      const sx = obj.x * cs + state.cam.x;
+      const sy = obj.z * cs + state.cam.y;
+      ctx.strokeStyle = '#00FF44';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#00FF44'; ctx.shadowBlur = 10;
+      ctx.strokeRect(sx + 1, sy + 1, cs - 2, cs - 2);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // Hover cell
+  if (state.hoverCell) {
+    const { x, z } = state.hoverCell;
+    if (x >= 0 && x < width && z >= 0 && z < height) {
+      const sx = x * cs + state.cam.x;
+      const sy = z * cs + state.cam.y;
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sx, sy, cs, cs);
+    }
+  }
+
+  renderMinimap();
+}
+
+function drawCellMarker(sx, sy, cs, color, emoji, fallback) {
+  ctx.save();
+  const fontSize = Math.max(8, cs * 0.42);
+  ctx.font = `${fontSize}px monospace`;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  try { ctx.fillText(emoji, sx + cs/2, sy + cs/2); } catch(e) { ctx.fillText(fallback, sx + cs/2, sy + cs/2); }
+  ctx.restore();
+}
+
+function renderMinimap() {
+  const { width, height, tiles } = state.level;
+  const cw = miniCanvas.width, ch = miniCanvas.height;
+  const csx = cw / width, csz = ch / height;
+  miniCtx.clearRect(0, 0, cw, ch);
+  for (let z = 0; z < height; z++) {
+    for (let x = 0; x < width; x++) {
+      const t = tiles[z * width + x];
+      miniCtx.fillStyle = TILE_COLOR[t] ?? '#000';
+      miniCtx.fillRect(x * csx, z * csz, csx, csz);
+    }
+  }
+  // Spawn
+  const sp = state.level.spawn;
+  miniCtx.fillStyle = '#00FF44';
+  miniCtx.fillRect(sp.x * csx, sp.z * csz, Math.max(2,csx), Math.max(2,csz));
+  // Doors
+  for (const d of (state.level.doors ?? [])) {
+    miniCtx.fillStyle = d.locked ? '#FF9900' : '#88DDFF';
+    miniCtx.fillRect(d.x * csx, d.z * csz, Math.max(2,csx), Math.max(2,csz));
+  }
+  // NPCs
+  for (const n of (state.level.npcs ?? [])) {
+    miniCtx.fillStyle = '#88FF88';
+    miniCtx.fillRect(n.x * csx, n.z * csz, Math.max(2,csx), Math.max(2,csz));
+  }
+  // Viewport rect on minimap
+  const cs = 32 * state.cam.zoom;
+  const vx = (-state.cam.x / cs) * csx;
+  const vz = (-state.cam.y / cs) * csz;
+  const vw = (canvas.width / cs) * csx;
+  const vh = (canvas.height / cs) * csz;
+  miniCtx.strokeStyle = 'rgba(255,51,119,0.6)';
+  miniCtx.lineWidth = 1;
+  miniCtx.strokeRect(vx, vz, vw, vh);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tool actions
+// ─────────────────────────────────────────────────────────────────────────────
+function setTool(t) {
+  state.tool = t;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  $(`#tool-${t}`)?.classList.add('active');
+  canvas.style.cursor = t === 'pan' ? 'grab' : t === 'select' ? 'pointer' : 'crosshair';
+}
+
+function setPaintTile(v) {
+  state.paintTile = v;
+  state.objTool = null;
+  document.querySelectorAll('.tile-btn').forEach(b => b.classList.remove('active'));
+  $(`#tile-${v}`)?.classList.add('active');
+  document.querySelectorAll('.obj-btn').forEach(b => b.classList.remove('active'));
+  $('#obj-none').classList.add('active');
+}
+
+function setObjTool(type) {
+  state.objTool = type;
+  document.querySelectorAll('.obj-btn').forEach(b => b.classList.remove('active'));
+  $(`#obj-${type ?? 'none'}`)?.classList.add('active');
+  if (type) setTool('paint');
+}
+
+function paintCell(x, z) {
+  const { width, height } = state.level;
+  if (x < 0 || x >= width || z < 0 || z >= height) return;
+  const idx = z * width + x;
+
+  if (state.objTool) {
+    placeObject(x, z);
+    return;
+  }
+
+  const tv = state.tool === 'erase' ? 2 : state.paintTile; // erase → wall
+  if (state.level.tiles[idx] === tv) return;
+  pushHistory();
+  state.level.tiles[idx] = tv;
+  markDirty();
+  renderCanvas();
+  updateStatusBar(x, z);
+}
+
+function fillCell(x, z) {
+  const { width, height, tiles } = state.level;
+  if (x < 0 || x >= width || z < 0 || z >= height) return;
+  const targetTile = tiles[z * width + x];
+  const fillWith = state.paintTile;
+  if (targetTile === fillWith) return;
+  pushHistory();
+
+  const visited = new Set();
+  const queue = [{ x, z }];
+  while (queue.length) {
+    const { x: cx, z: cz } = queue.shift();
+    if (cx < 0 || cx >= width || cz < 0 || cz >= height) continue;
+    const idx = cz * width + cx;
+    if (visited.has(idx)) continue;
+    if (tiles[idx] !== targetTile) continue;
+    visited.add(idx);
+    tiles[idx] = fillWith;
+    queue.push({ x:cx+1,z:cz },{ x:cx-1,z:cz },{ x:cx,z:cz+1 },{ x:cx,z:cz-1 });
+  }
+  markDirty();
+  renderCanvas();
+}
+
+function placeObject(x, z) {
+  const type = state.objTool;
+  if (type === 'spawn') {
+    pushHistory();
+    state.level.spawn = { x, z, direction: state.level.spawn.direction ?? 0 };
+    syncSpawnUI();
+    markDirty(); renderCanvas(); return;
+  }
+  if (type === 'door') {
+    pushHistory();
+    state.level.doors.push({ x, z, orientation:'horizontal', locked:false, keyType:null, description:'' });
+    rebuildObjectsList(); markDirty(); renderCanvas(); return;
+  }
+  if (type === 'transition') {
+    pushHistory();
+    state.level.transitions.push({ x, z, type:'stairs', target:'', spawn:{x:1,z:1,direction:0} });
+    rebuildObjectsList(); markDirty(); renderCanvas(); return;
+  }
+  if (type === 'encounter') {
+    pushHistory();
+    state.level.scriptedEncounters.push({ x, z, id:`enc_${Date.now()}`, type:'scripted', oneTime:true, description:'', enemies:[{type:'goblin',level:1}], rewards:{experience:25,gold:{min:5,max:10},loot:[]} });
+    rebuildObjectsList(); markDirty(); renderCanvas(); return;
+  }
+  if (type === 'safezone') {
+    pushHistory();
+    state.level.safeZones.push({ x, z, type:'altar', name:'Altar', description:'', services:['save','heal'], healAmount:100, cooldown:0 });
+    rebuildObjectsList(); markDirty(); renderCanvas(); return;
+  }
+  if (type === 'prop') {
+    pushHistory();
+    let meta = state.level.tileMetadata.find(m => m.x===x && m.z===z);
+    if (!meta) { meta = { x, z, props:[] }; state.level.tileMetadata.push(meta); }
+    if (!meta.props) meta.props = [];
+    meta.props.push({ type:'torch_wall', side:'south', interactive:false });
+    rebuildObjectsList(); markDirty(); renderCanvas(); return;
+  }
+  if (type === 'chest') {
+    pushHistory();
+    state.level.lootChests.push({ x, z, loot:[] });
+    rebuildObjectsList(); markDirty(); renderCanvas(); return;
+  }
+  if (type === 'keyitem') {
+    pushHistory();
+    state.level.keyItems.push({ x, z, itemId:'bronze_key', respawn:false });
+    rebuildObjectsList(); markDirty(); renderCanvas(); return;
+  }
+  if (type === 'npc') {
+    pushHistory();
+    if (!state.level.npcs) state.level.npcs = [];
+    state.level.npcs.push({ x, z, id:`npc_${Date.now()}`, type:'merchant', name:'Wanderer', dialogueFile:'', faction:'neutral', hostile:false });
+    rebuildObjectsList(); markDirty(); renderCanvas(); return;
+  }
+  if (type === 'tutorialhint') {
+    pushHistory();
+    if (!state.level.tutorialHints) state.level.tutorialHints = [];
+    state.level.tutorialHints.push({ x, z, message:'Hint text here', oneTime:true });
+    rebuildObjectsList(); markDirty(); renderCanvas(); return;
+  }
+}
+
+function selectAt(x, z) {
+  // Try objects in priority order
+  const lists = [
+    { arr: state.level.doors, type:'door' },
+    { arr: state.level.transitions, type:'transition' },
+    { arr: state.level.scriptedEncounters, type:'encounter' },
+    { arr: state.level.safeZones, type:'safezone' },
+    { arr: state.level.keyItems, type:'keyitem' },
+    { arr: state.level.lootChests, type:'chest' },
+    { arr: state.level.npcs, type:'npc' },
+    { arr: state.level.tutorialHints, type:'tutorialhint' },
+  ];
+  for (const { arr, type } of lists) {
+    const idx = (arr ?? []).findIndex(o => o.x===x && o.z===z);
+    if (idx !== -1) { setSelected(type, idx); return; }
+  }
+  // Prop metadata
+  const mi = (state.level.tileMetadata ?? []).findIndex(m => m.x===x && m.z===z && m.props?.length);
+  if (mi !== -1) { setSelected('prop', mi); return; }
+  setSelected(null, -1);
+}
+
+function setSelected(type, idx) {
+  state.selected = type != null ? { type, idx } : null;
+  if (state.selected) {
+    $('#selection-section').style.display = 'block';
+    buildSelectionUI();
+  } else {
+    $('#selection-section').style.display = 'none';
+  }
+  renderCanvas();
+}
+
+function getSelectedObj() {
+  if (!state.selected) return null;
+  const { type, idx } = state.selected;
+  const arr = getArrForType(type);
+  return arr?.[idx] ?? null;
+}
+
+function getArrForType(type) {
+  const map = { door:state.level.doors, transition:state.level.transitions, encounter:state.level.scriptedEncounters, safezone:state.level.safeZones, keyitem:state.level.keyItems, chest:state.level.lootChests, prop:state.level.tileMetadata, npc:state.level.npcs, tutorialhint:state.level.tutorialHints };
+  return map[type];
+}
+
+function deleteSelected() {
+  if (!state.selected) return;
+  pushHistory();
+  const { type, idx } = state.selected;
+  const arr = getArrForType(type);
+  if (arr) arr.splice(idx, 1);
+  setSelected(null, -1);
+  rebuildObjectsList(); markDirty(); renderCanvas();
+}
+
+function applySelected() {
+  buildSelectionUI(); renderCanvas(); markDirty();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Selection UI builder
+// ─────────────────────────────────────────────────────────────────────────────
+function buildSelectionUI() {
+  if (!state.selected) return;
+  const { type, idx } = state.selected;
+  const obj = getSelectedObj();
+  if (!obj) return;
+  const panel = $('#sel-props');
+  const title = $('#sel-title');
+
+  title.textContent = type.toUpperCase();
+  panel.innerHTML = '';
+
+  const make = (lbl, key, inputType, options) => {
+    const row = document.createElement('div');
+    row.className = 'prop-row';
+    const label = document.createElement('label');
+    label.textContent = lbl;
+    row.appendChild(label);
+
+    let input;
+    if (inputType === 'select') {
+      input = document.createElement('select');
+      (options || []).forEach(o => {
+        const op = document.createElement('option');
+        op.value = o; op.textContent = o;
+        if (String(getNestedVal(obj, key)) === String(o)) op.selected = true;
+        input.appendChild(op);
+      });
+    } else if (inputType === 'checkbox') {
+      input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = !!getNestedVal(obj, key);
+    } else {
+      input = document.createElement('input');
+      input.type = inputType || 'text';
+      input.value = getNestedVal(obj, key) ?? '';
+    }
+    input.addEventListener('change', () => {
+      let val = inputType === 'checkbox' ? input.checked : (inputType === 'number' ? Number(input.value) : input.value);
+      setNestedVal(obj, key, val);
+      markDirty(); renderCanvas(); rebuildObjectsList();
+    });
+    row.appendChild(input);
+    panel.appendChild(row);
+  };
+
+  make('X', 'x', 'number');
+  make('Z', 'z', 'number');
+
+  if (type === 'door') {
+    make('Orientation', 'orientation', 'select', ['horizontal','vertical']);
+    make('Locked', 'locked', 'checkbox');
+    make('Key Type', 'keyType', 'select', ['null','bronze','silver','gold']);
+    make('Description', 'description', 'text');
+  }
+  if (type === 'transition') {
+    make('Type', 'type', 'select', ['stairs','ladder','portal','warp']);
+    make('Target Level', 'target', 'text');
+    make('Spawn X', 'spawn.x', 'number');
+    make('Spawn Z', 'spawn.z', 'number');
+    make('Spawn Dir', 'spawn.direction', 'select', ['0','1','2','3']);
+  }
+  if (type === 'encounter') {
+    make('ID', 'id', 'text');
+    make('One-Time', 'oneTime', 'checkbox');
+    make('Description', 'description', 'text');
+    // Enemies as JSON textarea
+    addJSONField(panel, 'Enemies', obj, 'enemies');
+    addJSONField(panel, 'Rewards', obj, 'rewards');
+  }
+  if (type === 'safezone') {
+    make('Name', 'name', 'text');
+    make('Type', 'type', 'select', ['altar','campfire','shrine','fountain']);
+    make('Description', 'description', 'text');
+    make('Heal Amt', 'healAmount', 'number');
+    make('Cooldown', 'cooldown', 'number');
+    addJSONField(panel, 'Services', obj, 'services');
+  }
+  if (type === 'keyitem') {
+    make('Item ID', 'itemId', 'text');
+    make('Respawn', 'respawn', 'checkbox');
+  }
+  if (type === 'chest') {
+    addJSONField(panel, 'Loot', obj, 'loot');
+  }
+  if (type === 'prop') {
+    // Prop type quick-add
+    const row = document.createElement('div');
+    row.className = 'prop-row';
+    row.style.flexWrap='wrap'; row.style.gap='4px';
+    const lbl = document.createElement('label'); lbl.textContent='Add Prop'; row.appendChild(lbl);
+    const sel = document.createElement('select');
+    sel.style.cssText='flex:1;background:rgba(255,0,85,.06);border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:9px;padding:3px';
+    PROP_TYPES.forEach(t => { const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o); });
+    const addBtn = document.createElement('button');
+    addBtn.className='tb-btn'; addBtn.textContent='+';
+    addBtn.onclick = () => { if (!obj.props) obj.props=[]; obj.props.push({type:sel.value,side:'south',interactive:false}); markDirty(); buildSelectionUI(); };
+    row.appendChild(sel); row.appendChild(addBtn); panel.appendChild(row);
+    addJSONField(panel, 'Props', obj, 'props');
+    make('Ceil. Height', 'ceilingHeight', 'number');
+    make('Environment', 'environment', 'select', ['interior','exterior']);
+  }
+  if (type === 'npc') {
+    make('ID', 'id', 'text');
+    make('Name', 'name', 'text');
+    make('NPC Type', 'type', 'select', NPC_TYPES);
+    make('Dialogue File', 'dialogueFile', 'text');
+    make('Faction', 'faction', 'select', ['neutral','friendly','hostile','merchant','quest']);
+    make('Hostile', 'hostile', 'checkbox');
+  }
+  if (type === 'tutorialhint') {
+    make('Message', 'message', 'text');
+    make('One-Time', 'oneTime', 'checkbox');
+  }
+}
+
+function addJSONField(panel, label, obj, key) {
+  const row = document.createElement('div');
+  row.className = 'prop-row';
+  row.style.flexDirection = 'column';
+  row.style.alignItems = 'flex-start';
+  const lbl = document.createElement('label');
+  lbl.textContent = label;
+  lbl.style.marginBottom = '3px';
+  const ta = document.createElement('textarea');
+  ta.style.flex = '1'; ta.style.width = '100%'; ta.style.minHeight = '60px';
+  ta.style.background = 'rgba(255,0,85,.06)'; ta.style.border = '1px solid var(--border-dim)';
+  ta.style.color = 'var(--text)'; ta.style.fontFamily = 'var(--font)'; ta.style.fontSize = '8px';
+  ta.style.padding = '4px'; ta.style.resize = 'vertical';
+  ta.value = JSON.stringify(obj[key], null, 2);
+  ta.addEventListener('change', () => {
+    try { obj[key] = JSON.parse(ta.value); ta.style.borderColor = ''; markDirty(); }
+    catch(e) { ta.style.borderColor = '#FF4444'; }
+  });
+  row.appendChild(lbl);
+  row.appendChild(ta);
+  panel.appendChild(row);
+}
+
+function getNestedVal(obj, key) {
+  return key.split('.').reduce((o,k) => o?.[k], obj);
+}
+function setNestedVal(obj, key, val) {
+  const parts = key.split('.');
+  const last = parts.pop();
+  const target = parts.reduce((o,k) => o?.[k] ?? (o[k]={}), obj);
+  target[last] = val;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Objects list (right panel)
+// ─────────────────────────────────────────────────────────────────────────────
+function rebuildObjectsList() {
+  const list = $('#objects-list');
+  list.innerHTML = '';
+  let total = 0;
+  const addGroup = (arr, type, labelFn) => {
+    if (!arr || arr.length === 0) return;
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:8px;color:var(--text-dim);letter-spacing:1px;padding:4px 0 2px;text-transform:uppercase';
+    hdr.textContent = type;
+    list.appendChild(hdr);
+    arr.forEach((obj, idx) => {
+      total++;
+      const item = document.createElement('div');
+      item.className = 'obj-list-item' + (state.selected?.type===type && state.selected?.idx===idx ? ' selected' : '');
+      const lbl = document.createElement('span');
+      lbl.textContent = labelFn(obj, idx);
+      const del = document.createElement('button');
+      del.className = 'del-btn';
+      del.textContent = '✕';
+      del.onclick = e => { e.stopPropagation(); pushHistory(); arr.splice(idx,1); setSelected(null,-1); rebuildObjectsList(); markDirty(); renderCanvas(); };
+      item.appendChild(lbl);
+      item.appendChild(del);
+      item.onclick = () => { setSelected(type, idx); };
+      list.appendChild(item);
+    });
+  };
+
+  addGroup(state.level.doors,              'door',       d => `Door (${d.x},${d.z}) ${d.locked?'🔒':''}`);
+  addGroup(state.level.transitions,        'transition', t => `→ ${t.target||'?'} (${t.x},${t.z})`);
+  addGroup(state.level.scriptedEncounters, 'encounter',  e => `⚔ ${e.id||'?'} (${e.x},${e.z})`);
+  addGroup(state.level.safeZones,          'safezone',   s => `★ ${s.name||'?'} (${s.x},${s.z})`);
+  addGroup(state.level.keyItems,           'keyitem',    k => `🔑 ${k.itemId||'?'} (${k.x},${k.z})`);
+  addGroup(state.level.lootChests,         'chest',      c => `📦 chest (${c.x},${c.z})`);
+  addGroup(state.level.npcs,              'npc',        n => `👤 ${n.name||n.type||'?'} (${n.x},${n.z})`);
+  addGroup(state.level.tutorialHints,     'tutorialhint', h => `? hint (${h.x},${h.z})`);
+  const propMetas = (state.level.tileMetadata??[]).filter(m=>m.props?.length);
+  addGroup(propMetas, 'prop', m => `⚓ prop (${m.x},${m.z})`);
+
+  $('#obj-count').textContent = `(${total})`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// History (Undo / Redo)
+// ─────────────────────────────────────────────────────────────────────────────
+function pushHistory() {
+  state.history.push(JSON.stringify(state.level));
+  if (state.history.length > 100) state.history.shift();
+  state.future = [];
+  updateUndoButtons();
+}
+
+function undo() {
+  if (!state.history.length) return;
+  state.future.push(JSON.stringify(state.level));
+  state.level = JSON.parse(state.history.pop());
+  syncUI(); markDirty(); renderCanvas(); updateUndoButtons();
+}
+
+function redo() {
+  if (!state.future.length) return;
+  state.history.push(JSON.stringify(state.level));
+  state.level = JSON.parse(state.future.pop());
+  syncUI(); markDirty(); renderCanvas(); updateUndoButtons();
+}
+
+function updateUndoButtons() {
+  $('#btn-undo').style.opacity = state.history.length ? '1' : '0.3';
+  $('#btn-redo').style.opacity = state.future.length  ? '1' : '0.3';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// File I/O
+// ─────────────────────────────────────────────────────────────────────────────
+function openFile() { $('#file-input').click(); }
+
+function loadFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      pushHistory();
+      state.level = normalizeLevel(data);
+      state.selected = null;
+      syncUI(); markDirty(false); renderCanvas();
+      input.value = '';
+    } catch(err) {
+      alert('Invalid JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function saveFile() {
+  const json = JSON.stringify(exportLevel(), null, 2);
+  const blob = new Blob([json], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (state.level.id || 'level') + '.json';
+  a.click();
+  markDirty(false);
+}
+
+function normalizeLevel(data) {
+  const lvl = Object.assign(EMPTY_LEVEL(), data);
+  lvl.doors               = lvl.doors ?? [];
+  lvl.tileMetadata        = lvl.tileMetadata ?? [];
+  lvl.transitions         = lvl.transitions ?? [];
+  lvl.safeZones           = lvl.safeZones ?? [];
+  lvl.scriptedEncounters  = lvl.scriptedEncounters ?? [];
+  lvl.keyItems            = lvl.keyItems ?? [];
+  lvl.lootChests          = lvl.lootChests ?? [];
+  lvl.npcs                = lvl.npcs ?? [];
+  lvl.tutorialHints       = lvl.tutorialHints ?? [];
+  return lvl;
+}
+
+function exportLevel() {
+  const lvl = JSON.parse(JSON.stringify(state.level));
+  // Strip empty arrays
+  ['tileMetadata','transitions','safeZones','scriptedEncounters','keyItems','lootChests','npcs','tutorialHints'].forEach(k => {
+    if (!lvl[k]?.length) delete lvl[k];
+  });
+  if (!lvl.questObjective) delete lvl.questObjective;
+  if (!lvl.quest) delete lvl.quest;
+  if (!lvl.campaign) delete lvl.campaign;
+  return lvl;
+}
+
+function testInGame() {
+  const lvl = exportLevel();
+  localStorage.setItem('darkbit_editor_preview', JSON.stringify(lvl));
+  localStorage.setItem('darkbit_editor_preview_active', '1');
+  if (lvl.campaign) localStorage.setItem('darkbit_editor_preview_campaign', lvl.campaign);
+  window.open('index.html', '_blank');
+}
+
+async function loadFromServer() {
+  try {
+    // Fetch all level files by checking known patterns
+    const campaigns = await fetch('campaigns/index.json').then(r=>r.ok?r.json():[]).catch(()=>[]);
+    const opts = [];
+    for (const c of campaigns) {
+      for (let f = 1; f <= (c.floors ?? 5); f++) {
+        opts.push(`levels/${c.startLevel?.replace(/-floor-\d+$/,'') ?? c.id}-floor-${f}.json`);
+      }
+    }
+    // Fallback list
+    ['test-room-10x10','test-collision','multi-room-20x20','next_level'].forEach(n=>opts.push(`levels/${n}.json`));
+
+    showModal('Load Level from Server', `
+      <div class="prop-row"><label>File</label>
+      <select id="srv-select" style="flex:1;background:rgba(255,0,85,.06);border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:9px;padding:3px">
+        ${opts.map(p=>`<option value="${p}">${p}</option>`).join('')}
+      </select></div>
+    `, [
+      { label:'LOAD', primary:true, cb: async () => {
+        const path = document.getElementById('srv-select').value;
+        try {
+          const res = await fetch(path);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          pushHistory();
+          state.level = normalizeLevel(data);
+          state.selected = null;
+          syncUI(); markDirty(false); renderCanvas(); centerMap();
+          closeModal();
+        } catch(e) { alert('Load failed: ' + e.message); }
+      }},
+      { label:'CANCEL', cb: closeModal }
+    ]);
+  } catch(e) { alert('Failed to list levels: ' + e.message); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Zoom / Pan
+// ─────────────────────────────────────────────────────────────────────────────
+function zoomIn()   { applyZoom(state.cam.zoom * 1.25); }
+function zoomOut()  { applyZoom(state.cam.zoom / 1.25); }
+function resetZoom(){ applyZoom(1); centerMap(); }
+
+function applyZoom(z, pivotX, pivotY) {
+  z = clamp(z, 0.2, 6);
+  if (pivotX !== undefined) {
+    const wx = (pivotX - state.cam.x) / (32 * state.cam.zoom);
+    const wz = (pivotY - state.cam.y) / (32 * state.cam.zoom);
+    state.cam.zoom = z;
+    state.cam.x = pivotX - wx * 32 * z;
+    state.cam.y = pivotY - wz * 32 * z;
+  } else {
+    state.cam.zoom = z;
+  }
+  $('#sb-zoom').textContent = Math.round(z*100) + '%';
+  renderCanvas();
+}
+
+function centerMap() {
+  const cs = 32 * state.cam.zoom;
+  state.cam.x = (canvas.width  - state.level.width  * cs) / 2;
+  state.cam.y = (canvas.height - state.level.height * cs) / 2;
+  renderCanvas();
+}
+
+function toggleGrid() {
+  const g = $('#layer-grid');
+  g.checked = !g.checked;
+  $('#btn-grid').textContent = g.checked ? 'GRID ON' : 'GRID OFF';
+  renderCanvas();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Level resize + new
+// ─────────────────────────────────────────────────────────────────────────────
+function resizeLevel() {
+  const nw = parseInt($('#w-input').value);
+  const nh = parseInt($('#h-input').value);
+  if (isNaN(nw)||isNaN(nh)||nw<5||nh<5||nw>40||nh>40) { alert('Size: 5–40'); return; }
+  pushHistory();
+  const { width, height, tiles } = state.level;
+  const newTiles = Array(nw * nh).fill(2);
+  for (let z = 0; z < Math.min(height, nh); z++) {
+    for (let x = 0; x < Math.min(width, nw); x++) {
+      newTiles[z * nw + x] = tiles[z * width + x];
+    }
+  }
+  state.level.width = nw;
+  state.level.height = nh;
+  state.level.tiles = newTiles;
+  markDirty(); centerMap(); rebuildObjectsList();
+}
+
+function newLevel() {
+  if (state.isDirty && !confirm('Unsaved changes. Continue?')) return;
+  pushHistory();
+  state.level = EMPTY_LEVEL();
+  state.selected = null;
+  syncUI(); markDirty(false); centerMap(); rebuildObjectsList();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dirty / status
+// ─────────────────────────────────────────────────────────────────────────────
+function markDirty(v = true) {
+  state.isDirty = v;
+  $('#dirty-indicator').textContent = v ? '● unsaved' : '✓ saved';
+  $('#dirty-indicator').style.color = v ? 'var(--pink)' : 'var(--text-dim)';
+}
+
+function updateStatusBar(x, z) {
+  if (x === undefined) { state.hoverCell = null; return; }
+  state.hoverCell = { x, z };
+  const idx = z * state.level.width + x;
+  const t = state.level.tiles[idx];
+  $('#sb-pos').textContent = `x:${x} z:${z}`;
+  $('#sb-tile').textContent = TILE_LABEL[t] ?? '?';
+  $('#sb-dims').textContent = `${state.level.width}×${state.level.height}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UI sync
+// ─────────────────────────────────────────────────────────────────────────────
+function syncUI() {
+  const l = state.level;
+  $('#level-id-input').value = l.id ?? '';
+  $('#prop-name').value = l.name ?? '';
+  $('#prop-campaign').value = l.campaign ?? '';
+  $('#prop-floor').value = l.floor ?? 1;
+  $('#prop-theme').value = l.theme ?? 'ruin';
+  $('#prop-music').value = l.musicTheme ?? 'dungeon_ambient';
+  $('#prop-quest').value = l.questObjective ?? '';
+  $('#w-input').value = l.width;
+  $('#h-input').value = l.height;
+  syncSpawnUI();
+  rebuildObjectsList();
+  setSelected(null, -1);
+}
+
+// ── Modal helpers ─────────────────────────────────────────────────────────────
+function showModal(title, contentHtml, buttons) {
+  $('#modal-title').textContent = title;
+  $('#modal-content').innerHTML = contentHtml;
+  const btnsEl = $('#modal-btns');
+  btnsEl.innerHTML = '';
+  (buttons||[]).forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = 'tb-btn';
+    if (b.primary) btn.style.borderColor = 'var(--pink)';
+    btn.textContent = b.label;
+    btn.onclick = b.cb;
+    btnsEl.appendChild(btn);
+  });
+  $('#modal-overlay').classList.add('open');
+}
+function closeModal() { $('#modal-overlay').classList.remove('open'); }
+$('#modal-overlay').addEventListener('click', e => { if (e.target === $('#modal-overlay')) closeModal(); });
+
+function syncSpawnUI() {
+  const s = state.level.spawn;
+  $('#spawn-x').value = s.x;
+  $('#spawn-z').value = s.z;
+  $('#spawn-dir').value = s.direction ?? 0;
+}
+
+function updateSpawn() {
+  state.level.spawn = {
+    x: parseInt($('#spawn-x').value) || 1,
+    z: parseInt($('#spawn-z').value) || 1,
+    direction: parseInt($('#spawn-dir').value) || 0,
+  };
+  markDirty(); renderCanvas();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mouse events
+// ─────────────────────────────────────────────────────────────────────────────
+canvas.addEventListener('mousedown', e => {
+  const { x, z } = screenToCell(e.offsetX, e.offsetY);
+  if (e.button === 1 || state.tool === 'pan') {
+    state.isPanning = true;
+    state.panStart = { mx: e.clientX, my: e.clientY, cx: state.cam.x, cy: state.cam.y };
+    canvas.style.cursor = 'grabbing';
+    return;
+  }
+  if (e.button === 2) {
+    if (state.tool === 'select') { selectAt(x, z); return; }
+    pushHistory(); paintCellWithVal(x, z, 2); state.isPainting = true; return;
+  }
+  if (state.tool === 'fill') { fillCell(x, z); return; }
+  if (state.tool === 'select') { selectAt(x, z); return; }
+  state.isPainting = true;
+  paintCell(x, z);
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (state.isPanning) {
+    state.cam.x = state.panStart.cx + (e.clientX - state.panStart.mx);
+    state.cam.y = state.panStart.cy + (e.clientY - state.panStart.my);
+    renderCanvas(); return;
+  }
+  const { x, z } = screenToCell(e.offsetX, e.offsetY);
+  updateStatusBar(x, z);
+  renderCanvas();
+  if (state.isPainting) paintCell(x, z);
+});
+
+canvas.addEventListener('mouseup', e => {
+  state.isPainting = false;
+  if (state.isPanning) {
+    state.isPanning = false;
+    canvas.style.cursor = state.tool === 'pan' ? 'grab' : 'crosshair';
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  state.isPainting = false; state.isPanning = false;
+  state.hoverCell = null; renderCanvas();
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  applyZoom(state.cam.zoom * factor, e.offsetX, e.offsetY);
+}, { passive: false });
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+function paintCellWithVal(x, z, val) {
+  const { width, height } = state.level;
+  if (x < 0 || x >= width || z < 0 || z >= height) return;
+  state.level.tiles[z * width + x] = val;
+  markDirty(); renderCanvas();
+}
+
+// Minimap click → pan to area
+miniCanvas.addEventListener('click', e => {
+  const { width, height } = state.level;
+  const csx = miniCanvas.width / width, csz = miniCanvas.height / height;
+  const mx = e.offsetX / csx, mz = e.offsetY / csz;
+  const cs = 32 * state.cam.zoom;
+  state.cam.x = canvas.width/2  - mx * cs;
+  state.cam.y = canvas.height/2 - mz * cs;
+  renderCanvas();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Keyboard shortcuts
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'z') { e.preventDefault(); undo(); return; }
+    if (e.key === 'y' || (e.shiftKey && e.key === 'z')) { e.preventDefault(); redo(); return; }
+    if (e.key === 's') { e.preventDefault(); saveFile(); return; }
+    if (e.key === 'o') { e.preventDefault(); openFile(); return; }
+    return;
+  }
+
+  switch(e.key) {
+    case 'p': case 'P': setTool('paint'); break;
+    case 'e': case 'E': setTool('erase'); break;
+    case 'f': case 'F': setTool('fill'); break;
+    case 's': case 'S': setTool('select'); break;
+    case ' ':  e.preventDefault(); setTool(state.tool === 'pan' ? 'paint' : 'pan'); break;
+    case '1':  setPaintTile(1); break;
+    case '2':  setPaintTile(2); break;
+    case '0':  setPaintTile(0); break;
+    case '3':  setPaintTile(3); break;
+    case 'g': case 'G': toggleGrid(); break;
+    case '+': case '=': zoomIn(); break;
+    case '-': case '_': zoomOut(); break;
+    case 'Delete': if (state.selected) deleteSelected(); break;
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Resize observer
+// ─────────────────────────────────────────────────────────────────────────────
+new ResizeObserver(resizeCanvas).observe(wrap);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────────────────
+function init() {
+  // Check if opened from scenario-creator with floor context
+  const floorCtxRaw = localStorage.getItem('darkbit_editor_new_floor');
+  if (floorCtxRaw) {
+    try {
+      const ctx = JSON.parse(floorCtxRaw);
+      state.level.id        = ctx.levelId ?? state.level.id;
+      state.level.campaign  = ctx.campaignId ?? '';
+      state.level.floor     = ctx.floor ?? 1;
+      state.level.name      = `Floor ${ctx.floor}`;
+      $('#level-id-input').value = state.level.id;
+    } catch {}
+    // Leave it — scenario creator cleans up after reading return
+  }
+
+  // Build default 10×10 level: outer walls, inner floor
+  const lvl = state.level;
+  for (let z = 0; z < lvl.height; z++)
+    for (let x = 0; x < lvl.width; x++)
+      lvl.tiles[z * lvl.width + x] = (x===0||x===lvl.width-1||z===0||z===lvl.height-1) ? 2 : 1;
+
+  resizeCanvas();
+  centerMap();
+  syncUI();
+  markDirty(false);
+  updateUndoButtons();
+  setTool('paint');
+  setPaintTile(1);
+}
+
+init();
+</script>
+</body>
+</html>

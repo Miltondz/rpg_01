@@ -1,6 +1,7 @@
 {
   "id": "crypt-of-shadows-floor-1",
   "name": "Crypt of Shadows - Floor 1",
+  "theme": "ruin",
   "width": 10,
   "height": 10,
   "spawn": {
@@ -45,6 +46,14 @@
       "keyType": "bronze",
       "description": "Another bronze door guarding the eastern passage"
     }
+  ],
+  "tileMetadata": [
+    { "x": 4, "z": 4, "ceilingHeight": 5.5, "note": "crypt nave — vaulted ceiling" },
+    { "x": 5, "z": 4, "ceilingHeight": 5.5 },
+    { "x": 4, "z": 5, "ceilingHeight": 5.5 },
+    { "x": 5, "z": 5, "ceilingHeight": 5.5 },
+    { "x": 7, "z": 7, "environment": "exterior", "ceilingHeight": 0, "note": "collapsed roof section" },
+    { "x": 8, "z": 7, "environment": "exterior", "ceilingHeight": 0 }
   ],
   "transitions": [
     {

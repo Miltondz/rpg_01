@@ -79,6 +79,9 @@ import { ExplorationHUD } from './engine/ui/ExplorationHUD.js';
 import { HUDPanels }      from './engine/ui/HUDPanels.js';
 import { ThemeManager }   from './engine/themes/ThemeManager.js';
 import { CryptTheme }     from './engine/themes/CryptTheme.js';
+import { EndingScreen }       from './engine/ui/EndingScreen.js';
+import { CampaignSelectUI }   from './engine/ui/CampaignSelectUI.js';
+import { GameOverScreen }     from './engine/ui/GameOverScreen.js';
 
 /**
  * Main Game Engine Class
@@ -136,6 +139,7 @@ class DungeonCrawlerEngine {
     this.narrativeManager = null;
     this.narrativeUI = null;
     this.npcEngine = null;
+    this._pendingCampaignId = null;
 
     // UI systems
     this.uiRouter = null;
@@ -377,8 +381,6 @@ class DungeonCrawlerEngine {
       this.partyManager,
       this.inventorySystem
     );
-    this.narrativeManager.setTheme('crypt-of-shadows');
-
     // NPC system
     this.npcEngine = new NPCEngine(this.campaignManager, this.narrativeManager);
 
@@ -436,6 +438,9 @@ class DungeonCrawlerEngine {
     this.mainMenuScreen  = new MainMenuScreen(this.saveSystem);
     this.pauseMenuScreen = new PauseMenuScreen();
     this.optionsScreen   = new OptionsScreen(this.resolutionManager);
+    this.endingScreen       = new EndingScreen();
+    this.campaignSelectUI   = new CampaignSelectUI();
+    this.gameOverScreen     = new GameOverScreen();
 
     const blockMove   = () => this.inputManager.blockInput();
     const unblockMove = () => this.inputManager.unblockInput();
@@ -501,10 +506,31 @@ class DungeonCrawlerEngine {
       show: () => { this.optionsScreen.show();   blockMove(); },
       hide: () => { this.optionsScreen.hide();   unblockMove(); },
     });
+    this.uiRouter.register('game-over', {
+      show: (detail) => { this.gameOverScreen.show(detail ?? {}); blockMove(); },
+      hide: () => { this.gameOverScreen.hide(); unblockMove(); },
+    });
+    this.uiRouter.register('ending', {
+      show: (detail) => { this.endingScreen.show(detail ?? {}); blockMove(); },
+      hide: () => { this.endingScreen.hide(); unblockMove(); },
+    });
+    this.uiRouter.register('campaign-select', {
+      show: () => {
+        blockMove();
+        this.campaignSelectUI.show({
+          onSelect: (campaignId) => {
+            this._pendingCampaignId = campaignId;
+            this.uiRouter.replace('party-creation');
+          },
+          onBack: () => this.uiRouter.pop(),
+        });
+      },
+      hide: () => { this.campaignSelectUI.hide(); unblockMove(); },
+    });
 
     // Menu screen event routing
     window.addEventListener('splashComplete',    () => this.uiRouter.replace('main-menu'));
-    window.addEventListener('mainMenuNewGame',   () => this.uiRouter.push('party-creation'));
+    window.addEventListener('mainMenuNewGame',   () => this.uiRouter.push('campaign-select'));
     window.addEventListener('mainMenuContinue',  () => this.uiRouter.push('load'));
     window.addEventListener('mainMenuOptions',   () => this.uiRouter.push('options'));
     window.addEventListener('optionsBack',       () => this.uiRouter.pop());
@@ -570,6 +596,9 @@ class DungeonCrawlerEngine {
       dungeonLoader:      this.dungeonLoader,
       renderer:           this.renderer,
       inventorySystem:    this.inventorySystem,
+      campaignManager:    this.campaignManager,
+      narrativeManager:   this.narrativeManager,
+      npcEngine:          this.npcEngine,
     });
 
     // AutoSaveManager
@@ -588,6 +617,8 @@ class DungeonCrawlerEngine {
       this.navigationLight?.step();
       // Phase 15: zone trigger check
       if (pos) this.zoneTriggerSystem?.checkTriggers(pos.x, pos.z);
+      // Pickup check (lootChests / keyItems registered by DungeonLoader)
+      if (pos && this.gridSystem) this._checkPickup(pos.x, pos.z);
 
       if (!this.encounterSystem || !this.currentLevelId) return;
       // EncounterSystem expects an object with .id, not a bare string
@@ -627,6 +658,12 @@ class DungeonCrawlerEngine {
     window.addEventListener('battleInputBlock',   () => this.inputManager.blockInput());
     window.addEventListener('battleInputUnblock', () => this.inputManager.unblockInput());
 
+    // Zone trigger — hud_message type routes here
+    window.addEventListener('zoneTriggerHudMessage', (e) => {
+      const { text, msgType } = e.detail ?? {};
+      if (text) this.explorationHUD?.addMessage(text, msgType ?? 'system');
+    });
+
     // Navigation light events
     window.addEventListener('navLightWarning',  () => {
       this.debugUI?.showWarning('Your light is fading...');
@@ -651,6 +688,19 @@ class DungeonCrawlerEngine {
         this.explorationHUD?.addMessage(`Interactuaste con ${propType}.`, 'system');
       }
       this.debugUI?.showSuccess(`Interacted with ${propType ?? 'object'}`);
+    });
+
+    // partyDefeated → game over screen
+    window.addEventListener('partyDefeated', (e) => {
+      const party = e.detail?.party ?? [];
+      const canRetry = !!this.encounterSystem?.lastEncounterData;
+      this.uiRouter.closeAll();
+      this.uiRouter.push('game-over', { party, canRetry });
+    });
+
+    // partyDataChanged → sync key items after combat rewards
+    window.addEventListener('partyDataChanged', () => {
+      this._syncInventoryKeys();
     });
 
     // combatEvent → clear billboards on start; unblock movement + notify encounter system on end
@@ -679,7 +729,6 @@ class DungeonCrawlerEngine {
         this.uiRouter.closeAll();
         const party = this.partyManager?.party?.filter(Boolean) ?? [];
         party.forEach(c => {
-          c.isDead = false;
           c.currentHP = Math.max(1, Math.floor(c.maxHP * 0.5));
           if (c.currentAP !== undefined) c.currentAP = c.maxAP ?? 3;
         });
@@ -691,16 +740,30 @@ class DungeonCrawlerEngine {
       // input is already unblocked via encounterEnded → unblockInput() chain
     });
 
-    // gameStart (emitted by PartyCreationUI) → close all UI, load campaign floor 1
+    // gameStart (emitted by PartyCreationUI) → close all UI, load selected campaign floor 1
     window.addEventListener('gameStart', async (e) => {
-      log.info('gameStart received — loading campaign');
+      const campaignId = this._pendingCampaignId ?? 'crypt-of-shadows';
+      this._pendingCampaignId = null;
+      log.info('gameStart received — loading campaign', { campaignId });
       this.uiRouter.closeAll(); // hides party-creation and anything below it; unblocks input via hide callbacks
+      this.narrativeManager?.setTheme(campaignId);
 
       try {
-        const response = await fetch('levels/crypt-of-shadows-floor-1.json');
+        // Resolve start level from campaign index
+        let startLevel = `${campaignId}-floor-1`;
+        try {
+          const idxRes = await fetch('campaigns/index.json');
+          if (idxRes.ok) {
+            const idx = await idxRes.json();
+            const entry = idx.find(c => c.id === campaignId);
+            if (entry?.startLevel) startLevel = entry.startLevel;
+          }
+        } catch (_) { /* fallback to default */ }
+
+        const response = await fetch(`levels/${startLevel}.json`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const levelData = await response.json();
-        this.currentLevelId = levelData.id ?? 'crypt-of-shadows-floor-1';
+        this.currentLevelId = levelData.id ?? startLevel;
         await this.dungeonLoader.loadLevel(levelData);
         this._onLevelLoaded(levelData);
 
@@ -715,16 +778,25 @@ class DungeonCrawlerEngine {
         this.renderer.updateCameraPosition(worldPos);
         this.renderer.updateCameraRotation(rotation);
 
-        this.autoSaveManager.initialize({ party: this.partyManager });
+        this.autoSaveManager.initialize({
+          partyManager:       this.partyManager,
+          movementController: this.movementController,
+          dungeonLoader:      this.dungeonLoader,
+          renderer:           this.renderer,
+          inventorySystem:    this.inventorySystem,
+          campaignManager:    this.campaignManager,
+          narrativeManager:   this.narrativeManager,
+          npcEngine:          this.npcEngine,
+        });
 
         // Load campaign state machine for new game
         if (this.campaignManager) {
-          await this.campaignManager.loadCampaign('crypt-of-shadows');
+          await this.campaignManager.loadCampaign(campaignId);
         }
 
         // Spawn NPCs for floor 1
         if (this.npcEngine) {
-          await this.npcEngine.loadForDungeon('crypt-of-shadows');
+          await this.npcEngine.loadForDungeon(campaignId);
         }
 
         setTimeout(() => this.initializeMinimap(), 500);
@@ -732,7 +804,7 @@ class DungeonCrawlerEngine {
           this.movementController.getPosition().x,
           this.movementController.getPosition().z
         );
-        this.debugUI.showSuccess('Crypt of Shadows — Floor 1. WASD to move, Space to interact.');
+        this.debugUI.showSuccess(`${campaignId} — Floor 1. WASD to move, Space to interact.`);
         log.info(`Campaign loaded: ${this.currentLevelId}`);
       } catch (err) {
         log.warn(`Campaign load failed (${err.message}), falling back to test level`);
@@ -740,6 +812,16 @@ class DungeonCrawlerEngine {
         setTimeout(() => this.initializeMinimap(), 500);
       }
     });
+
+    // CAMPAIGN_COMPLETE → show ending screen (fired by CampaignManager via EventBus OR by victory intercept)
+    const _onCampaignComplete = () => {
+      log.info('Campaign complete — showing ending screen');
+      this.uiRouter.closeAll();
+      const party = this.partyManager?.party?.filter(Boolean) ?? [];
+      this.uiRouter.push('ending', { party });
+    };
+    window.addEventListener('campaign:complete', _onCampaignComplete);
+    window.addEventListener('CAMPAIGN_COMPLETE', _onCampaignComplete);
 
     // gameLoadRequested (emitted by SaveLoadUI) → restore full game state
     window.addEventListener('gameLoadRequested', async (e) => {
@@ -803,6 +885,11 @@ class DungeonCrawlerEngine {
           }
         }
 
+        // 8. Restore narrative state
+        if (saveData.narrative && this.narrativeManager) {
+          await this.narrativeManager.loadSaveData(saveData.narrative);
+        }
+
         this.debugUI.showSuccess(`Loaded — ${dungeon} Floor ${floor}`);
         loadLog.info(`Save restored: ${dungeon} floor ${floor}`);
       } catch (err) {
@@ -851,9 +938,51 @@ class DungeonCrawlerEngine {
       this.uiRouter.popNamed('narrative');
     });
 
-    // Boot into splash screen — blocks input until game starts
-    this.uiRouter.push('splash');
+    // Editor preview mode: map-editor sets this flag to skip menus and load directly
+    if (localStorage.getItem('darkbit_editor_preview_active') === '1') {
+      localStorage.removeItem('darkbit_editor_preview_active');
+      this._startEditorPreview().catch(err => {
+        log.error('Editor preview failed', err);
+        this.uiRouter.push('splash');
+      });
+    } else {
+      // Boot into splash screen — blocks input until game starts
+      this.uiRouter.push('splash');
+    }
     log.info('Game flow wired — splash screen shown');
+  }
+
+  async _startEditorPreview() {
+    const log = Logger.tag('Boot');
+    const raw = localStorage.getItem('darkbit_editor_preview');
+    if (!raw) { this.uiRouter.push('splash'); return; }
+    const levelData = JSON.parse(raw);
+
+    // Auto-create a minimal party for preview
+    const classes = ['warrior', 'rogue', 'mage', 'cleric'];
+    for (const cls of classes) {
+      try {
+        const c = this.characterSystem.createCharacter(cls, cls.charAt(0).toUpperCase() + cls.slice(1));
+        this.partyManager.addCharacter(c);
+      } catch (_) { /* skip unsupported class */ }
+    }
+
+    this.uiRouter.closeAll();
+    this.inputManager.unblockInput();
+    this.debugUI?.showToast('EDITOR PREVIEW — press R to return');
+
+    this.currentLevelId = levelData.id ?? 'editor-preview';
+    await this.dungeonLoader.loadLevel(levelData);
+    this._onLevelLoaded(levelData);
+
+    if (levelData.spawn) {
+      this.movementController.setPosition(levelData.spawn.x, levelData.spawn.z, levelData.spawn.direction ?? 0);
+    }
+    const worldPos = this.movementController.getCurrentWorldPosition();
+    const rotation  = this.movementController.getCurrentRotation();
+    this.renderer.updateCameraPosition(worldPos);
+    this.renderer.updateCameraRotation(rotation);
+    log.info('Editor preview loaded', { id: this.currentLevelId });
   }
 
   /**
@@ -918,6 +1047,49 @@ class DungeonCrawlerEngine {
         spawn.x, spawn.z
       );
       this._spawnPlacedEnemyMarkers();
+    }
+
+    // Sync inventory key items to collision system
+    this._syncInventoryKeys();
+  }
+
+  _syncInventoryKeys() {
+    if (!this.collisionSystem || !this.inventorySystem) return;
+    const keyItems = this.inventorySystem.getItemsByType('key_item');
+    for (const item of keyItems) {
+      if (item.keyType) this.collisionSystem.addPlayerKey(item.keyType);
+    }
+  }
+
+  _checkPickup(x, z) {
+    const tile = this.gridSystem.getTile(x, z);
+    if (!tile?.pickup || tile.pickup.taken) return;
+    const p = tile.pickup;
+
+    if (p.type === 'chest') {
+      tile.pickup.taken = true;
+      if (this.inventorySystem && Array.isArray(p.loot)) {
+        for (const item of p.loot) {
+          const dbItem = this.itemDatabase?.getItem(item.id ?? item.itemId);
+          if (dbItem) this.inventorySystem.addItem(dbItem, item.quantity ?? 1);
+          else if (item.id || item.name) this.inventorySystem.addItem({ id: item.id ?? 'unknown', name: item.name ?? item.id ?? 'Item', type: item.type ?? 'misc', ...item }, item.quantity ?? 1);
+        }
+      }
+      const goldAmt = p.loot?.find(l => l.id === 'gold')?.quantity ?? 0;
+      const itemCount = (p.loot?.length ?? 0) - (goldAmt ? 1 : 0);
+      this.explorationHUD?.addMessage(`Cofre: ${itemCount > 0 ? itemCount + ' objetos' : ''}${goldAmt ? ' + ' + goldAmt + 'g' : ''}`, 'loot');
+      this.debugUI?.showSuccess(`Chest opened: ${p.loot?.length ?? 0} items`);
+    }
+
+    if (p.type === 'keyItem') {
+      tile.pickup.taken = !p.respawn;
+      const item = this.itemDatabase?.getItem(p.itemId);
+      if (item && this.inventorySystem) {
+        this.inventorySystem.addItem(item, 1);
+        this._syncInventoryKeys();
+        this.explorationHUD?.addMessage(`Encontraste: ${item.name}`, 'loot');
+        this.debugUI?.showSuccess(`Key item picked up: ${item.name}`);
+      }
     }
   }
 
@@ -1653,16 +1825,20 @@ class DungeonCrawlerEngine {
 
   _useConsumableFromHotbar() {
     const party = this.partyManager?.party?.filter(Boolean) ?? [];
-    const target = party.find(m => m.isAlive?.() !== false);
+    const target = party.find(m => typeof m.isDead === 'function' ? !m.isDead() : m.currentHP > 0);
     if (!target) return;
-    const inv = this.inventorySystem?.getInventory?.() ?? [];
-    const potion = inv.find(item => item?.type === 'consumable' || item?.category === 'consumable');
-    if (potion) {
-      this.inventorySystem?.useItem?.(potion.id, target);
-      this.explorationHUD?.addMessage(`Used ${potion.name}.`, 'loot');
-    } else {
+    const slots = this.inventorySystem?.getAllItems?.() ?? [];
+    const slot = slots.find(s => s.item?.type === 'consumable' || s.item?.category === 'consumable');
+    if (!slot) {
       this.explorationHUD?.addMessage('No consumables available.', 'system');
+      return;
     }
+    const item = slot.item;
+    // Apply HP restore if item has effects, otherwise default +30 HP
+    const healAmt = item.effects?.find(e => e.type === 'heal_hp')?.value ?? 30;
+    target.currentHP = Math.min(target.maxHP, (target.currentHP ?? 0) + healAmt);
+    this.inventorySystem.removeItemById(item.id, 1);
+    this.explorationHUD?.addMessage(`Used ${item.name} (+${healAmt} HP).`, 'loot');
   }
 
   /**
@@ -1945,7 +2121,13 @@ class DungeonCrawlerEngine {
       this.debugUI.showWarning('Invalid transition data');
       return;
     }
-    
+
+    // Campaign victory — intercept before trying to fetch 'victory.json'
+    if (transitionData.targetLevel === 'victory') {
+      window.dispatchEvent(new CustomEvent('campaign:complete', { detail: { dungeonId: this.dungeonLoader?.currentDungeon } }));
+      return;
+    }
+
     if (!this.transitionSystem) {
       this.debugUI.showError('Transition system not available');
       return;

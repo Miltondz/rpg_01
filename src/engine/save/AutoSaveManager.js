@@ -390,7 +390,7 @@ export class AutoSaveManager {
     if (this.enabled && this.gameState) {
       try {
         // Use synchronous localStorage operation for immediate save
-        const saveData = this.saveSystem.saveGame('auto', { includeScreenshot: false });
+        this.saveSystem.saveGame('auto', { includeScreenshot: false });
         console.log('Emergency auto-save on page unload');
       } catch (error) {
         console.error('Emergency auto-save failed:', error);

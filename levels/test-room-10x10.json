@@ -1,5 +1,6 @@
 {
   "id": "test-room-10x10",
+  "theme": "ruin",
   "width": 10,
   "height": 10,
   "spawn": {
@@ -48,6 +49,22 @@
       "locked": true,
       "keyType": "gold"
     }
+  ],
+  "tileMetadata": [
+    { "x": 1, "z": 1, "environment": "exterior", "ceilingHeight": 0 },
+    { "x": 2, "z": 1, "environment": "exterior", "ceilingHeight": 0 },
+    { "x": 1, "z": 2, "environment": "exterior", "ceilingHeight": 0 },
+    { "x": 2, "z": 2, "environment": "exterior", "ceilingHeight": 0 },
+    { "x": 5, "z": 5, "ceilingHeight": 5.0 },
+    { "x": 4, "z": 5, "ceilingHeight": 4.5 },
+    { "x": 6, "z": 5, "ceilingHeight": 4.5 },
+    { "x": 3, "z": 1, "props": [{"type": "torch_wall", "side": "south", "interactive": true}] },
+    { "x": 7, "z": 1, "props": [{"type": "torch_wall", "side": "south", "interactive": true}] },
+    { "x": 3, "z": 8, "props": [{"type": "torch_wall", "side": "north", "interactive": true}] },
+    { "x": 5, "z": 3, "props": [{"type": "debris"}] },
+    { "x": 6, "z": 7, "props": [{"type": "barrel"}] },
+    { "x": 5, "z": 1, "triggers": [{"type": "flavor_text", "title": "Ancient Hall", "text": "The air smells of damp stone and old fire. Something watches from the shadows.", "once": true}] },
+    { "x": 5, "z": 8, "triggers": [{"type": "flavor_text", "title": "Stairwell", "text": "A cold draft rises from below. The descent awaits.", "once": false}] }
   ],
   "transitions": [
     {

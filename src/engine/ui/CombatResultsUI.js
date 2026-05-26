@@ -165,17 +165,23 @@ export class CombatResultsUI {
     if (result === 'victory') {
       titleText.textContent = 'VICTORY!';
       titleText.style.color = '#00ff00';
+    } else if (result === 'fled') {
+      titleText.textContent = 'ESCAPED!';
+      titleText.style.color = '#ffcc00';
     } else {
       titleText.textContent = 'DEFEAT';
       titleText.style.color = '#ff0000';
     }
-    
+
     const subtitle = document.createElement('div');
     subtitle.className = 'title-subtitle';
-    
+
     if (result === 'victory') {
       subtitle.textContent = 'The enemies have been vanquished!';
       subtitle.style.color = '#00aa00';
+    } else if (result === 'fled') {
+      subtitle.textContent = 'Your party escaped from combat!';
+      subtitle.style.color = '#cc9900';
     } else {
       subtitle.textContent = 'Your party has fallen...';
       subtitle.style.color = '#aa0000';
@@ -481,6 +487,8 @@ export class CombatResultsUI {
     
     if (result === 'victory') {
       this.createVictoryActions();
+    } else if (result === 'fled') {
+      this.createFleeActions();
     } else {
       this.createDefeatActions();
     }
@@ -506,6 +514,28 @@ export class CombatResultsUI {
     menuBtn.setAttribute('data-ui-name', 'return-to-menu');
     menuBtn.textContent = 'Return to Menu';
     
+    this.elements.actionsSection.appendChild(continueBtn);
+    this.elements.actionsSection.appendChild(menuBtn);
+  }
+
+  /**
+   * Create flee action buttons
+   */
+  createFleeActions() {
+    const continueBtn = document.createElement('button');
+    continueBtn.className = 'results-action-btn primary';
+    continueBtn.setAttribute('data-action', 'continue');
+    continueBtn.setAttribute('data-ui-component', 'continue-button');
+    continueBtn.setAttribute('data-ui-name', 'continue-exploration');
+    continueBtn.textContent = 'Continue Exploring';
+
+    const menuBtn = document.createElement('button');
+    menuBtn.className = 'results-action-btn secondary';
+    menuBtn.setAttribute('data-action', 'menu');
+    menuBtn.setAttribute('data-ui-component', 'menu-button');
+    menuBtn.setAttribute('data-ui-name', 'return-to-menu');
+    menuBtn.textContent = 'Return to Menu';
+
     this.elements.actionsSection.appendChild(continueBtn);
     this.elements.actionsSection.appendChild(menuBtn);
   }

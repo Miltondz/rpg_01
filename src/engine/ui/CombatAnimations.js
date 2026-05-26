@@ -503,14 +503,17 @@ export class CombatAnimations {
    * @param {HTMLElement} numberElement - Number element to animate
    */
   animateDamageNumber(numberElement) {
-    // Reset animation state
-    numberElement.style.transform = 'translateY(0) scale(1)';
+    // Reset animation state — keep translateX(-50%) from CSS to center the number
+    numberElement.style.transition = 'none';
+    numberElement.style.transform = 'translateX(-50%) translateY(0) scale(1)';
     numberElement.style.opacity = '1';
-    
-    // Animate upward with fade
-    numberElement.style.transition = 'all 1.2s ease-out';
-    numberElement.style.transform = 'translateY(-60px) scale(1.2)';
-    numberElement.style.opacity = '0';
+
+    // Animate upward with fade on next frame
+    requestAnimationFrame(() => {
+      numberElement.style.transition = 'transform 1.2s ease-out, opacity 1.2s ease-out';
+      numberElement.style.transform = 'translateX(-50%) translateY(-70px) scale(1.25)';
+      numberElement.style.opacity = '0';
+    });
     
     // Return to pool after animation
     setTimeout(() => {
@@ -646,8 +649,9 @@ export class CombatAnimations {
 
     await this.delay(400);
 
+    // Only remove effect classes — leave opacity:0 in place so hideCombat can detect it
+    // and skip its own fade-out. showCombat() resets cssText on the next combat start.
     combatContainer.classList.remove('victory-glow', 'defeat-fade');
-    combatContainer.style.cssText = '';
   }
 
   /**

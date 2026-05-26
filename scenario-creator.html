@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DarkBit — Scenario Creator</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#050005;--panel:#0a000a;--border:#FF0055;--border-dim:#330011;
+  --pink:#FF0055;--pink-lt:#FF3377;--green:#00FF44;--dim:#550022;
+  --text:#FF3377;--text-dim:#880033;--gold:#FFD700;
+  --font:'Courier New',monospace;
+}
+html,body{width:100%;min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:11px}
+#app{display:grid;grid-template-rows:40px 1fr;grid-template-columns:220px 1fr;min-height:100vh}
+#toolbar{grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px}
+#sidebar{background:var(--panel);border-right:1px solid var(--border-dim);overflow-y:auto;padding:8px}
+#main{overflow-y:auto;padding:16px}
+
+/* Toolbar */
+.tb-btn{background:none;border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:10px;padding:4px 10px;cursor:pointer}
+.tb-btn:hover{border-color:var(--pink);color:#fff}
+.tb-btn.primary{border-color:var(--pink);color:var(--pink)}
+.tb-sep{width:1px;height:20px;background:var(--border-dim);margin:0 2px}
+#title-label{color:var(--pink);font-size:12px;letter-spacing:1px;font-weight:bold}
+
+/* Sidebar nav */
+.nav-item{padding:8px 10px;border:1px solid transparent;cursor:pointer;font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.nav-item:hover{border-color:var(--border-dim);color:var(--text)}
+.nav-item.active{border-color:var(--pink);color:var(--pink);background:rgba(255,0,85,.08)}
+.nav-item .badge{margin-left:auto;background:var(--dim);color:#fff;font-size:8px;padding:1px 5px;border-radius:0}
+
+/* Sections */
+.section{display:none}
+.section.active{display:block}
+.section-title{font-size:11px;color:var(--pink);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px;padding-bottom:6px;border-bottom:1px solid var(--border-dim)}
+
+/* Cards */
+.card{background:var(--panel);border:1px solid var(--border-dim);padding:12px 14px;margin-bottom:10px}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.card-title{font-size:10px;color:var(--pink-lt);letter-spacing:1px}
+.card-actions{display:flex;gap:6px}
+
+/* Form */
+.form-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.form-row label{width:110px;font-size:9px;color:var(--text-dim);flex-shrink:0}
+.form-row input,.form-row select,.form-row textarea{
+  flex:1;background:rgba(255,0,85,.06);border:1px solid var(--border-dim);
+  color:var(--text);font-family:var(--font);font-size:9px;padding:4px 6px
+}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--pink)}
+.form-row textarea{resize:vertical;min-height:50px}
+.form-row input[type=number]{width:70px;flex:none}
+.form-row input[type=checkbox]{flex:none;width:14px;height:14px;accent-color:var(--pink)}
+.form-row select option{background:#0a000a}
+
+/* Phase/Act trees */
+.act-block{border:1px solid #330011;margin-bottom:12px;overflow:hidden}
+.act-header{background:#110005;padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:10px;color:var(--text)}
+.act-header:hover{background:#1a0008}
+.act-body{padding:10px 12px;border-top:1px solid #220008}
+.phase-row{border:1px solid #220008;padding:8px 10px;margin-bottom:6px;font-size:9px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:8px}
+.phase-row:hover{border-color:var(--pink-lt);color:var(--text)}
+.phase-row.selected{border-color:var(--pink);color:var(--pink);background:rgba(255,0,85,.06)}
+
+/* Quest list */
+.quest-row{border:1px solid #220008;padding:8px 10px;margin-bottom:5px;cursor:pointer;font-size:9px;color:var(--text-dim);display:flex;align-items:center;gap:8px}
+.quest-row:hover{border-color:var(--pink-lt);color:var(--text)}
+.quest-row.selected{border-color:var(--green);color:var(--green);background:rgba(0,255,68,.04)}
+
+/* Stage list */
+.stage-row{background:#07000a;border:1px solid #1a0010;padding:5px 8px;margin-bottom:3px;font-size:8px;color:var(--text-dim);display:flex;align-items:center;gap:6px}
+
+/* Trigger editor */
+.trigger-block{background:#07000a;border:1px solid #1a0010;padding:8px;margin-bottom:6px}
+
+/* Diff badges */
+.badge-normal{color:var(--green)}.badge-hard{color:var(--gold)}.badge-brutal{color:var(--pink)}
+
+/* Buttons */
+.btn-add{background:none;border:1px solid var(--border-dim);color:var(--text-dim);font-family:var(--font);font-size:9px;padding:3px 8px;cursor:pointer;margin-top:4px}
+.btn-add:hover{border-color:var(--green);color:var(--green)}
+.btn-del{background:none;border:none;color:var(--dim);cursor:pointer;font-size:11px;padding:0 4px;font-family:var(--font);margin-left:auto}
+.btn-del:hover{color:#FF4444}
+
+/* Preview JSON */
+#json-preview{background:#030003;border:1px solid var(--border-dim);padding:12px;font-size:8px;color:#880033;white-space:pre-wrap;overflow-y:auto;max-height:400px}
+#json-preview.ok{color:#00AA22}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--dim)}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <span id="title-label">SCENARIO CREATOR</span>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="newScenario()">NEW</button>
+  <button class="tb-btn" onclick="openScenario()">OPEN</button>
+  <button class="tb-btn primary" onclick="exportScenario()">⬇ EXPORT</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="openMapEditor()">🗺 MAP EDITOR</button>
+  <div class="tb-sep"></div>
+  <span id="dirty-label" style="font-size:9px;color:var(--dim)"></span>
+</div>
+
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="nav-item active" onclick="showSection('info')" id="nav-info">
+    <span>⚙</span> Campaign Info
+  </div>
+  <div class="nav-item" onclick="showSection('acts')" id="nav-acts">
+    <span>📖</span> Acts &amp; Phases
+    <span class="badge" id="badge-acts">0</span>
+  </div>
+  <div class="nav-item" onclick="showSection('quests')" id="nav-quests">
+    <span>📜</span> Quests
+    <span class="badge" id="badge-quests">0</span>
+  </div>
+  <div class="nav-item" onclick="showSection('floors')" id="nav-floors">
+    <span>🗺</span> Floors
+    <span class="badge" id="badge-floors">0</span>
+  </div>
+  <div class="nav-item" onclick="showSection('preview')" id="nav-preview">
+    <span>{ }</span> JSON Preview
+  </div>
+</div>
+
+<!-- Main content -->
+<div id="main">
+
+  <!-- Campaign Info -->
+  <div class="section active" id="sec-info">
+    <div class="section-title">Campaign Info</div>
+    <div class="card">
+      <div class="form-row"><label>Campaign ID</label><input id="c-id" placeholder="my-campaign" oninput="dirty()"></div>
+      <div class="form-row"><label>Display Name</label><input id="c-name" placeholder="The Dark Crypt" oninput="dirty()"></div>
+      <div class="form-row"><label>Tagline</label><input id="c-tagline" placeholder="Short description" oninput="dirty()"></div>
+      <div class="form-row"><label>Description</label><textarea id="c-desc" rows="3" oninput="dirty()"></textarea></div>
+      <div class="form-row"><label>Start Level</label><input id="c-startlevel" placeholder="my-campaign-floor-1" oninput="dirty()"></div>
+      <div class="form-row"><label>Floors</label><input type="number" id="c-floors" value="3" min="1" max="20" oninput="dirty()"></div>
+      <div class="form-row">
+        <label>Difficulty</label>
+        <select id="c-diff" oninput="dirty()">
+          <option value="Normal">Normal</option>
+          <option value="Hard">Hard</option>
+          <option value="Brutal">Brutal</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Rec. Level</label><input type="number" id="c-reclevel" value="1" min="1" oninput="dirty()"></div>
+      <div class="form-row"><label>Tags</label><input id="c-tags" placeholder="Story, Branching, Boss Rush" oninput="dirty()"></div>
+      <div class="form-row"><label>Color</label><input id="c-color" value="#FF0055" oninput="dirty()"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Campaign Variables (flags/numbers)</span></div>
+      <div id="vars-list"></div>
+      <button class="btn-add" onclick="addVariable()">+ ADD VARIABLE</button>
+    </div>
+  </div>
+
+  <!-- Acts & Phases -->
+  <div class="section" id="sec-acts">
+    <div class="section-title">Acts &amp; Phases</div>
+    <div id="acts-container"></div>
+    <button class="btn-add" onclick="addAct()" style="margin-bottom:16px">+ ADD ACT</button>
+
+    <!-- Phase editor panel (shows when phase selected) -->
+    <div id="phase-editor" style="display:none">
+      <div class="section-title" style="font-size:9px;color:var(--text-dim)">EDIT PHASE: <span id="pe-title"></span></div>
+      <div class="card">
+        <div class="form-row"><label>Phase ID</label><input id="pe-id" oninput="updatePhaseField('id')"></div>
+        <div class="form-row"><label>Name</label><input id="pe-name" oninput="updatePhaseField('name')"></div>
+        <div class="form-row"><label>Auto-Play Story</label><input id="pe-story" placeholder="story_id" oninput="updatePhaseField('autoPlayStory')"></div>
+        <div class="form-row"><label>Auto-Play Knot</label><input id="pe-knot" placeholder="knot_name or null" oninput="updatePhaseField('autoPlayKnot')"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Exit Triggers</span></div>
+        <div id="pe-triggers"></div>
+        <button class="btn-add" onclick="addTrigger()">+ ADD TRIGGER</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Content Gates</span></div>
+        <div class="form-row"><label>Dungeons</label><input id="pe-dungeons" placeholder="comma-separated level IDs" oninput="updatePhaseGate('dungeons')"></div>
+        <div class="form-row"><label>NPCs</label><input id="pe-npcs" placeholder="comma-separated NPC IDs" oninput="updatePhaseGate('npcs')"></div>
+        <div class="form-row"><label>Story Knots</label><input id="pe-knots" placeholder="comma-separated knot IDs" oninput="updatePhaseGate('narrativeKnots')"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">World Flags</span></div>
+        <div class="form-row"><label>Set on Entry</label><input id="pe-flagsin" placeholder="flag_name, flag2" oninput="updatePhaseFlags('setOnEntry')"></div>
+        <div class="form-row"><label>Set on Exit</label><input id="pe-flagsout" placeholder="flag_name, flag2" oninput="updatePhaseFlags('setOnExit')"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quests -->
+  <div class="section" id="sec-quests">
+    <div class="section-title">Quests</div>
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:12px">
+      <div>
+        <div id="quests-list"></div>
+        <button class="btn-add" onclick="addQuest()">+ ADD QUEST</button>
+      </div>
+      <div id="quest-editor" style="display:none">
+        <div class="card">
+          <div class="card-header"><span class="card-title" id="qe-title">Quest</span>
+            <button class="btn-del" onclick="deleteQuest()">✕</button></div>
+          <div class="form-row"><label>Quest ID</label><input id="qe-id" oninput="updateQuestField('id')"></div>
+          <div class="form-row"><label>Name</label><input id="qe-name" oninput="updateQuestField('name')"></div>
+          <div class="form-row"><label>Description</label><textarea id="qe-desc" rows="2" oninput="updateQuestField('description')"></textarea></div>
+          <div class="form-row"><label>Type</label>
+            <select id="qe-type" oninput="updateQuestField('type')">
+              <option value="main">Main Quest</option>
+              <option value="side">Side Quest</option>
+              <option value="fetch">Fetch Quest</option>
+              <option value="kill">Kill Quest</option>
+              <option value="explore">Exploration</option>
+            </select>
+          </div>
+          <div class="form-row"><label>Reward Flag</label><input id="qe-rflag" placeholder="flag_quest_done" oninput="updateQuestField('rewardFlag')"></div>
+          <div class="form-row"><label>Reward Desc.</label><input id="qe-rdesc" placeholder="XP + item" oninput="updateQuestField('rewardDescription')"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Stages</span></div>
+          <div id="stages-list"></div>
+          <button class="btn-add" onclick="addStage()">+ ADD STAGE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floors -->
+  <div class="section" id="sec-floors">
+    <div class="section-title">Floor Files</div>
+    <p style="font-size:8px;color:var(--text-dim);margin-bottom:12px">
+      Each floor needs a level JSON file at <span style="color:var(--pink)">levels/&lt;campaign-id&gt;-floor-N.json</span>.
+      Click OPEN IN MAP EDITOR to create or edit that floor.
+    </p>
+    <div id="floors-list"></div>
+  </div>
+
+  <!-- JSON Preview -->
+  <div class="section" id="sec-preview">
+    <div class="section-title">JSON Preview</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="tb-btn primary" onclick="exportScenario()">⬇ EXPORT campaign.json</button>
+      <button class="tb-btn" onclick="exportIndex()">⬇ EXPORT index entry</button>
+      <button class="tb-btn" onclick="refreshPreview()">↺ REFRESH</button>
+    </div>
+    <pre id="json-preview"></pre>
+  </div>
+
+</div><!-- #main -->
+</div><!-- #app -->
+
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="loadScenarioFile(this)">
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const EMPTY_CAMPAIGN = () => ({
+  id: '', name: '', tagline: '', description: '',
+  startLevel: '', floors: 3, recommendedLevel: 1,
+  difficulty: 'Normal', tags: [], color: '#FF0055',
+  version: '1.0',
+  variables: {},
+  acts: [],
+  quests: [],
+});
+
+let state = {
+  campaign: EMPTY_CAMPAIGN(),
+  selectedAct: null,
+  selectedPhase: null,
+  selectedQuest: null,
+  isDirty: false,
+};
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'preview') refreshPreview();
+  if (name === 'floors') renderFloors();
+}
+
+// ── Dirty ─────────────────────────────────────────────────────────────────────
+function dirty(v = true) {
+  state.isDirty = v;
+  const el = document.getElementById('dirty-label');
+  el.textContent = v ? '● unsaved' : '✓ saved';
+  el.style.color = v ? 'var(--pink)' : 'var(--text-dim)';
+  updateBadges();
+}
+
+function updateBadges() {
+  const totalPhases = state.campaign.acts.reduce((s,a)=>s+(a.phases?.length??0),0);
+  document.getElementById('badge-acts').textContent = state.campaign.acts.length + ' acts / ' + totalPhases + ' phases';
+  document.getElementById('badge-quests').textContent = state.campaign.quests.length;
+  document.getElementById('badge-floors').textContent = state.campaign.floors ?? 0;
+}
+
+// ── Info sync ─────────────────────────────────────────────────────────────────
+function syncInfoFromState() {
+  const c = state.campaign;
+  document.getElementById('c-id').value         = c.id ?? '';
+  document.getElementById('c-name').value        = c.name ?? '';
+  document.getElementById('c-tagline').value     = c.tagline ?? '';
+  document.getElementById('c-desc').value        = c.description ?? '';
+  document.getElementById('c-startlevel').value  = c.startLevel ?? '';
+  document.getElementById('c-floors').value      = c.floors ?? 3;
+  document.getElementById('c-diff').value        = c.difficulty ?? 'Normal';
+  document.getElementById('c-reclevel').value    = c.recommendedLevel ?? 1;
+  document.getElementById('c-tags').value        = (c.tags ?? []).join(', ');
+  document.getElementById('c-color').value       = c.color ?? '#FF0055';
+  renderVarsList();
+}
+
+function readInfoToState() {
+  const c = state.campaign;
+  c.id             = document.getElementById('c-id').value.trim();
+  c.name           = document.getElementById('c-name').value.trim();
+  c.tagline        = document.getElementById('c-tagline').value.trim();
+  c.description    = document.getElementById('c-desc').value.trim();
+  c.startLevel     = document.getElementById('c-startlevel').value.trim() || (c.id ? c.id + '-floor-1' : '');
+  c.floors         = parseInt(document.getElementById('c-floors').value) || 1;
+  c.difficulty     = document.getElementById('c-diff').value;
+  c.recommendedLevel = parseInt(document.getElementById('c-reclevel').value) || 1;
+  c.tags           = document.getElementById('c-tags').value.split(',').map(s=>s.trim()).filter(Boolean);
+  c.color          = document.getElementById('c-color').value;
+}
+
+['c-id','c-name','c-tagline','c-desc','c-startlevel','c-floors','c-diff','c-reclevel','c-tags','c-color'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => { readInfoToState(); dirty(); });
+});
+
+// ── Variables ─────────────────────────────────────────────────────────────────
+function renderVarsList() {
+  const list = document.getElementById('vars-list');
+  list.innerHTML = '';
+  for (const [k, v] of Object.entries(state.campaign.variables ?? {})) {
+    const row = document.createElement('div');
+    row.className = 'form-row';
+    row.innerHTML = `
+      <label style="width:auto;flex:1"><input style="width:100%;background:rgba(255,0,85,.06);border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:9px;padding:3px" value="${k}" onchange="renameVar('${k}',this.value)"></label>
+      <span style="color:var(--text-dim);font-size:9px;padding:0 6px">=</span>
+      <input style="width:80px;background:rgba(255,0,85,.06);border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:9px;padding:3px" value="${JSON.stringify(v)}" onchange="setVar('${k}',this.value)">
+      <button class="btn-del" onclick="delVar('${k}')">✕</button>
+    `;
+    list.appendChild(row);
+  }
+}
+
+function addVariable() {
+  const key = 'new_var_' + Date.now();
+  state.campaign.variables[key] = false;
+  renderVarsList(); dirty();
+}
+function renameVar(old, newKey) {
+  const val = state.campaign.variables[old];
+  delete state.campaign.variables[old];
+  state.campaign.variables[newKey.trim()] = val;
+  dirty();
+}
+function setVar(key, valStr) {
+  try { state.campaign.variables[key] = JSON.parse(valStr); } catch { state.campaign.variables[key] = valStr; }
+  dirty();
+}
+function delVar(key) { delete state.campaign.variables[key]; renderVarsList(); dirty(); }
+
+// ── Acts & Phases ─────────────────────────────────────────────────────────────
+function renderActs() {
+  const container = document.getElementById('acts-container');
+  container.innerHTML = '';
+  state.campaign.acts.forEach((act, ai) => {
+    const block = document.createElement('div');
+    block.className = 'act-block';
+    block.innerHTML = `
+      <div class="act-header" onclick="toggleAct(${ai})">
+        <span style="color:var(--pink)">ACT ${ai+1}</span>
+        <input value="${act.name||''}" placeholder="Act Name" style="background:none;border:none;color:var(--text);font-family:var(--font);font-size:10px;flex:1;margin-left:8px" onclick="e=>e.stopPropagation()" oninput="state.campaign.acts[${ai}].name=this.value;dirty()">
+        <button class="btn-del" onclick="event.stopPropagation();delAct(${ai})">✕</button>
+      </div>
+      <div class="act-body" id="act-body-${ai}">
+        <div id="phases-${ai}"></div>
+        <button class="btn-add" onclick="addPhase(${ai})">+ ADD PHASE</button>
+      </div>
+    `;
+    container.appendChild(block);
+    renderPhases(ai);
+  });
+}
+
+function toggleAct(ai) {
+  const body = document.getElementById(`act-body-${ai}`);
+  body.style.display = body.style.display === 'none' ? '' : 'none';
+}
+
+function renderPhases(ai) {
+  const container = document.getElementById(`phases-${ai}`);
+  if (!container) return;
+  container.innerHTML = '';
+  (state.campaign.acts[ai]?.phases ?? []).forEach((ph, pi) => {
+    const row = document.createElement('div');
+    row.className = 'phase-row' + (state.selectedAct===ai && state.selectedPhase===pi ? ' selected' : '');
+    row.innerHTML = `
+      <span style="color:var(--dim);font-size:8px">P${pi+1}</span>
+      <span>${ph.name || ph.id || 'Phase'}</span>
+      <span style="font-size:8px;color:var(--dim);margin-left:4px">${ph.exitTriggers?.length??0} triggers</span>
+      <button class="btn-del" onclick="event.stopPropagation();delPhase(${ai},${pi})">✕</button>
+    `;
+    row.onclick = () => selectPhase(ai, pi);
+    container.appendChild(row);
+  });
+}
+
+function addAct() {
+  const ai = state.campaign.acts.length;
+  state.campaign.acts.push({ id:`act-${ai+1}`, name:`Act ${ai+1}`, phases:[] });
+  renderActs(); dirty(); updateBadges();
+}
+function delAct(ai) {
+  if (!confirm('Delete this act and all its phases?')) return;
+  state.campaign.acts.splice(ai, 1);
+  state.selectedAct = null; state.selectedPhase = null;
+  document.getElementById('phase-editor').style.display = 'none';
+  renderActs(); dirty(); updateBadges();
+}
+
+function addPhase(ai) {
+  const pi = state.campaign.acts[ai].phases.length;
+  state.campaign.acts[ai].phases.push({
+    id: `phase-${ai+1}-${pi+1}`,
+    name: `Phase ${pi+1}`,
+    autoPlayStory: null, autoPlayKnot: null,
+    entryConditions: pi===0 ? {type:'auto',onCampaignStart:true} : {type:'sequential',previousPhase:`phase-${ai+1}-${pi}`},
+    exitTriggers: [],
+    contentGates: { dungeons:[], quests:[], npcs:[], narrativeKnots:[] },
+    worldFlags: { setOnEntry:[], setOnExit:[] }
+  });
+  renderPhases(ai); dirty(); updateBadges();
+}
+function delPhase(ai, pi) {
+  state.campaign.acts[ai].phases.splice(pi, 1);
+  state.selectedPhase = null;
+  document.getElementById('phase-editor').style.display = 'none';
+  renderPhases(ai); dirty(); updateBadges();
+}
+
+function selectPhase(ai, pi) {
+  state.selectedAct = ai; state.selectedPhase = pi;
+  renderActs();
+  const ph = state.campaign.acts[ai].phases[pi];
+  document.getElementById('phase-editor').style.display = '';
+  document.getElementById('pe-title').textContent = ph.name || ph.id;
+  document.getElementById('pe-id').value    = ph.id ?? '';
+  document.getElementById('pe-name').value  = ph.name ?? '';
+  document.getElementById('pe-story').value = ph.autoPlayStory ?? '';
+  document.getElementById('pe-knot').value  = ph.autoPlayKnot ?? '';
+  document.getElementById('pe-dungeons').value = (ph.contentGates?.dungeons ?? []).join(', ');
+  document.getElementById('pe-npcs').value     = (ph.contentGates?.npcs ?? []).join(', ');
+  document.getElementById('pe-knots').value    = (ph.contentGates?.narrativeKnots ?? []).join(', ');
+  document.getElementById('pe-flagsin').value  = (ph.worldFlags?.setOnEntry ?? []).join(', ');
+  document.getElementById('pe-flagsout').value = (ph.worldFlags?.setOnExit ?? []).join(', ');
+  renderTriggers(ai, pi);
+}
+
+function updatePhaseField(field) {
+  if (state.selectedAct===null) return;
+  const ph = state.campaign.acts[state.selectedAct].phases[state.selectedPhase];
+  let val = document.getElementById('pe-' + {id:'id',name:'name',autoPlayStory:'story',autoPlayKnot:'knot'}[field])?.value ?? '';
+  if (val === '' || val === 'null') val = null;
+  ph[field] = val;
+  document.getElementById('pe-title').textContent = ph.name || ph.id;
+  renderPhases(state.selectedAct);
+  dirty();
+}
+function updatePhaseGate(key) {
+  if (state.selectedAct===null) return;
+  const ph = state.campaign.acts[state.selectedAct].phases[state.selectedPhase];
+  if (!ph.contentGates) ph.contentGates = {};
+  const idMap = { dungeons:'pe-dungeons', npcs:'pe-npcs', narrativeKnots:'pe-knots' };
+  ph.contentGates[key] = document.getElementById(idMap[key]).value.split(',').map(s=>s.trim()).filter(Boolean);
+  dirty();
+}
+function updatePhaseFlags(key) {
+  if (state.selectedAct===null) return;
+  const ph = state.campaign.acts[state.selectedAct].phases[state.selectedPhase];
+  if (!ph.worldFlags) ph.worldFlags = {};
+  const idMap = { setOnEntry:'pe-flagsin', setOnExit:'pe-flagsout' };
+  ph.worldFlags[key] = document.getElementById(idMap[key]).value.split(',').map(s=>s.trim()).filter(Boolean);
+  dirty();
+}
+
+// ── Triggers ──────────────────────────────────────────────────────────────────
+const TRIGGER_TEMPLATES = {
+  'floor_cleared': { type:'event', eventName:'player:floor_cleared', eventPayload:{ dungeonId:'', floor:1 } },
+  'narrative_knot': { type:'event', eventName:'narrative:knot_reached', eventPayload:{ knot:'' } },
+  'boss_victory': { type:'event', eventName:'combat:encounter_complete', eventPayload:{ isBossVictory:true } },
+  'flag': { type:'flag', flag:'' },
+};
+
+function renderTriggers(ai, pi) {
+  const ph = state.campaign.acts[ai].phases[pi];
+  const cont = document.getElementById('pe-triggers');
+  cont.innerHTML = '';
+  (ph.exitTriggers ?? []).forEach((tr, ti) => {
+    const block = document.createElement('div');
+    block.className = 'trigger-block';
+    block.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:9px;color:var(--text-dim)">Trigger ${ti+1}</span>
+        <select style="flex:1;background:rgba(255,0,85,.06);border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:8px;padding:2px" onchange="changeTriggerTemplate(${ai},${pi},${ti},this.value)">
+          <option value="">— custom —</option>
+          ${Object.keys(TRIGGER_TEMPLATES).map(k=>`<option value="${k}" ${JSON.stringify(tr).includes(k.split('_')[0])?'selected':''}>${k}</option>`).join('')}
+        </select>
+        <button class="btn-del" onclick="delTrigger(${ai},${pi},${ti})">✕</button>
+      </div>
+      <textarea style="width:100%;background:rgba(0,0,0,.5);border:1px solid var(--border-dim);color:#AA8833;font-family:var(--font);font-size:8px;padding:4px;resize:vertical;min-height:50px" onchange="updateTriggerJSON(${ai},${pi},${ti},this)">${JSON.stringify(tr, null, 2)}</textarea>
+    `;
+    cont.appendChild(block);
+  });
+}
+
+function addTrigger() {
+  if (state.selectedAct===null) return;
+  const ph = state.campaign.acts[state.selectedAct].phases[state.selectedPhase];
+  if (!ph.exitTriggers) ph.exitTriggers = [];
+  ph.exitTriggers.push({ type:'event', eventName:'player:floor_cleared', eventPayload:{ dungeonId:'', floor:1 } });
+  renderTriggers(state.selectedAct, state.selectedPhase); dirty();
+}
+function delTrigger(ai,pi,ti) {
+  state.campaign.acts[ai].phases[pi].exitTriggers.splice(ti,1);
+  renderTriggers(ai,pi); dirty();
+}
+function changeTriggerTemplate(ai,pi,ti,key) {
+  if (!key || !TRIGGER_TEMPLATES[key]) return;
+  state.campaign.acts[ai].phases[pi].exitTriggers[ti] = JSON.parse(JSON.stringify(TRIGGER_TEMPLATES[key]));
+  renderTriggers(ai,pi); dirty();
+}
+function updateTriggerJSON(ai,pi,ti,ta) {
+  try {
+    state.campaign.acts[ai].phases[pi].exitTriggers[ti] = JSON.parse(ta.value);
+    ta.style.borderColor = '';
+    dirty();
+  } catch { ta.style.borderColor = '#FF4444'; }
+}
+
+// ── Quests ────────────────────────────────────────────────────────────────────
+function renderQuestsList() {
+  const list = document.getElementById('quests-list');
+  list.innerHTML = '';
+  (state.campaign.quests ?? []).forEach((q, qi) => {
+    const row = document.createElement('div');
+    row.className = 'quest-row' + (state.selectedQuest===qi ? ' selected' : '');
+    row.innerHTML = `<span style="font-size:8px;color:var(--dim)">${q.type?.[0]?.toUpperCase()??'Q'}</span> ${q.name||q.id||'Quest'}`;
+    row.onclick = () => selectQuest(qi);
+    list.appendChild(row);
+  });
+}
+
+function addQuest() {
+  const qi = (state.campaign.quests ?? []).length;
+  if (!state.campaign.quests) state.campaign.quests = [];
+  state.campaign.quests.push({ id:`quest_${qi+1}`, name:'New Quest', description:'', type:'side', rewardFlag:'', rewardDescription:'', stages:[] });
+  renderQuestsList(); selectQuest(qi); dirty(); updateBadges();
+}
+
+function deleteQuest() {
+  if (state.selectedQuest===null) return;
+  if (!confirm('Delete this quest?')) return;
+  state.campaign.quests.splice(state.selectedQuest, 1);
+  state.selectedQuest = null;
+  document.getElementById('quest-editor').style.display = 'none';
+  renderQuestsList(); dirty(); updateBadges();
+}
+
+function selectQuest(qi) {
+  state.selectedQuest = qi;
+  const q = state.campaign.quests[qi];
+  document.getElementById('quest-editor').style.display = '';
+  document.getElementById('qe-title').textContent = q.name || q.id;
+  document.getElementById('qe-id').value    = q.id ?? '';
+  document.getElementById('qe-name').value  = q.name ?? '';
+  document.getElementById('qe-desc').value  = q.description ?? '';
+  document.getElementById('qe-type').value  = q.type ?? 'side';
+  document.getElementById('qe-rflag').value = q.rewardFlag ?? '';
+  document.getElementById('qe-rdesc').value = q.rewardDescription ?? '';
+  renderStages(qi);
+  renderQuestsList();
+}
+
+function updateQuestField(field) {
+  if (state.selectedQuest===null) return;
+  const q = state.campaign.quests[state.selectedQuest];
+  const idMap = { id:'qe-id', name:'qe-name', description:'qe-desc', type:'qe-type', rewardFlag:'qe-rflag', rewardDescription:'qe-rdesc' };
+  q[field] = document.getElementById(idMap[field]).value;
+  document.getElementById('qe-title').textContent = q.name || q.id;
+  renderQuestsList(); dirty();
+}
+
+function renderStages(qi) {
+  const q = state.campaign.quests[qi];
+  const list = document.getElementById('stages-list');
+  list.innerHTML = '';
+  (q.stages ?? []).forEach((s, si) => {
+    const row = document.createElement('div');
+    row.className = 'stage-row';
+    row.innerHTML = `
+      <span style="color:var(--dim);min-width:16px">${si+1}</span>
+      <input value="${s.description||''}" placeholder="Stage description" style="flex:1;background:none;border:none;border-bottom:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:8px;padding:2px" onchange="state.campaign.quests[${qi}].stages[${si}].description=this.value;dirty()">
+      <input value="${s.trigger||''}" placeholder="trigger:id" style="width:140px;background:none;border:none;border-bottom:1px solid var(--border-dim);color:var(--text-dim);font-family:var(--font);font-size:8px;padding:2px" onchange="state.campaign.quests[${qi}].stages[${si}].trigger=this.value;dirty()">
+      <button class="btn-del" onclick="state.campaign.quests[${qi}].stages.splice(${si},1);renderStages(${qi});dirty()">✕</button>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function addStage() {
+  if (state.selectedQuest===null) return;
+  const q = state.campaign.quests[state.selectedQuest];
+  if (!q.stages) q.stages = [];
+  q.stages.push({ id:`stage_${q.stages.length+1}`, description:'', trigger:'' });
+  renderStages(state.selectedQuest); dirty();
+}
+
+// ── Floors ────────────────────────────────────────────────────────────────────
+function renderFloors() {
+  const list = document.getElementById('floors-list');
+  list.innerHTML = '';
+  const cid = state.campaign.id || 'campaign';
+  const n = parseInt(state.campaign.floors) || 1;
+  for (let f = 1; f <= n; f++) {
+    const levelId = `${cid}-floor-${f}`;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.display = 'flex'; card.style.alignItems = 'center'; card.style.gap = '12px';
+    card.innerHTML = `
+      <span style="color:var(--pink);font-size:10px;min-width:60px">FLOOR ${f}</span>
+      <span style="color:var(--text-dim);font-size:9px;flex:1">levels/${levelId}.json</span>
+      <button class="tb-btn" onclick="openFloorInEditor('${levelId}','${cid}',${f})" style="border-color:var(--green);color:var(--green)">🗺 OPEN IN MAP EDITOR</button>
+    `;
+    list.appendChild(card);
+  }
+}
+
+function openFloorInEditor(levelId, campaignId, floor) {
+  localStorage.setItem('darkbit_editor_new_floor', JSON.stringify({ campaignId, floor, levelId }));
+  window.open('map-editor.html', '_blank');
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function buildCampaignJSON() {
+  readInfoToState();
+  const c = state.campaign;
+  return {
+    id: c.id,
+    version: c.version ?? '1.0',
+    variables: c.variables ?? {},
+    acts: (c.acts ?? []).map(a => ({
+      id: a.id,
+      name: a.name,
+      phases: (a.phases ?? []).map(p => {
+        const out = { id:p.id, name:p.name };
+        if (p.autoPlayStory) out.autoPlayStory = p.autoPlayStory;
+        if (p.autoPlayKnot)  out.autoPlayKnot  = p.autoPlayKnot;
+        out.entryConditions = p.entryConditions ?? {};
+        out.exitTriggers    = p.exitTriggers    ?? [];
+        out.contentGates    = p.contentGates    ?? {};
+        out.worldFlags      = p.worldFlags      ?? {};
+        return out;
+      })
+    }))
+  };
+}
+
+function buildIndexEntry() {
+  readInfoToState();
+  const c = state.campaign;
+  return {
+    id: c.id, name: c.name, tagline: c.tagline,
+    floors: c.floors, recommendedLevel: c.recommendedLevel,
+    difficulty: c.difficulty, tags: c.tags, color: c.color,
+    startLevel: c.startLevel || (c.id + '-floor-1')
+  };
+}
+
+function refreshPreview() {
+  readInfoToState();
+  const el = document.getElementById('json-preview');
+  try {
+    const out = buildCampaignJSON();
+    el.textContent = JSON.stringify(out, null, 2);
+    el.className = 'ok';
+  } catch(e) {
+    el.textContent = 'Error: ' + e.message;
+    el.className = '';
+  }
+}
+
+function downloadJSON(obj, filename) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+function exportScenario() {
+  readInfoToState();
+  const cid = state.campaign.id || 'campaign';
+  downloadJSON(buildCampaignJSON(), `${cid}-campaign.json`);
+  dirty(false);
+}
+
+function exportIndex() {
+  readInfoToState();
+  downloadJSON(buildIndexEntry(), `${state.campaign.id || 'campaign'}-index-entry.json`);
+}
+
+// ── File I/O ──────────────────────────────────────────────────────────────────
+function newScenario() {
+  if (state.isDirty && !confirm('Unsaved changes. Continue?')) return;
+  state.campaign = EMPTY_CAMPAIGN();
+  state.selectedAct=null; state.selectedPhase=null; state.selectedQuest=null;
+  syncInfoFromState(); renderActs(); renderQuestsList();
+  document.getElementById('phase-editor').style.display='none';
+  document.getElementById('quest-editor').style.display='none';
+  dirty(false); updateBadges();
+}
+
+function openScenario() { document.getElementById('file-input').click(); }
+
+function loadScenarioFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      state.campaign = Object.assign(EMPTY_CAMPAIGN(), data);
+      if (!state.campaign.quests) state.campaign.quests = [];
+      state.selectedAct=null; state.selectedPhase=null; state.selectedQuest=null;
+      syncInfoFromState(); renderActs(); renderQuestsList();
+      document.getElementById('phase-editor').style.display='none';
+      document.getElementById('quest-editor').style.display='none';
+      dirty(false); updateBadges();
+      input.value='';
+    } catch(e) { alert('Invalid JSON: ' + e.message); }
+  };
+  reader.readAsText(file);
+}
+
+function openMapEditor() { window.open('map-editor.html', '_blank'); }
+
+// ── Map editor handshake ───────────────────────────────────────────────────────
+// Map editor stores new floor context in localStorage — pick it up if present
+(function checkMapEditorReturn() {
+  const key = 'darkbit_editor_new_floor';
+  const raw = localStorage.getItem(key);
+  if (!raw) return;
+  localStorage.removeItem(key);
+  try {
+    const { campaignId, floor, levelId } = JSON.parse(raw);
+    if (campaignId && state.campaign.id === '' && campaignId !== '') {
+      // No-op: map editor was opened fresh with floor info
+    }
+  } catch {}
+})();
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  syncInfoFromState();
+  renderActs();
+  renderQuestsList();
+  dirty(false);
+  updateBadges();
+}
+init();
+</script>
+</body>
+</html>

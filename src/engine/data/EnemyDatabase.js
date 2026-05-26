@@ -19,9 +19,9 @@ export class EnemyDatabase {
       tier: 1,
       baseLevel: 1,
       baseStats: {
-        HP: 25,
-        ATK: 8,
-        DEF: 4,
+        HP: 50,
+        ATK: 10,
+        DEF: 5,
         SPD: 7,
         element: 'Physical'
       },
@@ -53,9 +53,9 @@ export class EnemyDatabase {
       tier: 1,
       baseLevel: 1,
       baseStats: {
-        HP: 20,
-        ATK: 6,
-        DEF: 2,
+        HP: 38,
+        ATK: 8,
+        DEF: 3,
         SPD: 9,
         element: 'Physical'
       },
@@ -88,9 +88,9 @@ export class EnemyDatabase {
       tier: 1,
       baseLevel: 2,
       baseStats: {
-        HP: 30,
-        ATK: 10,
-        DEF: 6,
+        HP: 58,
+        ATK: 13,
+        DEF: 8,
         SPD: 5,
         element: 'Undead'
       },
@@ -128,9 +128,9 @@ export class EnemyDatabase {
       tier: 1,
       baseLevel: 3,
       baseStats: {
-        HP: 28,
-        ATK: 12,
-        DEF: 5,
+        HP: 52,
+        ATK: 14,
+        DEF: 6,
         SPD: 6,
         element: 'Dark'
       },
@@ -215,6 +215,7 @@ export class EnemyDatabase {
 
     this.addEnemy('dire_wolf', {
       name: 'Dire Wolf',
+      gridSize: { w: 2, h: 1 },
       tier: 2,
       baseLevel: 4,
       baseStats: {
@@ -466,6 +467,7 @@ export class EnemyDatabase {
 
     this.addEnemy('ancient_golem', {
       name: 'Ancient Golem',
+      gridSize: { w: 2, h: 2 },
       tier: 3,
       baseLevel: 10,
       baseStats: {
@@ -587,6 +589,7 @@ export class EnemyDatabase {
     // BOSS ENEMIES
     this.addEnemy('shadow_lord', {
       name: 'Shadow Lord Malachar',
+      gridSize: { w: 2, h: 2 },
       tier: 'boss',
       baseLevel: 12,
       baseStats: {
@@ -713,6 +716,7 @@ export class EnemyDatabase {
     // Third boss - Elemental Overlord
     this.addEnemy('elemental_overlord', {
       name: 'Elemental Overlord Pyraxis',
+      gridSize: { w: 2, h: 2 },
       tier: 'boss',
       baseLevel: 13,
       baseStats: {
@@ -916,6 +920,7 @@ export class EnemyDatabase {
     // Additional mini-boss for variety
     this.addEnemy('ancient_lich', {
       name: 'Ancient Lich Morteus',
+      gridSize: { w: 1, h: 2 },
       tier: 'boss',
       baseLevel: 11,
       baseStats: {
@@ -1021,6 +1026,7 @@ export class EnemyDatabase {
 
     this.addEnemy('fungal_spider', {
       name: 'Fungal Spider',
+      gridSize: { w: 2, h: 1 },
       tier: 2,
       baseLevel: 4,
       baseStats: { HP: 35, ATK: 12, DEF: 5, SPD: 10, element: 'Poison' },
@@ -1052,6 +1058,7 @@ export class EnemyDatabase {
 
     this.addEnemy('cave_troll', {
       name: 'Cave Troll',
+      gridSize: { w: 2, h: 2 },
       tier: 2,
       baseLevel: 5,
       baseStats: { HP: 65, ATK: 14, DEF: 16, SPD: 3, element: 'Physical' },
@@ -1268,6 +1275,7 @@ export class EnemyDatabase {
 
     this.addEnemy('hollow_king', {
       name: 'The Hollow King',
+      gridSize: { w: 2, h: 2 },
       tier: 'boss',
       baseLevel: 12,
       baseStats: { HP: 320, ATK: 38, DEF: 22, SPD: 7, element: 'Dark' },
@@ -1359,6 +1367,7 @@ export class EnemyDatabase {
   addEnemy(id, data) {
     this.enemies.set(id, {
       id: id,
+      gridSize: { w: 1, h: 1 }, // default; override per-enemy for large creatures
       ...data,
       createdAt: Date.now()
     });

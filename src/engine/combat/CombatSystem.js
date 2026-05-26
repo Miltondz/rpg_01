@@ -8,16 +8,30 @@ import { ActionResolver } from './ActionResolver.js';
 import { EnemyAI } from './EnemyAI.js';
 import { AIActionValidator } from './AIActionValidator.js';
 import { lootSystem } from '../loot/LootSystem.js';
+import { BattleFSM, BattleState } from './BattleFSM.js';
+import { BattleActionExecutor } from './BattleActionExecutor.js';
+import { BattleGrid } from './BattleGrid.js';
 
 export class CombatSystem {
   constructor() {
     // Action system for handling combat actions
-    this.actionSystem = new ActionSystem();
-    this.actionResolver = new ActionResolver(this.actionSystem);
-    this.aiValidator = new AIActionValidator();
-    // Combat state management
+    this.actionSystem    = new ActionSystem();
+    this.actionResolver  = new ActionResolver(this.actionSystem);
+    this.aiValidator     = new AIActionValidator();
+    this.battleExecutor  = new BattleActionExecutor(this.actionResolver);
+    this.battleGrid      = new BattleGrid();
+
+    // Scene reference — set by main.js after systems init
+    this._scene = null;
+    // Battle FSM — authoritative state machine
+    this.fsm = new BattleFSM();
+
+    // Combat state management (kept in sync with FSM for backward compat)
     this.combatState = 'INACTIVE'; // INACTIVE, PLAYER_TURN, ENEMY_TURN, VICTORY, DEFEAT
     this.isActive = false;
+
+    // Pending targeted action (set during PLAYER_INPUT_TARGETING)
+    this._pendingAction = null;
     
     // Participants
     this.playerParty = null;
@@ -82,16 +96,27 @@ export class CombatSystem {
     this.currentTurnIndex = 0;
     this.turnNumber = 1;
     this.combatResults = null;
-    
+    this._pendingAction = null;
+
     // Set current character
     this.currentCharacter = this.turnOrder[0];
-    
+
     console.log('Combat initialized:', {
       playerParty: this.playerParty.getAliveMembers().length,
       enemies: this.enemies.length,
       turnOrder: this.turnOrder.map(c => c.name || c.id)
     });
-    
+
+    // FSM: VICTORY/DEFEAT are terminal — reset to IDLE before starting new combat,
+    // otherwise the BATTLE_INIT transition is rejected and the FSM stays stuck.
+    if (!this.fsm.is(BattleState.IDLE)) {
+      this.fsm.reset();
+    }
+    this.fsm.transition(BattleState.BATTLE_INIT);
+
+    // Place combatants on 3D battle grid
+    this._placeCombatantsOnGrid();
+
     // Emit combat start event
     this.emitCombatEvent('combatStarted', {
       playerParty: this.playerParty.getPartySummary(),
@@ -102,6 +127,7 @@ export class CombatSystem {
     // Kick off first turn after the UI has had time to render (combatStarted handler runs first)
     setTimeout(() => {
       if (!this.isActive) return;
+      this.fsm.transition(BattleState.TURN_START);
       this.updateCombatState();
       this.emitCombatEvent('turnStarted', this.getCurrentTurnInfo());
       if (this.combatState === 'ENEMY_TURN') {
@@ -113,34 +139,32 @@ export class CombatSystem {
   }
 
   /**
-   * Calculate turn order based on speed stats
+   * Calculate turn order based on speed + random initiative roll.
+   * Re-rolled fresh every combat so order varies each encounter.
    */
   calculateTurnOrder() {
     this.turnOrder = [];
-    
-    // Add all alive party members
+
     const alivePartyMembers = this.playerParty.getAliveMembers();
     this.turnOrder.push(...alivePartyMembers);
-    
-    // Add all alive enemies
+
     const aliveEnemies = this.enemies.filter(enemy => enemy.isAlive && enemy.isAlive());
     this.turnOrder.push(...aliveEnemies);
-    
-    // Sort by speed (highest first), with random tiebreaker
-    this.turnOrder.sort((a, b) => {
-      const speedA = a.stats ? a.stats.SPD : (a.speed || 5);
-      const speedB = b.stats ? b.stats.SPD : (b.speed || 5);
-      
-      if (speedA === speedB) {
-        return Math.random() - 0.5; // Random tiebreaker
-      }
-      
-      return speedB - speedA; // Highest speed first
-    });
-    
+
+    // Each combatant rolls: SPD + random(0, SPD * 0.5)
+    // Pre-compute so each character gets one stable roll for the whole combat
+    const initiative = new Map();
+    for (const c of this.turnOrder) {
+      const spd = (c.stats ? c.stats.SPD : (c.speed || 5)) || 5;
+      initiative.set(c, spd + Math.random() * spd * 0.5);
+    }
+
+    this.turnOrder.sort((a, b) => (initiative.get(b) ?? 0) - (initiative.get(a) ?? 0));
+
     console.log('Turn order calculated:', this.turnOrder.map(c => ({
       name: c.name || c.id,
-      speed: c.stats ? c.stats.SPD : (c.speed || 5),
+      spd: c.stats ? c.stats.SPD : (c.speed || 5),
+      initiative: Math.round(initiative.get(c) ?? 0),
       type: c.class ? 'player' : 'enemy'
     })));
   }
@@ -151,7 +175,7 @@ export class CombatSystem {
   initializeEnemyAI() {
     for (const enemy of this.enemies) {
       if (!enemy.ai) {
-        const ai = EnemyAI.createForEnemyType(enemy.type);
+        const ai = EnemyAI.createForEnemyType(enemy.type ?? enemy.id ?? '');
         enemy.setAI(ai);
         console.log(`Initialized ${ai.archetype} AI for ${enemy.name}`);
       }
@@ -237,14 +261,24 @@ export class CombatSystem {
 
     const turnInfo = this.getCurrentTurnInfo();
 
+    // FSM: if stuck in targeting state (e.g. player cancelled implicitly), reset it
+    if (this.fsm.is(BattleState.PLAYER_INPUT_TARGETING)) {
+      this._pendingAction = null;
+      this.fsm.transition(BattleState.PLAYER_INPUT_ACTION);
+    }
+
+    // FSM: start of new turn
+    this.fsm.transition(BattleState.TURN_START);
+    this.updateCombatState();
+
     // Emit turn start event
     this.emitCombatEvent('turnStarted', turnInfo);
-    
+
     // Handle AI turn if current character is an enemy
     if (this.combatState === 'ENEMY_TURN') {
       this.handleEnemyTurn();
     }
-    
+
     return turnInfo;
   }
 
@@ -332,17 +366,22 @@ export class CombatSystem {
    * Update combat state based on current character
    */
   updateCombatState() {
-    if (!this.currentCharacter) {
-      return;
-    }
-    
-    // Check if current character is player or enemy
+    if (!this.currentCharacter) return;
+
     const isPlayerCharacter = this.playerParty.hasCharacter(this.currentCharacter.id);
-    
+
     if (isPlayerCharacter) {
       this.combatState = 'PLAYER_TURN';
+      // FSM: player is now choosing an action
+      if (this.fsm.isOneOf(BattleState.TURN_START, BattleState.TURN_END)) {
+        this.fsm.transition(BattleState.PLAYER_INPUT_ACTION);
+      }
     } else {
       this.combatState = 'ENEMY_TURN';
+      // FSM: enemy turn goes straight to resolution (AI decides immediately)
+      if (this.fsm.isOneOf(BattleState.TURN_START, BattleState.TURN_END)) {
+        this.fsm.transition(BattleState.ACTION_RESOLUTION);
+      }
     }
   }
 
@@ -380,6 +419,16 @@ export class CombatSystem {
     
     this.isActive = false;
     this.combatState = result.toUpperCase();
+
+    // FSM: terminal states
+    if (result === 'victory') {
+      this.fsm.transition(BattleState.VICTORY);
+    } else if (result === 'defeat') {
+      this.fsm.transition(BattleState.DEFEAT);
+    } else {
+      // fled, etc. — reset FSM
+      this.fsm.reset();
+    }
 
     // Clear status effects from all combatants
     const allCombatants = [
@@ -432,27 +481,28 @@ export class CombatSystem {
       return { success: false, error: 'Not your turn' };
     }
     
-    // Validate AP cost
-    const apCost = action.apCost || 1;
+    // Validate AP cost (use ?? so 0-cost actions like flee are preserved)
+    const apCost = action.apCost ?? 1;
     if (!character.hasAP || !character.hasAP(apCost)) {
       console.warn('Insufficient AP for action');
       return { success: false, error: 'Insufficient AP' };
     }
     
-    // Use ActionResolver for complete action processing
-    const resolution = await this.actionResolver.resolveAction(
+    // FSM: enter ACTION_RESOLUTION — blocks all player input
+    this.fsm.transition(BattleState.ACTION_RESOLUTION);
+
+    // Sequenced execution: visual steps + logic via BattleActionExecutor
+    const resolution = await this.battleExecutor.execute(
       action, character, targets, this.playerParty, this.enemies
     );
-    
+
     if (resolution.success) {
-      // Use AP after successful action
       if (character.useAP) {
         character.useAP(apCost);
       } else {
         character.currentAP -= apCost;
       }
 
-      // Emit actionExecuted so UI can display messages
       this.emitCombatEvent('actionExecuted', {
         character,
         action,
@@ -460,29 +510,41 @@ export class CombatSystem {
         messages: resolution.executionResult?.messages ?? []
       });
 
-      // Remove any mid-round deaths from turn order
       this.updateTurnOrder();
 
-      // Check flee success before combat-end check
       const effects = resolution.executionResult?.effects ?? [];
       if (effects.some(e => e.type === 'flee_success')) {
+        this.fsm.transition(BattleState.TURN_END);
         this.endCombat('fled', null);
         return resolution;
       }
 
-      // Check if combat should end after this action
       const endCondition = this.checkCombatEnd();
       if (endCondition) {
         let rewards = null;
         if (endCondition === 'victory') {
           try { rewards = this.calculateRewards(); } catch (e) { console.error('calculateRewards failed:', e); }
         }
+        this.fsm.transition(BattleState.TURN_END);
         this.endCombat(endCondition, rewards);
-      } else if (character.currentAP <= 0) {
-        this.nextTurn();
+      } else {
+        // FSM: resolution done → TURN_END
+        this.fsm.transition(BattleState.TURN_END);
+        if (character.currentAP <= 0) {
+          this.nextTurn();
+        } else {
+          // Player has AP remaining — back to choosing action
+          this.fsm.transition(BattleState.TURN_START);
+          this.updateCombatState();
+        }
       }
+    } else {
+      // Action failed — return to input without consuming turn
+      this.fsm.transition(BattleState.TURN_END);
+      this.fsm.transition(BattleState.TURN_START);
+      this.updateCombatState();
     }
-    
+
     return resolution;
   }
 
@@ -565,7 +627,7 @@ export class CombatSystem {
         name: this.currentCharacter.name,
         type: this.playerParty.hasCharacter(this.currentCharacter.id) ? 'player' : 'enemy',
         currentAP: this.currentCharacter.currentAP,
-        maxAP: this.currentCharacter.maxAP || this.maxAP
+        maxAP: this.currentCharacter.maxAP || 3
       } : null,
       combatState: this.combatState,
       turnIndex: this.currentTurnIndex,
@@ -660,7 +722,9 @@ export class CombatSystem {
   }
 
   /**
-   * Handle enemy turn with AI decision-making
+   * Handle enemy turn with AI decision-making.
+   * NOTE: processAction() already calls nextTurn() when the character's AP hits 0.
+   * This method must NOT call nextTurn() itself — only re-enter for multi-AP actions.
    */
   async handleEnemyTurn() {
     if (!this.currentCharacter || this.combatState !== 'ENEMY_TURN') {
@@ -668,31 +732,35 @@ export class CombatSystem {
     }
 
     const enemy = this.currentCharacter;
-    
-    // Add delay for AI thinking animation
+
     if (this.animationsEnabled) await this.delay(500);
 
-    // Get AI decision with validation and fallback
     const aiDecision = this.getAIActionWithFallback(enemy);
-    
+
     if (!aiDecision) {
       console.warn(`${enemy.name} has no valid AI decision, skipping turn`);
       this.skipTurn();
       return;
     }
-    
+
     console.log(`${enemy.name} AI decision:`, aiDecision);
-    
-    // Execute AI action with animation delay
-    await this.executeAIAction(enemy, aiDecision);
-    
-    // Check if enemy has more AP for additional actions
-    if (enemy.currentAP > 0 && this.isActive) {
+
+    const result = await this.executeAIAction(enemy, aiDecision);
+
+    if (!result?.success) {
+      // Action failed — skip remaining AP to prevent infinite loop
+      if (enemy === this.currentCharacter && this.isActive) {
+        this.skipTurn();
+      }
+      return;
+    }
+
+    // If enemy still has AP and is still the active combatant, take another action.
+    // processAction already called nextTurn() when AP hit 0, so we only schedule
+    // another handleEnemyTurn when AP > 0.
+    if (enemy.currentAP > 0 && enemy === this.currentCharacter && this.isActive && this.combatState === 'ENEMY_TURN') {
       const delay = this.animationsEnabled ? 800 : 0;
       setTimeout(() => this.handleEnemyTurn(), delay);
-    } else if (this.isActive) {
-      const delay = this.animationsEnabled ? 1000 : 0;
-      setTimeout(() => this.nextTurn(), delay);
     }
   }
 
@@ -808,6 +876,50 @@ export class CombatSystem {
   /**
    * Reset combat system
    */
+  /**
+   * Enter targeting mode for a player action that requires a target.
+   * Call this instead of processAction when the action needs target selection.
+   */
+  /** Called by main.js so BattleGrid can add meshes to the live scene. */
+  setScene(scene) {
+    this._scene = scene;
+  }
+
+  _placeCombatantsOnGrid() {
+    if (!this._scene) return;
+    const members = this.playerParty.getAliveMembers();
+    // Position grid centred in front of the camera (approx dungeon origin)
+    this.battleGrid.setOrigin(-BattleGrid.COLS * BattleGrid.CELL * 0.5, 4);
+    this.battleGrid.placeEntities(members, this.enemies, this._scene);
+    // Pass entity registry to executor so visual methods resolve correctly
+    this.battleExecutor.setVisualSystems({ entityRegistry: this.battleGrid.entities });
+  }
+
+  enterTargeting(action) {
+    if (!this.fsm.is(BattleState.PLAYER_INPUT_ACTION)) return false;
+    this._pendingAction = action;
+    return this.fsm.transition(BattleState.PLAYER_INPUT_TARGETING, { action });
+  }
+
+  /**
+   * Cancel targeting — returns to action selection without AP cost.
+   */
+  cancelTargeting() {
+    if (!this.fsm.is(BattleState.PLAYER_INPUT_TARGETING)) return false;
+    this._pendingAction = null;
+    return this.fsm.transition(BattleState.PLAYER_INPUT_ACTION);
+  }
+
+  /**
+   * Confirm target selection and execute the pending action.
+   */
+  async confirmTargeting(targets) {
+    if (!this.fsm.is(BattleState.PLAYER_INPUT_TARGETING) || !this._pendingAction) return null;
+    const action = this._pendingAction;
+    this._pendingAction = null;
+    return this.processAction(this.currentCharacter, action, targets);
+  }
+
   reset() {
     this.isActive = false;
     this.combatState = 'INACTIVE';
@@ -818,7 +930,9 @@ export class CombatSystem {
     this.currentCharacter = null;
     this.turnNumber = 1;
     this.combatResults = null;
-    
+    this._pendingAction = null;
+    this.fsm.reset();
+
     console.log('CombatSystem reset');
   }
 }

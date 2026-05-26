@@ -229,6 +229,20 @@ export class InputManager {
   }
 
   /**
+   * Inject an action directly — used by TouchControls and any non-keyboard input.
+   * Respects inputBlocked and cooldown, same as keyboard path.
+   */
+  injectAction(actionType) {
+    if (this.inputBlocked) return false;
+    const now = performance.now();
+    if (now - this.lastActionTime < this.cooldownDuration) return false;
+    this.actionQueue.push({ type: actionType, timestamp: now });
+    this.lastActionTime = now;
+    log.debug(`inject -> ${actionType} (queue=${this.actionQueue.length})`);
+    return true;
+  }
+
+  /**
    * Check if an action type is valid
    * @param {string} actionType - The action type to check
    * @returns {boolean} True if the action type is valid

@@ -1,0 +1,20 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^A figure rises from the obsidian throne.",
+      "\n",
+      "^\"You dare enter my sanctuary? Flesh and bone against shadow eternal?\"",
+      "\n",
+      "^The air cracks. The torches gutter and die.",
+      "\n",
+      "^\"Your souls will feed these walls for a thousand years.\"",
+      "\n",
+      {"#": "knot_reached:shadow_lord_monologue_complete"},
+      "end",
+      null
+    ],
+    null
+  ],
+  "listDefs": {}
+}

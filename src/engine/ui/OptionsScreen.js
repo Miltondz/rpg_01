@@ -1,4 +1,5 @@
 import { Logger } from '../utils/Logger.js';
+import { ResolutionManager } from '../core/ResolutionManager.js';
 
 const log = Logger.tag('UI:Options');
 
@@ -25,10 +26,11 @@ const CONTROLS = [
 ];
 
 export class OptionsScreen {
-  constructor() {
-    this._opts       = { ...DEFAULTS };
-    this._el         = null;
-    this._keyHandler = null;
+  constructor(resolutionManager = null) {
+    this._opts              = { ...DEFAULTS };
+    this._el                = null;
+    this._keyHandler        = null;
+    this._resolutionManager = resolutionManager;
     this._loadFromStorage();
     this._build();
   }
@@ -94,6 +96,12 @@ export class OptionsScreen {
                    ${this._opts.fpsCounterEnabled ? 'checked' : ''}>
             <span class="opt-toggle-track"><span class="opt-toggle-thumb"></span></span>
           </label>
+          <div class="options-row" id="resolution-row" style="${this._resolutionManager ? '' : 'display:none'}">
+            <span class="opt-label">Resolution</span>
+            <div class="opt-resolution-btns" id="opt-res-btns">
+              ${this._buildResolutionButtons()}
+            </div>
+          </div>
         </div>
 
         <div class="options-section">
@@ -132,7 +140,39 @@ export class OptionsScreen {
     slider('opt-sfx',   'sfxVolume');
     toggle('opt-minimap', 'minimapEnabled');
     toggle('opt-fps',     'fpsCounterEnabled');
+
+    // Resolution buttons
+    if (this._resolutionManager) {
+      this._el.querySelector('#opt-res-btns')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-res-w]');
+        if (!btn) return;
+        const w = parseInt(btn.dataset.resW);
+        const h = parseInt(btn.dataset.resH);
+        this._resolutionManager.apply(w, h);
+        this._updateResolutionButtons();
+      });
+    }
+
     this._el.querySelector('#opt-back-btn').addEventListener('click', () => this._back());
+  }
+
+  _buildResolutionButtons() {
+    if (!this._resolutionManager) return '';
+    const cur = this._resolutionManager.getCurrent();
+    return this._resolutionManager.getPresets().map(p => {
+      const active = (p.w === cur?.w && p.h === cur?.h) ? ' res-btn--active' : '';
+      return `<button class="opt-res-btn${active}" data-res-w="${p.w}" data-res-h="${p.h}">${p.label}</button>`;
+    }).join('');
+  }
+
+  _updateResolutionButtons() {
+    const container = this._el.querySelector('#opt-res-btns');
+    if (!container || !this._resolutionManager) return;
+    const cur = this._resolutionManager.getCurrent();
+    container.querySelectorAll('[data-res-w]').forEach(btn => {
+      const active = parseInt(btn.dataset.resW) === cur?.w && parseInt(btn.dataset.resH) === cur?.h;
+      btn.classList.toggle('res-btn--active', active);
+    });
   }
 
   _back() { window.dispatchEvent(new CustomEvent('optionsBack')); }

@@ -1,0 +1,20 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^The Shattered Sanctum. An ancient fortress built over a sacred prison.",
+      "\n",
+      "^Three seals bind the Hollow King — a being of pure void.",
+      "\n",
+      "^The seals are cracking.",
+      "\n",
+      "^Commander Voss's last message was brief: get there before they break.",
+      "\n",
+      {"#": "knot_reached:ss_prologue_complete"},
+      "end",
+      null
+    ],
+    null
+  ],
+  "listDefs": {}
+}

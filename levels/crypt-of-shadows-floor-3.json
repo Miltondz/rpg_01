@@ -1,6 +1,7 @@
 {
   "id": "crypt-of-shadows-floor-3",
   "name": "Crypt of Shadows - Floor 3",
+  "theme": "ruin",
   "width": 15,
   "height": 15,
   "spawn": {

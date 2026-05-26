@@ -1,0 +1,18 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^The Fungal Warrens. Spores fill the air. Something has been growing here for a long time.",
+      "\n",
+      "^The second seal is somewhere in this labyrinth.",
+      "\n",
+      "^Move carefully. The fungi are not the only things that grow in darkness.",
+      "\n",
+      {"#": "knot_reached:ss_floor2_intro_complete"},
+      "end",
+      null
+    ],
+    null
+  ],
+  "listDefs": {}
+}

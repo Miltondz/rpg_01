@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>DarkBit — Adventure Creator</title>
+<style>
+:root{
+  --bg:#050005;--panel:#0a000a;--border:#FF0055;--border-dim:#330011;
+  --pink:#FF0055;--pink-lt:#FF3377;--green:#00FF44;--dim:#550022;
+  --text:#FF3377;--text-dim:#880033;--gold:#FFD700;--blue:#0088FF;
+  --font:'Courier New',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);font-size:11px}
+#app{display:flex;flex-direction:column;height:100vh}
+#header{height:36px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px;flex-shrink:0}
+#tab-bar{height:28px;background:#000;border-bottom:1px solid var(--border-dim);display:flex;align-items:flex-end;padding:0 8px;gap:2px;flex-shrink:0}
+#content{flex:1;overflow:hidden;position:relative}
+/* Header */
+.logo{color:var(--pink);font-size:11px;letter-spacing:1px;font-weight:bold;white-space:nowrap}
+.hdr-input{background:rgba(255,0,85,.08);border:1px solid var(--border-dim);color:var(--pink);font-family:var(--font);font-size:11px;padding:2px 8px}
+.hdr-input:focus{outline:none;border-color:var(--pink)}
+.hdr-btn{background:none;border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:9px;padding:2px 8px;cursor:pointer;white-space:nowrap}
+.hdr-btn:hover{border-color:var(--pink);color:#fff}
+.hdr-btn.green{border-color:var(--green);color:var(--green)}
+.hdr-btn.green:hover{background:rgba(0,255,68,.08)}
+.sep{width:1px;height:20px;background:var(--border-dim);flex-shrink:0}
+/* Tabs */
+.tab-btn{background:none;border:1px solid transparent;border-bottom:none;color:var(--text-dim);font-family:var(--font);font-size:9px;padding:4px 12px;cursor:pointer;letter-spacing:1px;position:relative;top:1px}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{border-color:var(--border-dim);background:var(--bg);color:var(--pink);border-bottom-color:var(--bg)}
+.tab-panel{display:none;width:100%;height:100%}
+.tab-panel.active{display:flex}
+/* Panels */
+.panel-col{background:var(--panel);border-right:1px solid var(--border-dim);overflow-y:auto;flex-shrink:0}
+.sec{border-bottom:1px solid var(--border-dim);padding:8px}
+.sec h4{font-size:8px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid var(--border-dim)}
+.sec-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.sec-row h4{margin:0;border:none;padding:0}
+/* Fields */
+.field{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.field label{font-size:9px;color:var(--text-dim);width:76px;flex-shrink:0}
+.field input,.field select,.field textarea{flex:1;background:rgba(255,0,85,.06);border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:9px;padding:3px 5px}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--pink)}
+.field input[type=checkbox]{flex:none;width:14px;height:14px;accent-color:var(--pink)}
+.field input[type=color]{flex:none;width:40px;height:22px;padding:1px;cursor:pointer;border:1px solid var(--border-dim)}
+.field select option{background:var(--panel)}
+.field textarea{resize:vertical;min-height:44px}
+.field .narrow{width:52px;flex:none}
+/* Buttons */
+.btn{background:none;border:1px solid var(--border-dim);color:var(--text-dim);font-family:var(--font);font-size:9px;padding:3px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.btn:hover{border-color:var(--pink-lt);color:var(--text)}
+.btn.add{border-color:#00441a;color:#009933}
+.btn.add:hover{border-color:var(--green);color:var(--green);background:rgba(0,255,68,.06)}
+.btn.del{border-color:#440000;color:#660000}
+.btn.del:hover{border-color:#FF4444;color:#FF4444}
+.btn.icon-btn{padding:1px 5px;font-size:11px}
+/* List items */
+.li{padding:5px 7px;border:1px solid var(--border-dim);margin-bottom:3px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:9px;color:var(--text-dim)}
+.li:hover{border-color:var(--pink-lt);color:var(--text)}
+.li.sel{border-color:var(--pink);color:var(--pink);background:rgba(255,0,85,.08)}
+.li .li-del{background:none;border:none;color:var(--dim);cursor:pointer;font-size:11px;padding:0 3px;font-family:var(--font);flex-shrink:0}
+.li .li-del:hover{color:#FF4444}
+.li .li-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+/* Tile tools */
+.ttool{display:flex;align-items:center;gap:5px;padding:4px 6px;border:1px solid transparent;cursor:pointer;background:none;font-family:var(--font);font-size:9px;color:var(--text-dim);width:100%;text-align:left}
+.ttool:hover{border-color:var(--pink-lt);color:var(--text)}
+.ttool.active{border-color:var(--pink);color:var(--pink);background:rgba(255,0,85,.08)}
+.tswatch{width:12px;height:12px;border:1px solid #333;flex-shrink:0}
+/* Floor tabs in left col */
+.ftab{padding:6px 8px;border-bottom:1px solid var(--border-dim);cursor:pointer;font-size:9px;color:var(--text-dim);display:flex;align-items:center;gap:6px;border-left:2px solid transparent}
+.ftab:hover{background:rgba(255,0,85,.04);color:var(--text)}
+.ftab.active{color:var(--pink);border-left-color:var(--pink);background:rgba(255,0,85,.07)}
+.fnum{width:18px;height:18px;border:1px solid var(--border-dim);display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--dim);flex-shrink:0}
+.ftab.active .fnum{border-color:var(--pink);color:var(--pink)}
+/* Campaign preview */
+#tab-campaign{flex-direction:row;overflow:auto}
+.camp-form{width:380px;overflow-y:auto;background:var(--panel);border-right:1px solid var(--border-dim);flex-shrink:0}
+.camp-preview{flex:1;padding:24px;overflow-y:auto}
+.pv-card{border:1px solid var(--pink);padding:18px 22px;max-width:460px;background:#000}
+.pv-name{font-size:12px;letter-spacing:2px;margin-bottom:6px}
+.pv-tagline{font-size:9px;color:var(--text);margin-bottom:12px;line-height:1.6}
+.pv-meta{font-size:8px;color:var(--text-dim);display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.pv-desc{font-size:8px;color:var(--dim);line-height:1.7}
+.pv-label{font-size:8px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+/* Canvas */
+#floors-canvas-wrap{flex:1;position:relative;overflow:hidden;background:#000;cursor:crosshair}
+#floors-canvas{display:block;image-rendering:pixelated}
+#fs-bar{position:absolute;bottom:0;left:0;right:0;height:18px;background:rgba(0,0,0,.7);border-top:1px solid var(--border-dim);display:flex;align-items:center;padding:0 8px;gap:14px;font-size:8px;color:var(--text-dim);pointer-events:none}
+/* 3-col layout for Encounters/Objects/NPCs/Hints tabs */
+.t3c{flex-direction:row}
+.c-flsel{width:96px;background:var(--panel);border-right:1px solid var(--border-dim);overflow-y:auto;flex-shrink:0}
+.c-list{width:260px;background:var(--panel);border-right:1px solid var(--border-dim);overflow-y:auto;flex-shrink:0}
+.c-detail{flex:1;overflow-y:auto;background:rgba(0,0,0,.2);padding:12px 14px}
+.flsel-btn{padding:6px 8px;font-family:var(--font);font-size:9px;color:var(--text-dim);cursor:pointer;border-bottom:1px solid var(--border-dim);border-left:2px solid transparent;width:100%;text-align:left;background:none;border-right:none;border-top:none}
+.flsel-btn:hover{color:var(--text);background:rgba(255,0,85,.04)}
+.flsel-btn.active{color:var(--pink);border-left-color:var(--pink);background:rgba(255,0,85,.07)}
+/* Export tab */
+#tab-export{flex-direction:column;overflow:hidden}
+#exp-bar{height:38px;background:var(--panel);border-bottom:1px solid var(--border-dim);display:flex;align-items:center;gap:8px;padding:0 12px;flex-shrink:0}
+#exp-panels{flex:1;display:flex;overflow:hidden}
+.exp-file{min-width:320px;max-width:400px;display:flex;flex-direction:column;border-right:1px solid var(--border-dim);flex-shrink:0}
+.exp-file-hdr{padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--border-dim);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;gap:6px}
+.exp-file-hdr .fname{font-size:9px;color:var(--green);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.exp-code{flex:1;overflow:auto;padding:8px 10px;font-size:8.5px;line-height:1.5;color:#997777;white-space:pre;background:#000}
+/* Modal */
+#modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.87);display:none;align-items:center;justify-content:center;z-index:9000}
+#modal-ov.open{display:flex}
+#modal-box{background:var(--panel);border:1px solid var(--pink);padding:20px 24px;min-width:360px;max-width:600px;max-height:82vh;overflow-y:auto}
+#modal-box h3{font-size:11px;color:var(--pink);margin-bottom:14px;letter-spacing:2px;text-transform:uppercase}
+.modal-btns{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+/* detail form title */
+.det-title{font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;padding-bottom:5px;border-bottom:1px solid var(--border-dim)}
+/* Enemy/loot sub-rows */
+.sub-list{margin:4px 0}
+.sub-row{display:flex;align-items:center;gap:4px;margin-bottom:3px;font-size:9px}
+.sub-row input,.sub-row select{background:rgba(255,0,85,.06);border:1px solid var(--border-dim);color:var(--text);font-family:var(--font);font-size:9px;padding:2px 4px}
+/* Badge */
+.badge{display:inline-block;padding:0 4px;font-size:8px;color:var(--text-dim);border:1px solid var(--border-dim);margin-left:3px}
+.badge.n{color:var(--pink);border-color:var(--dim)}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--dim)}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Header -->
+<div id="header">
+  <span class="logo">⚔ ADVENTURE CREATOR</span>
+  <div class="sep"></div>
+  <input id="hdr-name" class="hdr-input" type="text" value="Mi Aventura" style="width:200px"
+    oninput="onHdrName(this.value)">
+  <span id="dirty-ind" style="font-size:9px;color:var(--dim)"></span>
+  <div style="margin-left:auto;display:flex;gap:6px">
+    <button class="hdr-btn" onclick="importState()">📂 CARGAR</button>
+    <button class="hdr-btn" onclick="saveStateJSON()">💾 GUARDAR</button>
+    <button class="hdr-btn green" onclick="doExportAll()">⬇ EXPORTAR TODO</button>
+  </div>
+</div>
+
+<!-- Tab bar -->
+<div id="tab-bar">
+  <button class="tab-btn active" id="tbtn-campaign" onclick="showTab('campaign')">CAMPAÑA</button>
+  <button class="tab-btn" id="tbtn-floors" onclick="showTab('floors')">PISOS</button>
+  <button class="tab-btn" id="tbtn-encounters" onclick="showTab('encounters')">ENEMIGOS</button>
+  <button class="tab-btn" id="tbtn-objects" onclick="showTab('objects')">OBJETOS</button>
+  <button class="tab-btn" id="tbtn-npcs" onclick="showTab('npcs')">NPCs</button>
+  <button class="tab-btn" id="tbtn-hints" onclick="showTab('hints')">PISTAS</button>
+  <button class="tab-btn" id="tbtn-export" onclick="showTab('export')" style="margin-left:auto;border-color:#003311;color:#006622">EXPORTAR</button>
+</div>
+
+<div id="content">
+
+<!-- ══════ CAMPAÑA ══════ -->
+<div id="tab-campaign" class="tab-panel active">
+  <div class="camp-form">
+    <div class="sec">
+      <h4>Identidad</h4>
+      <div class="field"><label>ID (slug)</label>
+        <input id="c-id" type="text" value="mi-aventura" oninput="state.campaign.id=slugify(this.value)||'mi-aventura';markDirty();updatePreview()">
+      </div>
+      <div class="field"><label>Nombre</label>
+        <input id="c-name" type="text" value="Mi Aventura" oninput="state.campaign.name=this.value;markDirty();updatePreview();$('#hdr-name').value=this.value">
+      </div>
+      <div class="field"><label>Tagline</label>
+        <input id="c-tagline" type="text" placeholder="Frase de impacto." oninput="state.campaign.tagline=this.value;markDirty();updatePreview()">
+      </div>
+      <div class="field"><label>Descripción</label>
+        <textarea id="c-desc" placeholder="Historia, contexto, objetivo..." oninput="state.campaign.description=this.value;markDirty();updatePreview()"></textarea>
+      </div>
+    </div>
+    <div class="sec">
+      <h4>Parámetros</h4>
+      <div class="field"><label>Dificultad</label>
+        <select id="c-diff" onchange="state.campaign.difficulty=this.value;markDirty();updatePreview()">
+          <option>Normal</option><option>Hard</option><option>Brutal</option>
+        </select>
+      </div>
+      <div class="field"><label>Nivel rec.</label>
+        <input id="c-rlv" type="number" min="1" max="20" value="1" class="narrow"
+          oninput="state.campaign.recommendedLevel=+this.value||1;markDirty();updatePreview()">
+      </div>
+      <div class="field"><label>Nº pisos</label>
+        <input id="c-floors" type="number" min="1" max="10" value="3" class="narrow"
+          oninput="setCampaignFloors(+this.value||1)">
+      </div>
+      <div class="field"><label>Tema visual</label>
+        <select id="c-theme" onchange="state.campaign.theme=this.value;markDirty()">
+          <option>crypt</option><option>ruin</option><option>cave</option>
+          <option>dungeon</option><option>forest</option><option>sanctum</option>
+        </select>
+      </div>
+      <div class="field"><label>Música</label>
+        <select id="c-music" onchange="state.campaign.musicTheme=this.value;markDirty()">
+          <option value="dungeon_ambient">Dungeon Ambient</option>
+          <option value="crypt_theme">Crypt Theme</option>
+          <option value="boss_theme">Boss Theme</option>
+          <option value="safe_zone">Safe Zone</option>
+          <option value="silence">Silence</option>
+        </select>
+      </div>
+    </div>
+    <div class="sec">
+      <h4>Visual</h4>
+      <div class="field"><label>Color acento</label>
+        <input id="c-color" type="color" value="#FF0055" oninput="state.campaign.color=this.value;$('#c-colorhex').value=this.value;markDirty();updatePreview()">
+        <input id="c-colorhex" type="text" value="#FF0055" style="width:70px;flex:none"
+          oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){state.campaign.color=this.value;$('#c-color').value=this.value;markDirty();updatePreview()}">
+      </div>
+      <div class="field"><label>Tags</label>
+        <input id="c-tags" type="text" placeholder="Classic, Story, Boss..." oninput="state.campaign.tags=this.value;markDirty();updatePreview()">
+      </div>
+    </div>
+    <div class="sec">
+      <h4>Nombres de Pisos</h4>
+      <div id="floor-names-list"></div>
+    </div>
+  </div>
+  <!-- Preview -->
+  <div class="camp-preview">
+    <div class="pv-label">VISTA PREVIA — PANTALLA DE SELECCIÓN</div>
+    <div class="pv-card" id="pv-card">
+      <div class="pv-name" id="pv-name" style="color:#FF0055">MI AVENTURA</div>
+      <div class="pv-tagline" id="pv-tagline">—</div>
+      <div class="pv-meta">
+        <span id="pv-floors">3 PISOS</span>
+        <span id="pv-rlv">LV 1+</span>
+        <span id="pv-diff" style="color:#00FF44">Normal</span>
+        <span id="pv-tags"></span>
+      </div>
+      <div class="pv-desc" id="pv-desc"></div>
+    </div>
+    <div style="margin-top:20px;padding:12px 14px;border:1px solid var(--border-dim);max-width:460px">
+      <div style="font-size:8px;color:var(--dim);letter-spacing:2px;margin-bottom:10px">RESUMEN DE CONTENIDO</div>
+      <div id="pv-summary" style="font-size:9px;color:var(--text-dim);line-height:2.2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ PISOS ══════ -->
+<div id="tab-floors" class="tab-panel">
+  <!-- Left -->
+  <div class="panel-col" style="width:148px">
+    <div class="sec"><h4>Pisos</h4><div id="floors-list"></div></div>
+    <div class="sec">
+      <h4>Herramienta</h4>
+      <button class="ttool active" id="ftool-paint" onclick="setFTool('paint')"><span>✏</span>Pintar</button>
+      <button class="ttool" id="ftool-erase" onclick="setFTool('erase')"><span>✕</span>Borrar</button>
+      <button class="ttool" id="ftool-fill"  onclick="setFTool('fill')"><span>▣</span>Relleno</button>
+    </div>
+    <div class="sec">
+      <h4>Tile</h4>
+      <button class="ttool active" id="ftile-1" onclick="setFTile(1)"><span class="tswatch" style="background:#140008"></span>Piso</button>
+      <button class="ttool" id="ftile-2" onclick="setFTile(2)"><span class="tswatch" style="background:#660022"></span>Muro</button>
+      <button class="ttool" id="ftile-0" onclick="setFTile(0)"><span class="tswatch" style="background:#030003"></span>Vacío</button>
+      <button class="ttool" id="ftile-3" onclick="setFTile(3)"><span class="tswatch" style="background:#7F4800"></span>Transición</button>
+    </div>
+    <div class="sec" style="display:flex;flex-direction:column;gap:4px">
+      <button class="btn" style="width:100%;justify-content:center" onclick="generateMap()">✦ Generar Mapa</button>
+      <button class="btn" style="width:100%;justify-content:center" onclick="importFloorJSON()">📂 Importar JSON</button>
+      <input type="file" id="floor-file-inp" accept=".json" style="display:none" onchange="loadFloorFile(this)">
+    </div>
+    <div class="sec">
+      <h4>Minimapa</h4>
+      <canvas id="fl-mini" width="132" height="132" style="border:1px solid var(--border-dim)"></canvas>
+    </div>
+  </div>
+  <!-- Canvas -->
+  <div id="floors-canvas-wrap">
+    <canvas id="fl-canvas"></canvas>
+    <div id="fs-bar">
+      <span id="fs-pos">x:— z:—</span>
+      <span id="fs-tile">—</span>
+      <span id="fs-floor">Piso 1</span>
+      <span id="fs-zoom" style="margin-left:auto">100%</span>
+    </div>
+  </div>
+  <!-- Right -->
+  <div class="panel-col" style="width:196px">
+    <div class="sec">
+      <h4>Propiedades</h4>
+      <div class="field"><label>Nombre</label>
+        <input id="fp-name" type="text" oninput="floorProp('name',this.value)">
+      </div>
+      <div class="field"><label>Obj. misión</label>
+        <input id="fp-quest" type="text" placeholder="(opcional)" oninput="floorProp('questObjective',this.value)">
+      </div>
+      <div class="field"><label>Ancho</label>
+        <input id="fp-w" type="number" min="5" max="40" value="12" class="narrow" onchange="resizeFloor(+this.value,null)">
+      </div>
+      <div class="field"><label>Alto</label>
+        <input id="fp-h" type="number" min="5" max="40" value="12" class="narrow" onchange="resizeFloor(null,+this.value)">
+      </div>
+      <div class="field"><label>Zoom</label>
+        <button class="btn icon-btn" onclick="zoomCanvas(-0.25)">−</button>
+        <button class="btn icon-btn" onclick="zoomCanvas(0.25)">+</button>
+        <button class="btn" onclick="resetView()">1:1</button>
+      </div>
+    </div>
+    <div class="sec">
+      <h4>Spawn</h4>
+      <div class="field"><label>X</label><input id="fp-sx" type="number" value="1" class="narrow" onchange="floorSpawn('x',+this.value)"></div>
+      <div class="field"><label>Z</label><input id="fp-sz" type="number" value="1" class="narrow" onchange="floorSpawn('z',+this.value)"></div>
+      <div class="field"><label>Dirección</label>
+        <select id="fp-sdir" onchange="floorSpawn('direction',+this.value)">
+          <option value="0">N</option><option value="1">E</option><option value="2">S</option><option value="3">W</option>
+        </select>
+      </div>
+    </div>
+    <div class="sec">
+      <h4>Capas visibles</h4>
+      <div class="field"><label>Grid</label><input type="checkbox" id="fl-showgrid" checked onchange="renderFloor()"></div>
+      <div class="field"><label>Objetos</label><input type="checkbox" id="fl-showobj" checked onchange="renderFloor()"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ ENEMIGOS ══════ -->
+<div id="tab-encounters" class="tab-panel t3c">
+  <div class="c-flsel" id="enc-flsel"></div>
+  <div class="c-list">
+    <div class="sec sec-row">
+      <h4>Encuentros <span id="enc-count" class="badge"></span></h4>
+      <button class="btn add" onclick="addEnc()">+ ADD</button>
+    </div>
+    <div style="padding:4px 6px"><div id="enc-list"></div></div>
+  </div>
+  <div class="c-detail" id="enc-detail">
+    <div style="color:var(--text-dim);font-size:9px">Selecciona un encuentro para editar.</div>
+  </div>
+</div>
+
+<!-- ══════ OBJETOS ══════ -->
+<div id="tab-objects" class="tab-panel t3c">
+  <div class="c-flsel" id="obj-flsel"></div>
+  <div class="c-list" style="width:220px">
+    <div class="sec sec-row"><h4>Puertas <span id="doors-cnt" class="badge"></span></h4><button class="btn add" onclick="addObj('door')">+</button></div>
+    <div style="padding:2px 6px 6px"><div id="doors-list"></div></div>
+    <div class="sec sec-row"><h4>Transiciones <span id="trans-cnt" class="badge"></span></h4><button class="btn add" onclick="addObj('transition')">+</button></div>
+    <div style="padding:2px 6px 6px"><div id="trans-list"></div></div>
+    <div class="sec sec-row"><h4>Zonas Seguras <span id="safe-cnt" class="badge"></span></h4><button class="btn add" onclick="addObj('safezone')">+</button></div>
+    <div style="padding:2px 6px 6px"><div id="safe-list"></div></div>
+    <div class="sec sec-row"><h4>Cofres <span id="chest-cnt" class="badge"></span></h4><button class="btn add" onclick="addObj('chest')">+</button></div>
+    <div style="padding:2px 6px 6px"><div id="chest-list"></div></div>
+    <div class="sec sec-row"><h4>Objetos Clave <span id="kitem-cnt" class="badge"></span></h4><button class="btn add" onclick="addObj('keyitem')">+</button></div>
+    <div style="padding:2px 6px 6px"><div id="kitem-list"></div></div>
+  </div>
+  <div class="c-detail" id="obj-detail">
+    <div style="color:var(--text-dim);font-size:9px">Selecciona o añade un objeto.</div>
+  </div>
+</div>
+
+<!-- ══════ NPCs ══════ -->
+<div id="tab-npcs" class="tab-panel t3c">
+  <div class="c-flsel" id="npc-flsel"></div>
+  <div class="c-list">
+    <div class="sec sec-row">
+      <h4>NPCs <span id="npc-count" class="badge"></span></h4>
+      <button class="btn add" onclick="addNPC()">+ ADD</button>
+    </div>
+    <div style="padding:4px 6px"><div id="npc-list"></div></div>
+  </div>
+  <div class="c-detail" id="npc-detail">
+    <div style="color:var(--text-dim);font-size:9px">Selecciona un NPC para editar.</div>
+  </div>
+</div>
+
+<!-- ══════ PISTAS ══════ -->
+<div id="tab-hints" class="tab-panel t3c">
+  <div class="c-flsel" id="hint-flsel"></div>
+  <div class="c-list">
+    <div class="sec sec-row">
+      <h4>Pistas / Hints <span id="hint-count" class="badge"></span></h4>
+      <button class="btn add" onclick="addHint()">+ ADD</button>
+    </div>
+    <div style="padding:4px 6px"><div id="hint-list"></div></div>
+  </div>
+  <div class="c-detail" id="hint-detail">
+    <div style="color:var(--text-dim);font-size:9px">Selecciona una pista para editar.</div>
+  </div>
+</div>
+
+<!-- ══════ EXPORTAR ══════ -->
+<div id="tab-export" class="tab-panel">
+  <div id="exp-bar">
+    <span style="color:var(--pink);font-size:10px;letter-spacing:1px">ARCHIVOS GENERADOS</span>
+    <div class="sep"></div>
+    <button class="hdr-btn green" onclick="doExportAll()">⬇ DESCARGAR TODO</button>
+    <button class="hdr-btn" onclick="refreshExport()">↻ ACTUALIZAR</button>
+    <span id="exp-info" style="font-size:9px;color:var(--text-dim);margin-left:6px"></span>
+  </div>
+  <div id="exp-panels" style="flex:1;display:flex;overflow:hidden"></div>
+</div>
+
+</div><!-- #content -->
+</div><!-- #app -->
+
+<!-- Modal -->
+<div id="modal-ov">
+  <div id="modal-box">
+    <h3 id="modal-title">—</h3>
+    <div id="modal-body"></div>
+    <div id="modal-btns" class="modal-btns"></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────
+const ENEMIES=['goblin','giant_rat','skeleton','goblin_shaman','orc','dire_wolf',
+  'undead_knight','shadow_beast','orc_shaman','lich_lieutenant','ancient_golem',
+  'shadow_general','shadow_lord','elemental_overlord','ancient_lich','fungal_spider',
+  'cave_troll','shadow_acolyte','corrupted_paladin','outpost_warden',
+  'corrupted_captain','hollow_king'];
+
+const ITEMS=['health_potion_small','health_potion','large_health_potion','full_health_potion',
+  'mana_potion','ap_potion','greater_ap_potion','antidote','panacea','strength_elixir',
+  'defense_elixir','speed_elixir','berserker_elixir','guardian_elixir','phoenix_down',
+  'elixir_of_life','bronze_key','silver_key','gold_key','rusty_sword','iron_sword',
+  'iron_shield','chain_mail','leather_armor','iron_spear','cursed_shortsword',
+  'sanctum_blade','warden_plate','shadow_cloak','sanctum_amulet','void_ring',
+  'patrol_marker','seal_fragment_1','seal_fragment_2','seal_fragment_3',
+  'void_rune','magic_crystal','iron_ore','glowing_mushroom','void_crystal',
+  'shadow_core','dark_potion','staff_basic','ring_basic'];
+
+const PORTRAITS=['merchant','guard','elder','ghost','sage','innkeeper','blacksmith',
+  'quest_giver','warrior','mage','rogue','cleric','knight','witch'];
+
+const TILE_COLOR ={0:'#030003',1:'#140008',2:'#600020',3:'#7F4800'};
+const TILE_BORDER={0:'#0a000a',1:'#2a000f',2:'#880030',3:'#AA5500'};
+const TILE_LABEL ={0:'vacío',1:'piso',2:'muro',3:'transición'};
+const DIFF_COLOR ={Normal:'#00FF44',Hard:'#FF9900',Brutal:'#FF0055'};
+const OBJ_COLOR  ={spawn:'#00FF44',encounter:'#FF4444',door:'#88DDFF',
+  transition:'#FFD700',safezone:'#FFD700',chest:'#FFD700',keyitem:'#FFD700',npc:'#88FF88',hint:'#88DDFF'};
+
+// ─────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────
+function mkFloor(n, campName) {
+  const w=12,h=12;
+  return {
+    name:`${campName||'Aventura'} - Piso ${n}`,
+    questObjective:'',width:w,height:h,
+    tiles:Array(w*h).fill(2),
+    spawn:{x:1,z:1,direction:0},
+    doors:[],transitions:[],safeZones:[],
+    scriptedEncounters:[],keyItems:[],lootChests:[],
+    tutorialHints:[],tileMetadata:[]
+  };
+}
+
+const state={
+  campaign:{
+    id:'mi-aventura',name:'Mi Aventura',tagline:'',description:'',
+    difficulty:'Normal',recommendedLevel:1,floors:3,
+    color:'#FF0055',tags:'',theme:'crypt',musicTheme:'dungeon_ambient'
+  },
+  floors:[],
+  npcs:[],
+  dirty:false
+};
+
+// ── UI state ──
+let activeTab='campaign';
+let activeFloor=0;
+let activeEncFloor=0,activeObjFloor=0,activeNPCFloor=0,activeHintFloor=0;
+let selEnc=null,selObj=null,selNPC=null,selHint=null;
+let fTool='paint',fTile=1;
+let fCam={x:20,y:20,zoom:1.5};
+let fPainting=false,fPanning=false,fPanStart=null,fHover=null;
+
+// ─────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────
+const $=s=>document.querySelector(s);
+const slugify=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rid=()=>Math.random().toString(36).slice(2,8);
+function markDirty(){state.dirty=true;$('#dirty-ind').textContent='●'}
+function markClean(){state.dirty=false;$('#dirty-ind').textContent=''}
+function onHdrName(v){state.campaign.name=v;$('#c-name').value=v;markDirty();updatePreview()}
+function selOpt(sel,val){Array.from(sel.options).forEach(o=>o.selected=o.value===String(val)||o.textContent===String(val))}
+
+// ─────────────────────────────────────────────────────────────────
+// Tab switching
+// ─────────────────────────────────────────────────────────────────
+function showTab(name){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  $(`#tab-${name}`).classList.add('active');
+  $(`#tbtn-${name}`).classList.add('active');
+  activeTab=name;
+  if(name==='floors'){setTimeout(()=>{resizeFloorCanvas();renderFloor();renderFloorMini()},0)}
+  if(name==='encounters'){renderFlSelAll('enc');renderEncList()}
+  if(name==='objects'){renderFlSelAll('obj');renderAllObjLists()}
+  if(name==='npcs'){renderFlSelAll('npc');renderNPCList()}
+  if(name==='hints'){renderFlSelAll('hint');renderHintList()}
+  if(name==='export'){refreshExport()}
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Campaign tab
+// ─────────────────────────────────────────────────────────────────
+function setCampaignFloors(n){
+  n=clamp(n,1,10);
+  state.campaign.floors=n;
+  while(state.floors.length<n) state.floors.push(mkFloor(state.floors.length+1,state.campaign.name));
+  while(state.floors.length>n) state.floors.pop();
+  markDirty();updatePreview();renderFloorNames();
+  if(activeFloor>=n) activeFloor=n-1;
+  if(activeTab==='floors') renderFloorList();
+}
+
+function renderFloorNames(){
+  const el=$('#floor-names-list');
+  el.innerHTML=state.floors.map((f,i)=>`
+    <div class="field">
+      <label style="font-size:8px">Piso ${i+1}</label>
+      <input type="text" value="${esc(f.name)}" oninput="state.floors[${i}].name=this.value;markDirty();updatePreview()">
+    </div>`).join('');
+}
+
+function updatePreview(){
+  const c=state.campaign;
+  const col=c.color||'#FF0055';
+  const dCol=DIFF_COLOR[c.difficulty]||'#00FF44';
+  $('#pv-card').style.borderColor=col;
+  $('#pv-name').textContent=(c.name||'—').toUpperCase();
+  $('#pv-name').style.color=col;
+  $('#pv-tagline').textContent=c.tagline||'—';
+  $('#pv-floors').textContent=`${c.floors} PISO${c.floors!==1?'S':''}`;
+  $('#pv-rlv').textContent=`LV ${c.recommendedLevel}+`;
+  $('#pv-diff').textContent=c.difficulty;
+  $('#pv-diff').style.color=dCol;
+  const tags=(c.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+  $('#pv-tags').innerHTML=tags.map(t=>`<span style="color:var(--text-dim)">${esc(t)}</span>`).join(' · ');
+  $('#pv-desc').textContent=c.description||'';
+  // Summary
+  const totalEnc=state.floors.reduce((a,f)=>a+(f.scriptedEncounters?.length||0),0);
+  const totalNPC=state.npcs.length;
+  const totalChest=state.floors.reduce((a,f)=>a+(f.lootChests?.length||0),0);
+  const totalDoor=state.floors.reduce((a,f)=>a+(f.doors?.length||0),0);
+  $('#pv-summary').innerHTML=[
+    `<span style="color:var(--pink)">${c.floors}</span> pisos`,
+    `<span style="color:var(--pink)">${totalEnc}</span> encuentros`,
+    `<span style="color:var(--pink)">${totalNPC}</span> NPCs`,
+    `<span style="color:var(--pink)">${totalChest}</span> cofres`,
+    `<span style="color:var(--pink)">${totalDoor}</span> puertas`,
+  ].join(' &nbsp;·&nbsp; ');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Floor list (left panel in Pisos tab)
+// ─────────────────────────────────────────────────────────────────
+function renderFloorList(){
+  const el=$('#floors-list');
+  el.innerHTML=state.floors.map((f,i)=>`
+    <div class="ftab ${i===activeFloor?'active':''}" onclick="switchFloor(${i})">
+      <span class="fnum">${i+1}</span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px">${esc(f.name.replace(/.*Piso /,'P'))}</span>
+    </div>`).join('');
+}
+
+function switchFloor(idx){
+  activeFloor=idx;
+  renderFloorList();
+  syncFloorProps();
+  resetView();
+  renderFloor();
+  renderFloorMini();
+}
+
+function syncFloorProps(){
+  const f=state.floors[activeFloor];
+  if(!f)return;
+  $('#fp-name').value=f.name;
+  $('#fp-quest').value=f.questObjective||'';
+  $('#fp-w').value=f.width;
+  $('#fp-h').value=f.height;
+  $('#fp-sx').value=f.spawn.x;
+  $('#fp-sz').value=f.spawn.z;
+  selOpt($('#fp-sdir'),f.spawn.direction);
+  $('#fs-floor').textContent=`Piso ${activeFloor+1}`;
+}
+
+function floorProp(k,v){const f=state.floors[activeFloor];if(f){f[k]=v;markDirty();updatePreview()}}
+function floorSpawn(k,v){const f=state.floors[activeFloor];if(f){f.spawn[k]=v;markDirty();renderFloor()}}
+
+function resizeFloor(w,h){
+  const f=state.floors[activeFloor];
+  if(!f)return;
+  const nw=clamp(w||f.width,5,40);
+  const nh=clamp(h||f.height,5,40);
+  const nt=Array(nw*nh).fill(2);
+  for(let z=0;z<Math.min(nh,f.height);z++)
+    for(let x=0;x<Math.min(nw,f.width);x++)
+      nt[z*nw+x]=f.tiles[z*f.width+x];
+  f.width=nw;f.height=nh;f.tiles=nt;
+  $('#fp-w').value=nw;$('#fp-h').value=nh;
+  markDirty();renderFloor();renderFloorMini();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Canvas – Floors tab
+// ─────────────────────────────────────────────────────────────────
+let flCanvas,flCtx,flWrap,flMini,flMiniCtx;
+
+function initCanvas(){
+  flCanvas=$('#fl-canvas');
+  flCtx=flCanvas.getContext('2d');
+  flWrap=$('#floors-canvas-wrap');
+  flMini=$('#fl-mini');
+  flMiniCtx=flMini.getContext('2d');
+
+  flWrap.addEventListener('mousedown',onFMouseDown);
+  flWrap.addEventListener('mousemove',onFMouseMove);
+  flWrap.addEventListener('mouseup',  onFMouseUp);
+  flWrap.addEventListener('mouseleave',()=>{fPainting=false;fPanning=false;fHover=null;renderFloor()});
+  flWrap.addEventListener('wheel',e=>{e.preventDefault();zoomCanvas(e.deltaY<0?0.2:-0.2)},{passive:false});
+  window.addEventListener('resize',()=>{if(activeTab==='floors'){resizeFloorCanvas();renderFloor()}});
+}
+
+function resizeFloorCanvas(){
+  const r=flWrap.getBoundingClientRect();
+  flCanvas.width=r.width;
+  flCanvas.height=r.height-18;
+}
+
+function cellSize(){return 28*fCam.zoom}
+function screenToCell(sx,sy){
+  const cs=cellSize();
+  return{x:Math.floor((sx-fCam.x)/cs),z:Math.floor((sy-fCam.y)/cs)};
+}
+function cellToScreen(x,z){
+  const cs=cellSize();
+  return{sx:x*cs+fCam.x,sy:z*cs+fCam.y};
+}
+
+function renderFloor(){
+  if(!flCtx)return;
+  const f=state.floors[activeFloor];
+  if(!f){flCtx.clearRect(0,0,flCanvas.width,flCanvas.height);return}
+  const cs=cellSize();
+  const showGrid=$('#fl-showgrid').checked;
+  const showObj=$('#fl-showobj').checked;
+  flCtx.clearRect(0,0,flCanvas.width,flCanvas.height);
+  flCtx.fillStyle='#000';
+  flCtx.fillRect(0,0,flCanvas.width,flCanvas.height);
+
+  // Tiles
+  for(let z=0;z<f.height;z++){
+    for(let x=0;x<f.width;x++){
+      const t=f.tiles[z*f.width+x];
+      const{sx,sy}=cellToScreen(x,z);
+      if(sx+cs<0||sy+cs<0||sx>flCanvas.width||sy>flCanvas.height)continue;
+      flCtx.fillStyle=TILE_COLOR[t]??'#000';
+      flCtx.fillRect(sx,sy,cs,cs);
+      if(showGrid&&cs>5){
+        flCtx.strokeStyle=TILE_BORDER[t]??'#111';
+        flCtx.lineWidth=0.5;
+        flCtx.strokeRect(sx+0.5,sy+0.5,cs-1,cs-1);
+      }
+    }
+  }
+
+  if(showObj){
+    // Spawn
+    drawMarker(f.spawn.x,f.spawn.z,'#00FF44','▲');
+    // Encounters
+    (f.scriptedEncounters||[]).forEach(e=>drawMarker(e.x,e.z,'#FF4444','⚔'));
+    // Doors
+    (f.doors||[]).forEach(d=>drawMarker(d.x,d.z,'#88DDFF','D'));
+    // Transitions
+    (f.transitions||[]).forEach(t=>drawMarker(t.x,t.z,'#FFD700','⇒'));
+    // Safe zones
+    (f.safeZones||[]).forEach(s=>drawMarker(s.x,s.z,'#FFD700','★'));
+    // Chests
+    (f.lootChests||[]).forEach(c=>drawMarker(c.x,c.z,'#FFD700','□'));
+    // Key items
+    (f.keyItems||[]).forEach(k=>drawMarker(k.x,k.z,'#FFAA00','K'));
+    // Tutorial hints
+    (f.tutorialHints||[]).forEach(h=>drawMarker(h.x,h.z,'#88DDFF','?'));
+    // NPCs on this floor
+    state.npcs.filter(n=>n.floor===activeFloor).forEach(n=>drawMarker(n.position.x,n.position.z,'#88FF88','N'));
+  }
+
+  // Hover highlight
+  if(fHover){
+    const{sx,sy}=cellToScreen(fHover.x,fHover.z);
+    flCtx.strokeStyle='rgba(255,0,85,0.7)';
+    flCtx.lineWidth=1.5;
+    flCtx.strokeRect(sx+1,sy+1,cs-2,cs-2);
+  }
+
+  $('#fs-zoom').textContent=Math.round(fCam.zoom*100)+'%';
+}
+
+function drawMarker(x,z,color,icon){
+  const cs=cellSize();
+  const{sx,sy}=cellToScreen(x,z);
+  if(sx+cs<0||sy+cs<0||sx>flCanvas.width||sy>flCanvas.height)return;
+  flCtx.fillStyle=color+'44';
+  flCtx.fillRect(sx+1,sy+1,cs-2,cs-2);
+  flCtx.strokeStyle=color;
+  flCtx.lineWidth=1;
+  flCtx.strokeRect(sx+1,sy+1,cs-2,cs-2);
+  if(cs>14){
+    flCtx.fillStyle=color;
+    flCtx.font=`${Math.min(cs*0.6,16)}px sans-serif`;
+    flCtx.textAlign='center';
+    flCtx.textBaseline='middle';
+    flCtx.fillText(icon,sx+cs/2,sy+cs/2);
+  }
+}
+
+function renderFloorMini(){
+  if(!flMiniCtx)return;
+  const f=state.floors[activeFloor];
+  if(!f)return;
+  const mw=flMini.width,mh=flMini.height;
+  const cs=Math.min(mw/f.width,mh/f.height);
+  flMiniCtx.clearRect(0,0,mw,mh);
+  flMiniCtx.fillStyle='#000';
+  flMiniCtx.fillRect(0,0,mw,mh);
+  for(let z=0;z<f.height;z++)
+    for(let x=0;x<f.width;x++){
+      const t=f.tiles[z*f.width+x];
+      flMiniCtx.fillStyle=TILE_COLOR[t]??'#000';
+      flMiniCtx.fillRect(x*cs,z*cs,cs,cs);
+    }
+  // Spawn dot
+  flMiniCtx.fillStyle='#00FF44';
+  flMiniCtx.fillRect(f.spawn.x*cs,f.spawn.z*cs,cs+1,cs+1);
+}
+
+function onFMouseDown(e){
+  if(e.button===1||(e.button===0&&e.altKey)){
+    fPanning=true;fPanStart={x:e.clientX-fCam.x,y:e.clientY-fCam.y};
+    flWrap.style.cursor='grabbing';return;
+  }
+  if(e.button!==0)return;
+  fPainting=true;
+  paintAt(e);
+}
+function onFMouseMove(e){
+  if(fPanning){fCam.x=e.clientX-fPanStart.x;fCam.y=e.clientY-fPanStart.y;renderFloor();return}
+  const r=flWrap.getBoundingClientRect();
+  const cell=screenToCell(e.clientX-r.left,e.clientY-r.top);
+  const f=state.floors[activeFloor];
+  if(f&&cell.x>=0&&cell.x<f.width&&cell.z>=0&&cell.z<f.height){
+    fHover=cell;
+    const t=f.tiles[cell.z*f.width+cell.x];
+    $('#fs-pos').textContent=`x:${cell.x} z:${cell.z}`;
+    $('#fs-tile').textContent=TILE_LABEL[t]??'?';
+  }else{fHover=null}
+  if(fPainting)paintAt(e);
+  renderFloor();
+}
+function onFMouseUp(e){
+  if(fPanning){fPanning=false;flWrap.style.cursor='crosshair';return}
+  fPainting=false;
+}
+
+function paintAt(e){
+  const f=state.floors[activeFloor];
+  if(!f)return;
+  const r=flWrap.getBoundingClientRect();
+  const{x,z}=screenToCell(e.clientX-r.left,e.clientY-r.top);
+  if(x<0||x>=f.width||z<0||z>=f.height)return;
+  if(fTool==='fill'){floodFill(f,x,z,fTile);renderFloorMini();return}
+  const newTile=fTool==='erase'?2:fTile;
+  f.tiles[z*f.width+x]=newTile;
+  markDirty();renderFloorMini();
+}
+
+function floodFill(f,sx,sz,newTile){
+  const old=f.tiles[sz*f.width+sx];
+  if(old===newTile)return;
+  const stack=[[sx,sz]];
+  const visited=new Set();
+  while(stack.length){
+    const[x,z]=stack.pop();
+    const k=`${x},${z}`;
+    if(visited.has(k))continue;
+    if(x<0||x>=f.width||z<0||z>=f.height)continue;
+    if(f.tiles[z*f.width+x]!==old)continue;
+    visited.add(k);
+    f.tiles[z*f.width+x]=newTile;
+    stack.push([x+1,z],[x-1,z],[x,z+1],[x,z-1]);
+  }
+  markDirty();
+}
+
+function zoomCanvas(delta){
+  fCam.zoom=clamp(fCam.zoom+delta,0.25,4);
+  renderFloor();
+  $('#fs-zoom').textContent=Math.round(fCam.zoom*100)+'%';
+}
+function resetView(){fCam={x:20,y:20,zoom:1.5};renderFloor()}
+function setFTool(t){
+  fTool=t;
+  ['paint','erase','fill'].forEach(n=>{$(`#ftool-${n}`)?.classList.toggle('active',n===t)});
+}
+function setFTile(t){
+  fTile=t;
+  [0,1,2,3].forEach(n=>{$(`#ftile-${n}`)?.classList.toggle('active',n===t)});
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Map Generator
+// ─────────────────────────────────────────────────────────────────
+function generateMap(){
+  const f=state.floors[activeFloor];
+  if(!f)return;
+  const{width:W,height:H}=f;
+  const tiles=Array(W*H).fill(2);
+  const set=(x,z,t)=>{if(x>=0&&x<W&&z>=0&&z<H)tiles[z*W+x]=t};
+  const rooms=[];
+  const attempts=40;
+  for(let i=0;i<attempts&&rooms.length<7;i++){
+    const rw=3+Math.floor(Math.random()*4);
+    const rh=3+Math.floor(Math.random()*4);
+    const rx=1+Math.floor(Math.random()*(W-rw-1));
+    const rz=1+Math.floor(Math.random()*(H-rh-1));
+    const overlap=rooms.some(r=>rx<r.x+r.w+2&&rx+rw>r.x-1&&rz<r.z+r.h+2&&rz+rh>r.z-1);
+    if(!overlap){
+      rooms.push({x:rx,z:rz,w:rw,h:rh});
+      for(let dz=0;dz<rh;dz++)for(let dx=0;dx<rw;dx++)set(rx+dx,rz+dz,1);
+    }
+  }
+  // Connect rooms
+  for(let i=1;i<rooms.length;i++){
+    const a=rooms[i-1],b=rooms[i];
+    let cx=Math.floor(a.x+a.w/2),cz=Math.floor(a.z+a.h/2);
+    const tx=Math.floor(b.x+b.w/2),tz=Math.floor(b.z+b.h/2);
+    while(cx!==tx){set(cx,cz,1);cx+=(tx>cx?1:-1)}
+    while(cz!==tz){set(cx,cz,1);cz+=(tz>cz?1:-1)}
+  }
+  f.tiles=tiles;
+  // Place spawn in first room
+  if(rooms.length>0){const r=rooms[0];f.spawn={x:r.x+1,z:r.z+1,direction:2}}
+  // Place transition tile in last room
+  if(rooms.length>1){
+    const r=rooms[rooms.length-1];
+    const tx=r.x+Math.floor(r.w/2),tz=r.z+Math.floor(r.h/2);
+    set(tx,tz,3);
+    // Auto-add transition object if not already present
+    if(!f.transitions.some(t=>t.x===tx&&t.z===tz)){
+      const nextFloor=activeFloor+1;
+      const nextId=nextFloor<state.floors.length?`${state.campaign.id}-floor-${nextFloor+1}`:'';
+      f.transitions.push({x:tx,z:tz,type:'stairs',target:nextId,spawn:{x:1,z:1,direction:0}});
+    }
+  }
+  syncFloorProps();markDirty();renderFloor();renderFloorMini();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Import floor from JSON
+// ─────────────────────────────────────────────────────────────────
+function importFloorJSON(){$('#floor-file-inp').click()}
+function loadFloorFile(inp){
+  if(!inp.files[0])return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      const f=state.floors[activeFloor];
+      Object.assign(f,{
+        name:data.name??f.name,width:data.width??f.width,height:data.height??f.height,
+        tiles:data.tiles??f.tiles,spawn:data.spawn??f.spawn,
+        doors:data.doors??[],transitions:data.transitions??[],
+        safeZones:data.safeZones??[],scriptedEncounters:data.scriptedEncounters??[],
+        keyItems:data.keyItems??[],lootChests:data.lootChests??[],
+        tutorialHints:data.tutorialHints??[],tileMetadata:data.tileMetadata??[]
+      });
+      syncFloorProps();markDirty();renderFloor();renderFloorMini();
+      showModal('Importado','Piso importado correctamente.',[{label:'OK',fn:closeModal}]);
+    }catch(err){showModal('Error',`No se pudo parsear el JSON: ${err.message}`,[{label:'OK',fn:closeModal}])}
+  };
+  reader.readAsText(inp.files[0]);
+  inp.value='';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Floor selector shared (for 3-col tabs)
+// ─────────────────────────────────────────────────────────────────
+function renderFlSelAll(prefix){
+  const selId={enc:'enc',obj:'obj',npc:'npc',hint:'hint'}[prefix];
+  const actIdx={enc:activeEncFloor,obj:activeObjFloor,npc:activeNPCFloor,hint:activeHintFloor}[prefix];
+  const el=$(`#${prefix}-flsel`);
+  if(!el)return;
+  el.innerHTML=`<div style="padding:6px 8px;font-size:8px;color:var(--dim);letter-spacing:1px;border-bottom:1px solid var(--border-dim)">PISO</div>`
+    +state.floors.map((f,i)=>`<button class="flsel-btn ${i===actIdx?'active':''}" onclick="switchFlSel('${prefix}',${i})">${i+1}. ${esc(f.name.replace(/.*- /,'').slice(0,12))}</button>`).join('');
+}
+
+function switchFlSel(prefix,idx){
+  if(prefix==='enc'){activeEncFloor=idx;renderFlSelAll('enc');renderEncList();selEnc=null;$('#enc-detail').innerHTML='<div style="color:var(--text-dim);font-size:9px">Selecciona un encuentro.</div>'}
+  if(prefix==='obj'){activeObjFloor=idx;renderFlSelAll('obj');renderAllObjLists();selObj=null;$('#obj-detail').innerHTML='<div style="color:var(--text-dim);font-size:9px">Selecciona un objeto.</div>'}
+  if(prefix==='npc'){activeNPCFloor=idx;renderFlSelAll('npc');renderNPCList();selNPC=null;$('#npc-detail').innerHTML='<div style="color:var(--text-dim);font-size:9px">Selecciona un NPC.</div>'}
+  if(prefix==='hint'){activeHintFloor=idx;renderFlSelAll('hint');renderHintList();selHint=null;$('#hint-detail').innerHTML='<div style="color:var(--text-dim);font-size:9px">Selecciona una pista.</div>'}
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Encounters
+// ─────────────────────────────────────────────────────────────────
+function renderEncList(){
+  const f=state.floors[activeEncFloor];
+  const encs=f?.scriptedEncounters||[];
+  $('#enc-count').textContent=encs.length||'';
+  $('#enc-count').className='badge'+(encs.length?' n':'');
+  $('#enc-list').innerHTML=encs.length?encs.map((e,i)=>`
+    <div class="li ${selEnc===i?'sel':''}" onclick="openEncDetail(${i})">
+      <span class="li-label">⚔ ${esc(e.id||`enc_${i}`)} <span style="color:var(--dim)">@${e.x},${e.z}</span></span>
+      <button class="li-del" onclick="delEnc(${i},event)">✕</button>
+    </div>`).join(''):'<div style="font-size:9px;color:var(--dim);padding:4px">Sin encuentros.</div>';
+}
+
+function addEnc(){
+  const f=state.floors[activeEncFloor];if(!f)return;
+  f.scriptedEncounters.push({
+    x:1,z:1,id:`enc_${rid()}`,type:'scripted',oneTime:true,description:'',
+    enemies:[{type:'goblin',level:1}],
+    rewards:{experience:30,gold:{min:5,max:15},loot:[]}
+  });
+  markDirty();updatePreview();renderEncList();openEncDetail(f.scriptedEncounters.length-1);
+}
+
+function delEnc(i,e){
+  e.stopPropagation();
+  state.floors[activeEncFloor].scriptedEncounters.splice(i,1);
+  if(selEnc>=i)selEnc=null;
+  markDirty();updatePreview();renderEncList();
+  if(selEnc===null)$('#enc-detail').innerHTML='<div style="color:var(--text-dim);font-size:9px">Selecciona un encuentro.</div>';
+}
+
+function openEncDetail(i){
+  selEnc=i;
+  renderEncList();
+  const enc=state.floors[activeEncFloor].scriptedEncounters[i];
+  const eOpts=ENEMIES.map(e=>`<option ${e===enc.enemies?.[0]?.type?'selected':''}>${e}</option>`).join('');
+  const itemOpts=ITEMS.map(it=>`<option>${it}</option>`).join('');
+  $('#enc-detail').innerHTML=`
+    <div class="det-title">ENCUENTRO — ${esc(enc.id)}</div>
+    <div class="field"><label>ID</label><input type="text" value="${esc(enc.id)}" oninput="encProp(${i},'id',this.value)"></div>
+    <div class="field"><label>Posición X</label><input type="number" value="${enc.x}" class="narrow" oninput="encProp(${i},'x',+this.value)"></div>
+    <div class="field"><label>Posición Z</label><input type="number" value="${enc.z}" class="narrow" oninput="encProp(${i},'z',+this.value)"></div>
+    <div class="field"><label>Tipo</label>
+      <select onchange="encProp(${i},'type',this.value)">
+        <option ${enc.type==='scripted'?'selected':''}>scripted</option>
+        <option ${enc.type==='random'?'selected':''}>random</option>
+      </select></div>
+    <div class="field"><label>Una vez</label><input type="checkbox" ${enc.oneTime?'checked':''} onchange="encProp(${i},'oneTime',this.checked)"></div>
+    <div class="field"><label>Descripción</label><textarea oninput="encProp(${i},'description',this.value)">${esc(enc.description||'')}</textarea></div>
+    <div style="font-size:8px;color:var(--dim);letter-spacing:1px;margin:10px 0 5px">ENEMIGOS</div>
+    <div id="enc-enemies-${i}">
+      ${(enc.enemies||[]).map((en,ei)=>`
+        <div class="sub-row">
+          <select style="flex:1" onchange="encEnemyProp(${i},${ei},'type',this.value)">${ENEMIES.map(e=>`<option ${e===en.type?'selected':''}>${e}</option>`).join('')}</select>
+          <span style="color:var(--text-dim)">Lv</span>
+          <input type="number" min="1" max="20" value="${en.level||1}" style="width:38px" oninput="encEnemyProp(${i},${ei},'level',+this.value)">
+          <button class="btn del icon-btn" onclick="delEncEnemy(${i},${ei})">✕</button>
+        </div>`).join('')}
+    </div>
+    <button class="btn add" style="margin-top:4px" onclick="addEncEnemy(${i})">+ Enemigo</button>
+    <div style="font-size:8px;color:var(--dim);letter-spacing:1px;margin:10px 0 5px">RECOMPENSAS</div>
+    <div class="field"><label>XP</label><input type="number" value="${enc.rewards?.experience||0}" class="narrow" oninput="encRew(${i},'experience',+this.value)"></div>
+    <div class="field"><label>Oro min</label><input type="number" value="${enc.rewards?.gold?.min||0}" class="narrow" oninput="encGold(${i},'min',+this.value)"></div>
+    <div class="field"><label>Oro max</label><input type="number" value="${enc.rewards?.gold?.max||0}" class="narrow" oninput="encGold(${i},'max',+this.value)"></div>
+    <div style="font-size:8px;color:var(--dim);letter-spacing:1px;margin:10px 0 5px">LOOT</div>
+    <div id="enc-loot-${i}">
+      ${(enc.rewards?.loot||[]).map((l,li)=>`
+        <div class="sub-row">
+          <select style="flex:1" onchange="encLootProp(${i},${li},'itemId',this.value)">${ITEMS.map(it=>`<option ${it===l.itemId?'selected':''}>${it}</option>`).join('')}</select>
+          <span style="color:var(--text-dim)">%</span>
+          <input type="number" min="0" max="1" step="0.05" value="${l.chance||1}" style="width:45px" oninput="encLootProp(${i},${li},'chance',+this.value)">
+          <button class="btn del icon-btn" onclick="delEncLoot(${i},${li})">✕</button>
+        </div>`).join('')}
+    </div>
+    <button class="btn add" style="margin-top:4px" onclick="addEncLoot(${i})">+ Loot</button>
+    <div style="margin-top:12px">
+      <button class="btn del" onclick="delEnc(${i},{stopPropagation:()=>{}})">🗑 ELIMINAR ENCUENTRO</button>
+    </div>`;
+}
+
+function encProp(i,k,v){const e=state.floors[activeEncFloor].scriptedEncounters[i];if(e){e[k]=v;markDirty();if(k==='id')renderEncList()}}
+function encRew(i,k,v){const r=state.floors[activeEncFloor].scriptedEncounters[i]?.rewards;if(r)r[k]=v;markDirty()}
+function encGold(i,k,v){const g=state.floors[activeEncFloor].scriptedEncounters[i]?.rewards?.gold;if(g)g[k]=v;markDirty()}
+function encEnemyProp(ei,ej,k,v){const e=state.floors[activeEncFloor].scriptedEncounters[ei]?.enemies?.[ej];if(e){e[k]=v;markDirty()}}
+function encLootProp(ei,li,k,v){const l=state.floors[activeEncFloor].scriptedEncounters[ei]?.rewards?.loot?.[li];if(l){l[k]=v;markDirty()}}
+function addEncEnemy(i){const e=state.floors[activeEncFloor].scriptedEncounters[i];if(!e.enemies)e.enemies=[];e.enemies.push({type:'goblin',level:1});markDirty();openEncDetail(i)}
+function delEncEnemy(i,j){state.floors[activeEncFloor].scriptedEncounters[i].enemies.splice(j,1);markDirty();openEncDetail(i)}
+function addEncLoot(i){const e=state.floors[activeEncFloor].scriptedEncounters[i];if(!e.rewards.loot)e.rewards.loot=[];e.rewards.loot.push({itemId:'health_potion_small',chance:0.7,quantity:{min:1,max:1}});markDirty();openEncDetail(i)}
+function delEncLoot(i,j){state.floors[activeEncFloor].scriptedEncounters[i].rewards.loot.splice(j,1);markDirty();openEncDetail(i)}
+
+// ─────────────────────────────────────────────────────────────────
+// Objects (Doors / Transitions / SafeZones / Chests / KeyItems)
+// ─────────────────────────────────────────────────────────────────
+function renderAllObjLists(){
+  const f=state.floors[activeObjFloor];
+  const doors=f?.doors||[],trans=f?.transitions||[],safe=f?.safeZones||[],chests=f?.lootChests||[],kitems=f?.keyItems||[];
+  const renderList=(el,arr,type,icon)=>{
+    el.innerHTML=arr.length?arr.map((o,i)=>`
+      <div class="li ${selObj?.type===type&&selObj?.i===i?'sel':''}" onclick="openObjDetail('${type}',${i})">
+        <span class="li-label">${icon} ${type==='door'?`(${o.x},${o.z}) ${o.locked?'🔒':''}`
+          :type==='transition'?`(${o.x},${o.z})→${(o.target||'?').replace(/.*floor-/,'F')}`
+          :type==='safezone'?`★ ${esc(o.name||'')} (${o.x},${o.z})`
+          :type==='chest'?`□ (${o.x},${o.z}) ${(o.loot?.length||0)}items`
+          :`K ${esc(o.itemId||'')} (${o.x},${o.z})`}</span>
+        <button class="li-del" onclick="delObj('${type}',${i},event)">✕</button>
+      </div>`).join(''):`<div style="font-size:9px;color:var(--dim);padding:2px">—</div>`;
+  };
+  $('#doors-cnt').textContent=doors.length||'';
+  $('#trans-cnt').textContent=trans.length||'';
+  $('#safe-cnt').textContent=safe.length||'';
+  $('#chest-cnt').textContent=chests.length||'';
+  $('#kitem-cnt').textContent=kitems.length||'';
+  renderList($('#doors-list'),doors,'door','D');
+  renderList($('#trans-list'),trans,'transition','⇒');
+  renderList($('#safe-list'),safe,'safezone','★');
+  renderList($('#chest-list'),chests,'chest','□');
+  renderList($('#kitem-list'),kitems,'keyitem','K');
+}
+
+function addObj(type){
+  const f=state.floors[activeObjFloor];if(!f)return;
+  const defaults={
+    door:{x:1,z:1,orientation:'horizontal',locked:false,keyType:null,description:''},
+    transition:{x:1,z:1,type:'stairs',target:'',spawn:{x:1,z:1,direction:0}},
+    safezone:{x:1,z:1,type:'altar',name:'Altar',description:'',services:['save','heal'],healAmount:100,cooldown:0},
+    chest:{x:1,z:1,loot:[{itemId:'health_potion_small',chance:0.8,quantity:{min:1,max:1}}]},
+    keyitem:{x:1,z:1,itemId:'bronze_key',respawn:false}
+  };
+  const arr={door:f.doors,transition:f.transitions,safezone:f.safeZones,chest:f.lootChests,keyitem:f.keyItems}[type];
+  arr.push({...defaults[type]});
+  markDirty();renderAllObjLists();openObjDetail(type,arr.length-1);
+}
+
+function delObj(type,i,e){
+  e.stopPropagation();
+  const f=state.floors[activeObjFloor];
+  const arr={door:f.doors,transition:f.transitions,safezone:f.safeZones,chest:f.lootChests,keyitem:f.keyItems}[type];
+  arr.splice(i,1);
+  if(selObj?.type===type&&selObj?.i===i)selObj=null;
+  markDirty();renderAllObjLists();
+  if(!selObj)$('#obj-detail').innerHTML='<div style="color:var(--text-dim);font-size:9px">Selecciona un objeto.</div>';
+}
+
+function objProp(type,i,k,v){
+  const f=state.floors[activeObjFloor];
+  const arr={door:f.doors,transition:f.transitions,safezone:f.safeZones,chest:f.lootChests,keyitem:f.keyItems}[type];
+  if(arr[i]!==undefined){
+    const keys=k.split('.');
+    if(keys.length===1)arr[i][k]=v;
+    else if(keys.length===2)arr[i][keys[0]][keys[1]]=v;
+    markDirty();renderAllObjLists();
+  }
+}
+
+function openObjDetail(type,i){
+  selObj={type,i};renderAllObjLists();
+  const f=state.floors[activeObjFloor];
+  const arr={door:f.doors,transition:f.transitions,safezone:f.safeZones,chest:f.lootChests,keyitem:f.keyItems}[type];
+  const o=arr[i];
+  if(!o){$('#obj-detail').innerHTML='';return}
+  let html=`<div class="det-title">${type.toUpperCase()}</div>
+    <div class="field"><label>X</label><input type="number" value="${o.x}" class="narrow" oninput="objProp('${type}',${i},'x',+this.value)"></div>
+    <div class="field"><label>Z</label><input type="number" value="${o.z}" class="narrow" oninput="objProp('${type}',${i},'z',+this.value)"></div>`;
+
+  if(type==='door'){
+    html+=`
+    <div class="field"><label>Orientación</label>
+      <select onchange="objProp('door',${i},'orientation',this.value)">
+        <option ${o.orientation==='horizontal'?'selected':''}>horizontal</option>
+        <option ${o.orientation==='vertical'?'selected':''}>vertical</option>
+      </select></div>
+    <div class="field"><label>Cerrada c/llave</label><input type="checkbox" ${o.locked?'checked':''} onchange="objProp('door',${i},'locked',this.checked)"></div>
+    <div class="field"><label>Tipo de llave</label>
+      <select onchange="objProp('door',${i},'keyType',this.value==='—'?null:this.value)">
+        <option ${!o.keyType?'selected':''}>—</option>
+        <option ${o.keyType==='bronze'?'selected':''}>bronze</option>
+        <option ${o.keyType==='silver'?'selected':''}>silver</option>
+        <option ${o.keyType==='gold'?'selected':''}>gold</option>
+      </select></div>
+    <div class="field"><label>Descripción</label><textarea oninput="objProp('door',${i},'description',this.value)">${esc(o.description||'')}</textarea></div>`;
+  } else if(type==='transition'){
+    const floorOpts=state.floors.map((fl,fi)=>`<option value="${state.campaign.id}-floor-${fi+1}" ${o.target===`${state.campaign.id}-floor-${fi+1}`?'selected':''}>Piso ${fi+1}: ${esc(fl.name.replace(/.*- /,'').slice(0,18))}</option>`).join('');
+    html+=`
+    <div class="field"><label>Tipo</label>
+      <select onchange="objProp('transition',${i},'type',this.value)">
+        <option ${o.type==='stairs'?'selected':''}>stairs</option>
+        <option ${o.type==='portal'?'selected':''}>portal</option>
+        <option ${o.type==='exit'?'selected':''}>exit</option>
+      </select></div>
+    <div class="field"><label>Destino</label>
+      <select onchange="objProp('transition',${i},'target',this.value)">${floorOpts}</select></div>
+    <div class="field"><label>Spawn X</label><input type="number" value="${o.spawn?.x||1}" class="narrow" oninput="objProp('transition',${i},'spawn.x',+this.value)"></div>
+    <div class="field"><label>Spawn Z</label><input type="number" value="${o.spawn?.z||1}" class="narrow" oninput="objProp('transition',${i},'spawn.z',+this.value)"></div>
+    <div class="field"><label>Spawn Dir</label>
+      <select onchange="objProp('transition',${i},'spawn.direction',+this.value)">
+        <option value="0" ${(o.spawn?.direction||0)===0?'selected':''}>N</option>
+        <option value="1" ${(o.spawn?.direction||0)===1?'selected':''}>E</option>
+        <option value="2" ${(o.spawn?.direction||0)===2?'selected':''}>S</option>
+        <option value="3" ${(o.spawn?.direction||0)===3?'selected':''}>W</option>
+      </select></div>`;
+  } else if(type==='safezone'){
+    html+=`
+    <div class="field"><label>Nombre</label><input type="text" value="${esc(o.name||'')}" oninput="objProp('safezone',${i},'name',this.value)"></div>
+    <div class="field"><label>Tipo</label>
+      <select onchange="objProp('safezone',${i},'type',this.value)">
+        <option ${o.type==='altar'?'selected':''}>altar</option>
+        <option ${o.type==='shrine'?'selected':''}>shrine</option>
+        <option ${o.type==='camp'?'selected':''}>camp</option>
+        <option ${o.type==='tent'?'selected':''}>tent</option>
+      </select></div>
+    <div class="field"><label>Curación</label><input type="number" value="${o.healAmount||100}" class="narrow" oninput="objProp('safezone',${i},'healAmount',+this.value)"></div>
+    <div class="field"><label>Guardar</label><input type="checkbox" ${(o.services||[]).includes('save')?'checked':''} onchange="toggleSvc(${i},'save',this.checked)"></div>
+    <div class="field"><label>Curar</label><input type="checkbox" ${(o.services||[]).includes('heal')?'checked':''} onchange="toggleSvc(${i},'heal',this.checked)"></div>
+    <div class="field"><label>Descripción</label><textarea oninput="objProp('safezone',${i},'description',this.value)">${esc(o.description||'')}</textarea></div>`;
+  } else if(type==='chest'){
+    const itemOpts=ITEMS.map(it=>`<option>${it}</option>`).join('');
+    html+=`
+    <div style="font-size:8px;color:var(--dim);letter-spacing:1px;margin:8px 0 5px">LOOT</div>
+    <div id="chest-loot-${i}">
+      ${(o.loot||[]).map((l,li)=>`
+        <div class="sub-row">
+          <select style="flex:1" onchange="chestLoot(${i},${li},'itemId',this.value)">${ITEMS.map(it=>`<option ${it===l.itemId?'selected':''}>${it}</option>`).join('')}</select>
+          <span style="color:var(--text-dim)">%</span>
+          <input type="number" min="0" max="1" step="0.05" value="${l.chance||1}" style="width:45px" oninput="chestLoot(${i},${li},'chance',+this.value)">
+          <button class="btn del icon-btn" onclick="delChestLoot(${i},${li})">✕</button>
+        </div>`).join('')}
+    </div>
+    <button class="btn add" style="margin-top:4px" onclick="addChestLoot(${i})">+ Item</button>`;
+  } else if(type==='keyitem'){
+    html+=`
+    <div class="field"><label>Item ID</label>
+      <select onchange="objProp('keyitem',${i},'itemId',this.value)">${ITEMS.map(it=>`<option ${it===o.itemId?'selected':''}>${it}</option>`).join('')}</select></div>
+    <div class="field"><label>Reaparece</label><input type="checkbox" ${o.respawn?'checked':''} onchange="objProp('keyitem',${i},'respawn',this.checked)"></div>`;
+  }
+  html+=`<div style="margin-top:12px"><button class="btn del" onclick="delObj('${type}',${i},{stopPropagation:()=>{}})">🗑 ELIMINAR</button></div>`;
+  $('#obj-detail').innerHTML=html;
+}
+
+function toggleSvc(i,svc,on){
+  const o=state.floors[activeObjFloor].safeZones[i];
+  if(!o.services)o.services=[];
+  if(on&&!o.services.includes(svc))o.services.push(svc);
+  else if(!on)o.services=o.services.filter(s=>s!==svc);
+  markDirty();
+}
+function chestLoot(ci,li,k,v){const l=state.floors[activeObjFloor].lootChests[ci]?.loot?.[li];if(l){l[k]=v;markDirty()}}
+function addChestLoot(ci){const c=state.floors[activeObjFloor].lootChests[ci];if(!c.loot)c.loot=[];c.loot.push({itemId:'health_potion_small',chance:0.7,quantity:{min:1,max:1}});markDirty();openObjDetail('chest',ci)}
+function delChestLoot(ci,li){state.floors[activeObjFloor].lootChests[ci].loot.splice(li,1);markDirty();openObjDetail('chest',ci)}
+
+// ─────────────────────────────────────────────────────────────────
+// NPCs
+// ─────────────────────────────────────────────────────────────────
+function renderNPCList(){
+  const flIdx=activeNPCFloor;
+  const npcs=state.npcs.filter(n=>n.floor===flIdx);
+  $('#npc-count').textContent=state.npcs.length||'';
+  $('#npc-list').innerHTML=npcs.length?npcs.map(n=>{
+    const gi=state.npcs.indexOf(n);
+    return`<div class="li ${selNPC===gi?'sel':''}" onclick="openNPCDetail(${gi})">
+      <span class="li-label">${n.isShopkeeper?'🛒':''} ${esc(n.name)} <span style="color:var(--dim)">(${n.position.x},${n.position.z})</span></span>
+      <button class="li-del" onclick="delNPC(${gi},event)">✕</button>
+    </div>`;
+  }).join(''):'<div style="font-size:9px;color:var(--dim);padding:4px">Sin NPCs en este piso.</div>';
+}
+
+function addNPC(){
+  const id=`npc_${rid()}`;
+  state.npcs.push({
+    id,name:'NPC',type:'npc',faction:'neutral',isShopkeeper:false,
+    portrait:'elder',floor:activeNPCFloor,
+    position:{x:2,z:2},
+    dialogueStory:id,dialogueKnot:'greeting',
+    dialogueConditions:{knotOverrides:[]},shopInventory:[]
+  });
+  markDirty();updatePreview();renderNPCList();openNPCDetail(state.npcs.length-1);
+}
+
+function delNPC(i,e){
+  e.stopPropagation();
+  state.npcs.splice(i,1);
+  if(selNPC>=i)selNPC=null;
+  markDirty();updatePreview();renderNPCList();
+  if(selNPC===null)$('#npc-detail').innerHTML='<div style="color:var(--text-dim);font-size:9px">Selecciona un NPC.</div>';
+}
+
+function openNPCDetail(i){
+  selNPC=i;renderNPCList();
+  const n=state.npcs[i];if(!n)return;
+  const flOpts=state.floors.map((f,fi)=>`<option value="${fi}" ${n.floor===fi?'selected':''}>Piso ${fi+1}: ${esc(f.name.replace(/.*- /,'').slice(0,14))}</option>`).join('');
+  const portOpts=PORTRAITS.map(p=>`<option ${p===n.portrait?'selected':''}>${p}</option>`).join('');
+  const invHTML=(n.shopInventory||[]).map((it,ii)=>`
+    <div class="sub-row">
+      <select style="flex:1" onchange="npcInvItem(${i},${ii},this.value)">${ITEMS.map(x=>`<option ${x===it?'selected':''}>${x}</option>`).join('')}</select>
+      <button class="btn del icon-btn" onclick="delNpcInv(${i},${ii})">✕</button>
+    </div>`).join('');
+  $('#npc-detail').innerHTML=`
+    <div class="det-title">NPC — ${esc(n.name)}</div>
+    <div class="field"><label>ID</label><input type="text" value="${esc(n.id)}" oninput="npcProp(${i},'id',this.value)"></div>
+    <div class="field"><label>Nombre</label><input type="text" value="${esc(n.name)}" oninput="npcProp(${i},'name',this.value);renderNPCList()"></div>
+    <div class="field"><label>Piso</label>
+      <select onchange="npcProp(${i},'floor',+this.value);renderNPCList()">${flOpts}</select></div>
+    <div class="field"><label>X</label><input type="number" value="${n.position.x}" class="narrow" oninput="npcPos(${i},'x',+this.value)"></div>
+    <div class="field"><label>Z</label><input type="number" value="${n.position.z}" class="narrow" oninput="npcPos(${i},'z',+this.value)"></div>
+    <div class="field"><label>Facción</label>
+      <select onchange="npcProp(${i},'faction',this.value)">
+        ${['neutral','ancient','undead','hostile','friendly'].map(f=>`<option ${f===n.faction?'selected':''}>${f}</option>`).join('')}
+      </select></div>
+    <div class="field"><label>Retrato</label>
+      <select onchange="npcProp(${i},'portrait',this.value)">${portOpts}</select></div>
+    <div class="field"><label>Es vendedor</label><input type="checkbox" ${n.isShopkeeper?'checked':''} onchange="npcProp(${i},'isShopkeeper',this.checked);openNPCDetail(${i})"></div>
+    <div class="field"><label>Diálogo Story</label><input type="text" value="${esc(n.dialogueStory||n.id)}" oninput="npcProp(${i},'dialogueStory',this.value)"></div>
+    <div class="field"><label>Diálogo Knot</label>
+      <select onchange="npcProp(${i},'dialogueKnot',this.value)">
+        ${['greeting','lament','quest','post_quest','farewell'].map(k=>`<option ${k===n.dialogueKnot?'selected':''}>${k}</option>`).join('')}
+      </select></div>
+    ${n.isShopkeeper?`
+      <div style="font-size:8px;color:var(--dim);letter-spacing:1px;margin:10px 0 5px">INVENTARIO TIENDA</div>
+      <div id="npc-inv-${i}">${invHTML}</div>
+      <button class="btn add" style="margin-top:4px" onclick="addNpcInv(${i})">+ Item</button>
+    `:''}
+    <div style="margin-top:12px"><button class="btn del" onclick="delNPC(${i},{stopPropagation:()=>{}})">🗑 ELIMINAR NPC</button></div>`;
+}
+
+function npcProp(i,k,v){if(state.npcs[i])state.npcs[i][k]=v;markDirty()}
+function npcPos(i,k,v){if(state.npcs[i])state.npcs[i].position[k]=v;markDirty()}
+function npcInvItem(i,j,v){if(state.npcs[i]?.shopInventory)state.npcs[i].shopInventory[j]=v;markDirty()}
+function addNpcInv(i){if(!state.npcs[i].shopInventory)state.npcs[i].shopInventory=[];state.npcs[i].shopInventory.push('health_potion_small');markDirty();openNPCDetail(i)}
+function delNpcInv(i,j){state.npcs[i].shopInventory.splice(j,1);markDirty();openNPCDetail(i)}
+
+// ─────────────────────────────────────────────────────────────────
+// Hints (Tutorial)
+// ─────────────────────────────────────────────────────────────────
+function renderHintList(){
+  const f=state.floors[activeHintFloor];
+  const hints=f?.tutorialHints||[];
+  $('#hint-count').textContent=hints.length||'';
+  $('#hint-list').innerHTML=hints.length?hints.map((h,i)=>`
+    <div class="li ${selHint===i?'sel':''}" onclick="openHintDetail(${i})">
+      <span class="li-label">? <span style="color:var(--pink)">(${h.x},${h.z})</span> ${esc((h.message||'').slice(0,28))}…</span>
+      <button class="li-del" onclick="delHint(${i},event)">✕</button>
+    </div>`).join(''):'<div style="font-size:9px;color:var(--dim);padding:4px">Sin pistas.</div>';
+}
+
+function addHint(){
+  const f=state.floors[activeHintFloor];if(!f)return;
+  f.tutorialHints.push({x:1,z:1,message:'',trigger:'first_visit'});
+  markDirty();renderHintList();openHintDetail(f.tutorialHints.length-1);
+}
+
+function delHint(i,e){
+  e.stopPropagation();
+  state.floors[activeHintFloor].tutorialHints.splice(i,1);
+  if(selHint>=i)selHint=null;
+  markDirty();renderHintList();
+  if(selHint===null)$('#hint-detail').innerHTML='<div style="color:var(--text-dim);font-size:9px">Selecciona una pista.</div>';
+}
+
+function openHintDetail(i){
+  selHint=i;renderHintList();
+  const h=state.floors[activeHintFloor].tutorialHints[i];if(!h)return;
+  $('#hint-detail').innerHTML=`
+    <div class="det-title">PISTA #${i+1}</div>
+    <div class="field"><label>X</label><input type="number" value="${h.x}" class="narrow" oninput="hintProp(${i},'x',+this.value)"></div>
+    <div class="field"><label>Z</label><input type="number" value="${h.z}" class="narrow" oninput="hintProp(${i},'z',+this.value)"></div>
+    <div class="field"><label>Trigger</label>
+      <select onchange="hintProp(${i},'trigger',this.value)">
+        ${['first_visit','pre_combat','near_key','near_exit','near_npc','custom'].map(t=>`<option ${t===h.trigger?'selected':''}>${t}</option>`).join('')}
+      </select></div>
+    <div class="field"><label>Mensaje</label><textarea rows="4" oninput="hintProp(${i},'message',this.value)">${esc(h.message||'')}</textarea></div>
+    <div style="margin-top:10px"><button class="btn del" onclick="delHint(${i},{stopPropagation:()=>{}})">🗑 ELIMINAR</button></div>`;
+}
+
+function hintProp(i,k,v){const h=state.floors[activeHintFloor].tutorialHints[i];if(h){h[k]=v;markDirty();renderHintList()}}
+
+// ─────────────────────────────────────────────────────────────────
+// Export / Build JSON
+// ─────────────────────────────────────────────────────────────────
+function buildLevelJSON(fi){
+  const f=state.floors[fi];
+  const c=state.campaign;
+  const floorNum=fi+1;
+  const id=`${c.id}-floor-${floorNum}`;
+  const level={
+    id,
+    name:f.name,
+    theme:c.theme,
+    musicTheme:c.musicTheme,
+    width:f.width,
+    height:f.height,
+    spawn:f.spawn,
+    tiles:f.tiles
+  };
+  if(f.doors?.length)level.doors=f.doors;
+  if(f.tileMetadata?.length)level.tileMetadata=f.tileMetadata;
+  if(f.transitions?.length)level.transitions=f.transitions;
+  if(f.safeZones?.length)level.safeZones=f.safeZones;
+  if(f.scriptedEncounters?.length)level.scriptedEncounters=f.scriptedEncounters;
+  if(f.keyItems?.length)level.keyItems=f.keyItems;
+  if(f.lootChests?.length)level.lootChests=f.lootChests;
+  if(f.tutorialHints?.length)level.tutorialHints=f.tutorialHints;
+  if(f.questObjective)level.quest={objective:f.questObjective};
+  return level;
+}
+
+function buildIndexEntry(){
+  const c=state.campaign;
+  const tags=c.tags.split(',').map(t=>t.trim()).filter(Boolean);
+  return{
+    id:c.id,
+    name:c.name,
+    tagline:c.tagline||c.name,
+    floors:c.floors,
+    recommendedLevel:c.recommendedLevel,
+    difficulty:c.difficulty,
+    tags,
+    color:c.color,
+    startLevel:`${c.id}-floor-1`
+  };
+}
+
+function buildNPCFile(){
+  const c=state.campaign;
+  const npcs=state.npcs.map(n=>({
+    id:n.id,name:n.name,type:n.type||'npc',
+    faction:n.faction||'neutral',
+    isShopkeeper:n.isShopkeeper||false,
+    portrait:n.portrait||'elder',
+    position:{x:n.position.x,z:n.position.z},
+    dialogueStory:n.dialogueStory||n.id,
+    dialogueKnot:n.dialogueKnot||'greeting',
+    dialogueConditions:{knotOverrides:n.dialogueConditions?.knotOverrides||[]},
+    ...(n.isShopkeeper&&n.shopInventory?.length?{shopInventory:n.shopInventory}:{})
+  }));
+  return{dungeonId:c.id,npcs};
+}
+
+function buildAllFiles(){
+  const files=[];
+  // Campaign index entry
+  files.push({
+    path:`campaigns/index.json (entrada)`,
+    filename:`${state.campaign.id}-index-entry.json`,
+    json:buildIndexEntry()
+  });
+  // Floor levels
+  for(let i=0;i<state.floors.length;i++){
+    const id=`${state.campaign.id}-floor-${i+1}`;
+    files.push({
+      path:`levels/${id}.json`,
+      filename:`${id}.json`,
+      json:buildLevelJSON(i)
+    });
+  }
+  // NPC file
+  if(state.npcs.length>0){
+    files.push({
+      path:`npcs/${state.campaign.id}/npcs.json`,
+      filename:`${state.campaign.id}-npcs.json`,
+      json:buildNPCFile()
+    });
+  }
+  return files;
+}
+
+function refreshExport(){
+  const files=buildAllFiles();
+  const panel=$('#exp-panels');
+  panel.innerHTML='';
+  let info=`${files.length} archivos`;
+  $('#exp-info').textContent=info;
+  files.forEach(f=>{
+    const jsonStr=JSON.stringify(f.json,null,2);
+    const div=document.createElement('div');
+    div.className='exp-file';
+    div.innerHTML=`
+      <div class="exp-file-hdr">
+        <strong class="fname">${esc(f.path)}</strong>
+        <button class="btn" style="font-size:8px;padding:1px 5px" onclick="copyText(${JSON.stringify(jsonStr).replace(/</g,'\\u003c')})">COPY</button>
+        <button class="btn add" style="font-size:8px;padding:1px 5px" onclick="downloadFile(${JSON.stringify(f.filename)},${JSON.stringify(jsonStr).replace(/</g,'\\u003c')})">⬇</button>
+      </div>
+      <div class="exp-code">${esc(jsonStr)}</div>`;
+    panel.appendChild(div);
+  });
+}
+
+function copyText(text){
+  navigator.clipboard.writeText(text).then(()=>showModal('Copiado','JSON copiado al portapapeles.',[{label:'OK',fn:closeModal}]));
+}
+
+function downloadFile(name,content){
+  const a=document.createElement('a');
+  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(content);
+  a.download=name;a.click();
+}
+
+function doExportAll(){
+  const files=buildAllFiles();
+  files.forEach(f=>downloadFile(f.filename,JSON.stringify(f.json,null,2)));
+  showModal('Exportado',
+    `${files.length} archivos descargados:<br><br>`+files.map(f=>`<div style="color:var(--green);font-size:9px">→ ${esc(f.filename)}</div>`).join(''),
+    [{label:'OK',fn:closeModal}]);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Save / Load state
+// ─────────────────────────────────────────────────────────────────
+function saveStateJSON(){
+  const json=JSON.stringify({campaign:state.campaign,floors:state.floors,npcs:state.npcs},null,2);
+  downloadFile(`${state.campaign.id}-creator-save.json`,json);
+  markClean();
+}
+
+function importState(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='.json';
+  inp.onchange=e=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(data.campaign)Object.assign(state.campaign,data.campaign);
+        if(data.floors)state.floors=data.floors;
+        if(data.npcs)state.npcs=data.npcs;
+        initFromState();markClean();
+        showModal('Cargado','Estado restaurado correctamente.',[{label:'OK',fn:closeModal}]);
+      }catch(err){showModal('Error',`No se pudo cargar: ${err.message}`,[{label:'OK',fn:closeModal}])}
+    };
+    reader.readAsText(e.target.files[0]);
+  };
+  inp.click();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Modal
+// ─────────────────────────────────────────────────────────────────
+function showModal(title,body,buttons){
+  $('#modal-title').textContent=title;
+  $('#modal-body').innerHTML=typeof body==='string'?`<div style="font-size:9px;color:var(--text-dim);line-height:1.7">${body}</div>`:body.outerHTML||body;
+  const btns=$('#modal-btns');
+  btns.innerHTML='';
+  (buttons||[{label:'Cerrar',fn:closeModal}]).forEach(b=>{
+    const btn=document.createElement('button');
+    btn.className='btn '+(b.cls||'');
+    btn.textContent=b.label;
+    btn.onclick=b.fn;
+    btns.appendChild(btn);
+  });
+  $('#modal-ov').classList.add('open');
+}
+function closeModal(){$('#modal-ov').classList.remove('open')}
+$('#modal-ov')?.addEventListener('click',e=>{if(e.target===$('#modal-ov'))closeModal()});
+
+// ─────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────
+function initFromState(){
+  const c=state.campaign;
+  $('#c-id').value=c.id;
+  $('#c-name').value=c.name;
+  $('#hdr-name').value=c.name;
+  $('#c-tagline').value=c.tagline||'';
+  $('#c-desc').value=c.description||'';
+  selOpt($('#c-diff'),c.difficulty);
+  $('#c-rlv').value=c.recommendedLevel;
+  $('#c-floors').value=c.floors;
+  selOpt($('#c-theme'),c.theme);
+  selOpt($('#c-music'),c.musicTheme);
+  $('#c-color').value=c.color||'#FF0055';
+  $('#c-colorhex').value=c.color||'#FF0055';
+  $('#c-tags').value=c.tags||'';
+  renderFloorNames();
+  renderFloorList();
+  syncFloorProps();
+  updatePreview();
+}
+
+function init(){
+  setCampaignFloors(3);
+  // Generate default maps for all floors
+  for(let i=0;i<state.floors.length;i++){
+    activeFloor=i;generateMap();
+  }
+  activeFloor=0;
+  initCanvas();
+  initFromState();
+  renderFloorList();
+  syncFloorProps();
+
+  // Add safe zone to floor 1
+  state.floors[0].safeZones.push({x:1,z:1,type:'altar',name:'Altar de Entrada',description:'',services:['save','heal'],healAmount:100,cooldown:0});
+
+  // Keyboard shortcuts for canvas tools
+  window.addEventListener('keydown',e=>{
+    if(activeTab!=='floors')return;
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;
+    if(e.key==='p'||e.key==='P')setFTool('paint');
+    if(e.key==='e'||e.key==='E')setFTool('erase');
+    if(e.key==='f'||e.key==='F')setFTool('fill');
+    if(e.key==='1')setFTile(1);
+    if(e.key==='2')setFTile(2);
+    if(e.key==='0')setFTile(0);
+    if(e.key==='3')setFTile(3);
+    if(e.key==='+'||e.key==='=')zoomCanvas(0.2);
+    if(e.key==='-')zoomCanvas(-0.2);
+  });
+
+  updatePreview();
+}
+
+init();
+</script>
+</body>
+</html>

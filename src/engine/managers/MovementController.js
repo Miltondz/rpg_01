@@ -214,12 +214,17 @@ export class MovementController {
         x: this.animationData.startValue.x + (this.animationData.targetValue.x - this.animationData.startValue.x) * easedProgress,
         z: this.animationData.startValue.z + (this.animationData.targetValue.z - this.animationData.startValue.z) * easedProgress
       };
-      
-      // Update camera position
+
       if (this.renderer && this.renderer.updateCameraPosition) {
         this.renderer.updateCameraPosition(currentWorldPos);
       }
-      
+
+      // Camera bob — half-sine over movement progress
+      const bobY = Math.sin(progress * Math.PI) * 0.06;
+      if (this.renderer?.camera) {
+        this.renderer.camera.position.y = 1.5 + bobY;
+      }
+
     } else if (this.animationData.type === 'rotation') {
       const currentRotation = this.animationData.startValue + (this.animationData.targetValue - this.animationData.startValue) * easedProgress;
       

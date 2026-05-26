@@ -315,31 +315,8 @@ export class GameLoopManager {
    * @param {Object} combatResults - Combat results with rewards
    */
   async processCombatVictory(combatResults) {
-    const rewards = combatResults.rewards;
-    
-    if (rewards) {
-      // Apply experience to party
-      if (rewards.experience > 0) {
-        this.partyManager.distributeExperience(rewards.experience);
-      }
-      
-      // Add gold to party
-      if (rewards.gold > 0) {
-        this.partyManager.addGold(rewards.gold);
-      }
-      
-      // Add loot to inventory
-      if (rewards.loot && rewards.loot.length > 0) {
-        for (const item of rewards.loot) {
-          this.partyManager.addItemToInventory(item);
-        }
-      }
-      
-      console.log('Victory rewards processed:', rewards);
-    }
-    
-    // Auto-save after combat victory
-    this.performAutoSave('combatVictory', combatResults);
+    // Rewards (XP/gold/loot) distributed by CombatUIManager.distributeRewards().
+    // AutoSaveManager handles periodic saves — no explicit save needed here.
   }
 
   /**

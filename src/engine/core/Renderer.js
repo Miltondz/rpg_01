@@ -41,11 +41,11 @@ export class Renderer {
   }
 
   /**
-   * Create Three.js scene with retro settings
+   * Create Three.js scene with Dark-Bit Glitch settings
    */
   createScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x050302);
+    this.scene.background = new THREE.Color(0x000000); // pitch black
   }
 
   /**
@@ -70,60 +70,121 @@ export class Renderer {
   }
 
   /**
-   * Create WebGL renderer with retro settings
+   * Create WebGL renderer with retro pixel-art settings.
+   * Initial buffer size uses canvas CSS dimensions; ResolutionManager calls
+   * setResolution() to set the final size after CSS layout.
    */
   createRenderer() {
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: false, // Disable antialiasing for retro pixelated look
-      alpha: false,     // No transparency needed
+      antialias: false,
+      alpha: false,
       powerPreference: 'high-performance'
     });
-    
-    // Set renderer size
-    this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for performance
-    
-    // Disable shadow mapping for now (retro games didn't have complex shadows)
+
+    // Bootstrap at current layout size; ResolutionManager will override this
+    const w = this.canvas.clientWidth  || 1024;
+    const h = this.canvas.clientHeight || 768;
+    this.renderer.setSize(w, h);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = false;
-    
-    // Set clear color to black
     this.renderer.setClearColor(0x000000, 1.0);
   }
 
+  /** Called by ResolutionManager to set buffer + camera aspect. */
+  setResolution(w, h) {
+    this.renderer.setSize(w, h);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    if (this.camera) {
+      this.camera.aspect = w / h;
+      this.camera.updateProjectionMatrix();
+    }
+  }
+
   /**
-   * Set up lighting system (ambient light, point light attached to camera, fog effects)
+   * Dark-Bit Glitch lighting:
+   *   Hemisphere:  dark blue-ash ceiling / near-black floor — base fill that keeps
+   *                geometry readable without washing out the high-contrast pixel-art
+   *   Ambient:     dark charcoal-blue — ensures tiles beyond torch range aren't pure void
+   *   Lantern:     cool near-white, wide range — primary reveal light, flickers
+   *   Cyan rim:    electric cyan — digital corruption accent, hits back-walls
+   *   Magenta:     neon magenta — very faint deep-shadow tint
    */
   setupLighting() {
-    // Hemisphere light: warm ceiling glow (torch bounce) vs cool stone floor
-    this.hemisphereLight = new THREE.HemisphereLight(0x7a3a00, 0x101828, 0.6);
+    // Hemisphere: dark blue-ash top / near-black floor
+    this.hemisphereLight = new THREE.HemisphereLight(0x1c1c2e, 0x05050a, 0.65);
     this.scene.add(this.hemisphereLight);
 
-    // Fill ambient — keeps deep shadow areas readable, not pitch black
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.18);
+    // Ambient fill — slightly brighter for PBR materials (was 0.50)
+    this.ambientLight = new THREE.AmbientLight(0x303045, 0.65);
     this.scene.add(this.ambientLight);
 
-    // Primary torch — attached to camera, flickers each frame
-    this.pointLight = new THREE.PointLight(0xff9933, 2.2, 16, 1.5);
-    this.pointLight.position.set(0, 0.15, 0.4);
+    // Primary lantern — boosted intensity for PBR normal-map reads
+    this._torchBase = 1.2;
+    this.pointLight = new THREE.PointLight(0xeef0cc, this._torchBase, 22, 1.5);
+    this.pointLight.position.set(0, 0.1, 0.5);
     this.camera.add(this.pointLight);
 
-    // Secondary cold rim light — slight blue-purple, simulates reflected stone glow
-    this.rimLight = new THREE.PointLight(0x2233aa, 0.3, 10, 2);
-    this.rimLight.position.set(0, -0.5, -1.5);
+    // Cyan rim — electric digital glow behind camera (boosted slightly)
+    this.rimLight = new THREE.PointLight(0x00ffee, 0.40, 12, 2);
+    this.rimLight.position.set(0, 0.2, -1.2);
     this.camera.add(this.rimLight);
+
+    // Magenta accent — faint deep-shadow tint
+    this.accentLight = new THREE.PointLight(0xff00cc, 0.16, 7, 2);
+    this.accentLight.position.set(0.8, -0.3, 0.8);
+    this.camera.add(this.accentLight);
 
     this.scene.add(this.camera);
     console.log('Lighting system configured');
   }
 
   /**
-   * Set up fog effects for atmospheric depth
+   * Fog — very dark blue-black exponential.
+   * Color 0x05050e (not pure black) so tiles at 4-6 tiles still carry some hue.
+   * Density 0.055 keeps ~4 tiles ahead readable before fade.
    */
   setupFog() {
-    // Exponential fog — density 0.07 keeps 2–3 tiles visible ahead
-    this.scene.fog = new THREE.FogExp2(0x0a0604, 0.07);
+    this.scene.fog = new THREE.FogExp2(0x05050e, 0.055);
     console.log('Fog effects configured');
+  }
+
+  /**
+   * Apply renderer settings from a theme object.
+   * Safe to call after initialize() — only sets what is present in theme.renderer.
+   * @param {object} theme  Full theme object (see CryptTheme.js)
+   */
+  applyTheme(theme) {
+    const t = theme?.renderer;
+    if (!t) return;
+    if (this.scene?.fog) {
+      if (t.fogColor     !== undefined) this.scene.fog.color.setHex(t.fogColor);
+      if (t.fogDensity   !== undefined) this.scene.fog.density = t.fogDensity;
+    }
+    if (this.ambientLight) {
+      if (t.ambientColor     !== undefined) this.ambientLight.color.setHex(t.ambientColor);
+      if (t.ambientIntensity !== undefined) this.ambientLight.intensity = t.ambientIntensity;
+    }
+    if (this.hemisphereLight) {
+      if (t.hemiSkyColor    !== undefined) this.hemisphereLight.color.setHex(t.hemiSkyColor);
+      if (t.hemiGroundColor !== undefined) this.hemisphereLight.groundColor.setHex(t.hemiGroundColor);
+      if (t.hemiIntensity   !== undefined) this.hemisphereLight.intensity = t.hemiIntensity;
+    }
+    if (this.pointLight) {
+      if (t.torchColor     !== undefined) this.pointLight.color.setHex(t.torchColor);
+      if (t.torchIntensity !== undefined) this._torchBase = t.torchIntensity;
+    }
+    if (this.rimLight) {
+      if (t.rimColor     !== undefined) this.rimLight.color.setHex(t.rimColor);
+      if (t.rimIntensity !== undefined) this.rimLight.intensity = t.rimIntensity;
+    }
+    if (this.accentLight) {
+      if (t.accentColor     !== undefined) this.accentLight.color.setHex(t.accentColor);
+      if (t.accentIntensity !== undefined) this.accentLight.intensity = t.accentIntensity;
+    }
+    if (this.renderer && t.clearColor !== undefined) {
+      this.renderer.setClearColor(t.clearColor, 1);
+    }
   }
 
   /**
@@ -213,15 +274,10 @@ export class Renderer {
   clearScene() {
     if (!this.scene) return;
     
-    // Remove all objects except lights and camera
+    // Remove Mesh objects only — lights and camera are children of scene/camera and stay
     const objectsToRemove = [];
     this.scene.traverse((object) => {
-      if (object !== this.camera && 
-          object !== this.ambientLight && 
-          object !== this.pointLight &&
-          object.type === 'Mesh') {
-        objectsToRemove.push(object);
-      }
+      if (object.isMesh) objectsToRemove.push(object);
     });
     
     objectsToRemove.forEach(object => {
@@ -244,18 +300,18 @@ export class Renderer {
   }
 
   /**
-   * Animate torch intensity each frame — three sine waves at different frequencies
-   * produce a natural flicker without repeating patterns.
+   * Animate torch intensity — three desynced sine waves for natural flicker.
+   * Factor range 0.72–1.0 × _torchBase, so intensity never diverges from base.
    */
   updateTorchFlicker(time) {
     if (!this.pointLight) return;
     const t = time * 0.001;
-    const flicker =
-      0.90 +
-      Math.sin(t * 2.1)  * 0.10 +
-      Math.sin(t * 7.3)  * 0.05 +
+    const factor =
+      0.88 +
+      Math.sin(t * 2.1)  * 0.07 +
+      Math.sin(t * 7.3)  * 0.04 +
       Math.sin(t * 19.7) * 0.02;
-    this.pointLight.intensity = Math.max(0.65, Math.min(1.15, flicker));
+    this.pointLight.intensity = this._torchBase * Math.max(0.72, Math.min(1.0, factor));
   }
 
   /**

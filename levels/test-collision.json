@@ -1,5 +1,6 @@
 {
   "id": "test-collision",
+  "theme": "ruin",
   "width": 5,
   "height": 5,
   "spawn": {

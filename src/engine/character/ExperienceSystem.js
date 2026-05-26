@@ -6,7 +6,7 @@
 export class ExperienceSystem {
   constructor() {
     // XP distribution settings
-    this.baseXPFormula = 50; // Base multiplier for XP formula
+    this.baseXPFormula = 30; // Base multiplier for XP formula (was 50 — reduced for better pacing)
     this.maxLevel = 20;
     this.partyXPBonus = 0.1; // 10% bonus XP when in party
     

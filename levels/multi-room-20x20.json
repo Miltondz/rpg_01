@@ -1,5 +1,6 @@
 {
   "id": "multi-room-20x20",
+  "theme": "ruin",
   "width": 20,
   "height": 20,
   "spawn": {

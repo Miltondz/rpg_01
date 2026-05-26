@@ -1,0 +1,20 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^The air grows colder on the third level.",
+      "\n",
+      "^The walls are slick with dark moisture. Strange runes pulse with faint light.",
+      "\n",
+      "^The Shadow Lord's presence is stronger here. You can feel it pressing against your mind.",
+      "\n",
+      "^Keep moving. There is no turning back now.",
+      "\n",
+      {"#": "knot_reached:floor_3_intro_complete"},
+      "end",
+      null
+    ],
+    null
+  ],
+  "listDefs": {}
+}

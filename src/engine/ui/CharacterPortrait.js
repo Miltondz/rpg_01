@@ -26,20 +26,35 @@ export class CharacterPortrait {
 
   /**
    * (Re)draw a portrait onto an existing canvas.
+   * Tries assets/portraits/<key>.png first; falls back to procedural Canvas 2D.
    */
   static draw(canvas, typeKey) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
-
     const key = String(typeKey || 'unknown').toLowerCase().replace(/[^a-z_]/g, '_');
-    const fn  = _P[key] || _P.unknown;
-    fn(ctx, w, h);
 
-    // Subtle frame
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-    ctx.lineWidth   = 1;
-    ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+    const drawProcedural = () => {
+      ctx.clearRect(0, 0, w, h);
+      const fn = _P[key] || _P.unknown;
+      fn(ctx, w, h);
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth   = 1;
+      ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+    };
+
+    // Draw procedural immediately as placeholder
+    drawProcedural();
+
+    // Attempt PNG override
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth   = 1;
+      ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+    };
+    img.src = `assets/portraits/${key}.png`;
   }
 }
 
@@ -704,6 +719,404 @@ _P.giant_rat = (ctx, w, h) => {
     ctx.beginPath(); ctx.moveTo(bx, h * 0.90); ctx.lineTo(bx, h * 0.96); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(bx, h * 0.90); ctx.lineTo(bx + w * 0.03, h * 0.95); ctx.stroke();
   }
+};
+
+// ── SHATTERED SANCTUM ENEMIES ─────────────────────────────────────────────────
+
+_P.fungal_spider = (ctx, w, h) => {
+  _bg(ctx, w, h, '#060e04', '#0e1a06');
+  const cx = w / 2;
+  // Abdomen (large, fungal-spotted)
+  _circle(ctx, cx + w * 0.08, h * 0.58, w * 0.24, '#2a4a18');
+  for (let i = 0; i < 6; i++) {
+    const fx = cx + w * (-0.06 + (i % 3) * 0.10), fy = h * (0.46 + Math.floor(i / 3) * 0.14);
+    _circle(ctx, fx, fy, w * 0.04, '#8822aa', null, 0);
+  }
+  // Thorax
+  _circle(ctx, cx - w * 0.06, h * 0.44, w * 0.14, '#1e3610');
+  // Head
+  _circle(ctx, cx - w * 0.18, h * 0.36, w * 0.10, '#1a3010');
+  // Compound eyes (6 dots)
+  const eyes = [[-0.24, 0.30], [-0.16, 0.28], [-0.10, 0.30], [-0.24, 0.38], [-0.16, 0.40], [-0.10, 0.40]];
+  eyes.forEach(([ex, ey]) => _circle(ctx, cx + w * ex, h * ey, w * 0.025, '#44ff44'));
+  // Fangs
+  _poly(ctx, [[cx - w * 0.22, h * 0.44], [cx - w * 0.28, h * 0.52], [cx - w * 0.18, h * 0.46]], '#ccddaa');
+  _poly(ctx, [[cx - w * 0.16, h * 0.44], [cx - w * 0.20, h * 0.52], [cx - w * 0.12, h * 0.46]], '#ccddaa');
+  // Legs (8, 4 each side)
+  ctx.strokeStyle = '#336611'; ctx.lineWidth = 2.5;
+  const legPairs = [[-0.08, 0.42, -0.38, 0.28], [-0.06, 0.46, -0.40, 0.46], [-0.02, 0.50, -0.36, 0.66], [0.04, 0.54, -0.28, 0.78]];
+  legPairs.forEach(([bx, by, ex, ey]) => { ctx.beginPath(); ctx.moveTo(cx + w * bx, h * by); ctx.quadraticCurveTo(cx + w * ((bx + ex) / 2 - 0.08), h * ((by + ey) / 2), cx + w * ex, h * ey); ctx.stroke(); });
+  const rlegPairs = [[0.06, 0.42, 0.38, 0.28], [0.08, 0.46, 0.42, 0.44], [0.12, 0.50, 0.40, 0.64], [0.16, 0.54, 0.34, 0.76]];
+  rlegPairs.forEach(([bx, by, ex, ey]) => { ctx.beginPath(); ctx.moveTo(cx + w * bx, h * by); ctx.quadraticCurveTo(cx + w * ((bx + ex) / 2 + 0.06), h * ((by + ey) / 2), cx + w * ex, h * ey); ctx.stroke(); });
+  // Fungal cap mushroom on back
+  _poly(ctx, [[cx + w * 0.04, h * 0.34], [cx - w * 0.06, h * 0.50], [cx + w * 0.14, h * 0.50]], '#8822aa', '#aa44cc', 1);
+  _rect(ctx, cx + w * 0.03, h * 0.47, w * 0.05, h * 0.10, '#553366');
+};
+
+_P.cave_troll = (ctx, w, h) => {
+  _bg(ctx, w, h, '#0a0806', '#161210');
+  const cx = w / 2;
+  // Massive rocky body
+  _poly(ctx, [
+    [cx - w * 0.36, h * 0.34], [cx + w * 0.36, h * 0.34],
+    [cx + w * 0.32, h * 0.82], [cx - w * 0.32, h * 0.82]
+  ], '#4a4436');
+  // Stone skin cracks
+  ctx.strokeStyle = '#2a2218'; ctx.lineWidth = 1;
+  _line(ctx, cx - w * 0.18, h * 0.38, cx - w * 0.08, h * 0.60, '#2a2218', 1.5);
+  _line(ctx, cx + w * 0.10, h * 0.40, cx + w * 0.20, h * 0.58, '#2a2218', 1.5);
+  _line(ctx, cx - w * 0.24, h * 0.52, cx + w * 0.24, h * 0.56, '#2a2218', 1.5);
+  // Oversized head
+  _circle(ctx, cx, h * 0.22, w * 0.22, '#5a5040');
+  _rect(ctx, cx - w * 0.22, h * 0.14, w * 0.44, h * 0.06, '#3e3830'); // heavy brow
+  // Flat nose, mouth
+  _circle(ctx, cx - w * 0.05, h * 0.25, w * 0.04, '#3a3228');
+  _circle(ctx, cx + w * 0.05, h * 0.25, w * 0.04, '#3a3228');
+  _line(ctx, cx - w * 0.14, h * 0.31, cx + w * 0.14, h * 0.31, '#2a2218', 2.5);
+  // Dim orange eyes
+  _circle(ctx, cx - w * 0.10, h * 0.19, w * 0.05, '#ff6600');
+  _circle(ctx, cx + w * 0.10, h * 0.19, w * 0.05, '#ff6600');
+  _circle(ctx, cx - w * 0.10, h * 0.19, w * 0.09, 'rgba(255,80,0,0.12)');
+  _circle(ctx, cx + w * 0.10, h * 0.19, w * 0.09, 'rgba(255,80,0,0.12)');
+  // Huge arms reaching down
+  _line(ctx, cx - w * 0.34, h * 0.40, cx - w * 0.44, h * 0.76, '#5a5040', 18);
+  _line(ctx, cx + w * 0.34, h * 0.40, cx + w * 0.44, h * 0.72, '#5a5040', 18);
+  // Fists / claws
+  _circle(ctx, cx - w * 0.44, h * 0.78, w * 0.10, '#4a4030');
+  _circle(ctx, cx + w * 0.44, h * 0.74, w * 0.10, '#4a4030');
+  // Legs
+  _rect(ctx, cx - w * 0.26, h * 0.82, w * 0.20, h * 0.14, '#3a3428');
+  _rect(ctx, cx + w * 0.06, h * 0.82, w * 0.20, h * 0.14, '#3a3428');
+  // Rock projectile in hand (right)
+  _circle(ctx, cx + w * 0.46, h * 0.62, w * 0.09, '#6a6050', '#887860', 1.5);
+};
+
+_P.shadow_acolyte = (ctx, w, h) => {
+  _bg(ctx, w, h, '#020006', '#080012');
+  const cx = w / 2;
+  // Dark hooded robe
+  _poly(ctx, [
+    [cx - w * 0.24, h * 0.28], [cx + w * 0.24, h * 0.28],
+    [cx + w * 0.28, h * 0.96], [cx - w * 0.28, h * 0.96]
+  ], '#0c000e');
+  _circle(ctx, cx, h * 0.18, w * 0.16, '#0e0018'); // hood
+  // Pale face, partially shadowed
+  _face(ctx, cx, h * 0.20, w * 0.10, '#9988aa', '#220033');
+  ctx.fillStyle = 'rgba(8,0,14,0.72)'; ctx.fillRect(cx - w * 0.12, h * 0.10, w * 0.24, h * 0.08);
+  // Void mark on face (triangle)
+  ctx.strokeStyle = '#8800ff'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(cx, h * 0.15); ctx.lineTo(cx - w * 0.05, h * 0.23); ctx.lineTo(cx + w * 0.05, h * 0.23); ctx.closePath(); ctx.stroke();
+  _circle(ctx, cx, h * 0.19, w * 0.016, '#cc44ff');
+  // Glowing violet eyes
+  _circle(ctx, cx - w * 0.06, h * 0.19, w * 0.026, '#aa00ff');
+  _circle(ctx, cx + w * 0.06, h * 0.19, w * 0.026, '#aa00ff');
+  _circle(ctx, cx - w * 0.06, h * 0.19, w * 0.05, 'rgba(150,0,255,0.2)');
+  _circle(ctx, cx + w * 0.06, h * 0.19, w * 0.05, 'rgba(150,0,255,0.2)');
+  // Floating dark particles
+  ctx.fillStyle = 'rgba(120,0,200,0.55)';
+  [[cx - w * 0.28, h * 0.44], [cx + w * 0.28, h * 0.52], [cx - w * 0.20, h * 0.70], [cx + w * 0.18, h * 0.76], [cx - w * 0.10, h * 0.86]].forEach(([px, py]) => {
+    ctx.beginPath(); ctx.arc(px, py, w * 0.022, 0, Math.PI * 2); ctx.fill();
+  });
+  // Ritual dagger
+  _line(ctx, cx + w * 0.18, h * 0.50, cx + w * 0.28, h * 0.72, '#440066', 3);
+  _line(ctx, cx + w * 0.12, h * 0.52, cx + w * 0.22, h * 0.48, '#663399', 2);
+  // Robe hem runes
+  ctx.strokeStyle = '#440088'; ctx.lineWidth = 1;
+  for (let i = 0; i < 4; i++) ctx.strokeRect(cx - w * 0.22 + i * w * 0.12, h * 0.88, w * 0.08, h * 0.05);
+};
+
+_P.corrupted_paladin = (ctx, w, h) => {
+  _bg(ctx, w, h, '#080408', '#120c12');
+  const cx = w / 2;
+  // Once-golden plate, now cracked and void-stained
+  _poly(ctx, [
+    [cx - w * 0.26, h * 0.34], [cx + w * 0.26, h * 0.34],
+    [cx + w * 0.24, h * 0.80], [cx - w * 0.24, h * 0.80]
+  ], '#2a1e10');
+  // Gold remnants on armor edges
+  ctx.strokeStyle = '#665522'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(cx - w * 0.26, h * 0.34, w * 0.52, h * 0.46);
+  _line(ctx, cx, h * 0.34, cx, h * 0.80, '#665522', 1);
+  _line(ctx, cx - w * 0.26, h * 0.57, cx + w * 0.26, h * 0.57, '#665522', 1);
+  // Corrupted cross on chest (half gold, half void)
+  _rect(ctx, cx - w * 0.025, h * 0.40, w * 0.05, h * 0.22, '#ffcc00');
+  _rect(ctx, cx - w * 0.13, h * 0.49, w * 0.26, h * 0.06, '#ffcc00');
+  // Void corruption over right half
+  ctx.fillStyle = 'rgba(80,0,120,0.72)'; ctx.fillRect(cx, h * 0.34, w * 0.26, h * 0.46);
+  // Cracked helmet
+  _poly(ctx, [[cx - w * 0.16, h * 0.10], [cx + w * 0.16, h * 0.10], [cx + w * 0.16, h * 0.34], [cx - w * 0.16, h * 0.34]], '#2a1e10');
+  _rect(ctx, cx - w * 0.14, h * 0.18, w * 0.28, h * 0.05, '#000');
+  // Left eye: golden glow; right eye: void purple
+  _circle(ctx, cx - w * 0.07, h * 0.205, w * 0.036, '#ffcc00');
+  _circle(ctx, cx + w * 0.07, h * 0.205, w * 0.036, '#8800ff');
+  _circle(ctx, cx + w * 0.07, h * 0.205, w * 0.07, 'rgba(100,0,200,0.30)');
+  // Crack lines on helmet
+  _line(ctx, cx + w * 0.04, h * 0.10, cx + w * 0.10, h * 0.26, '#550088', 1.5);
+  _line(ctx, cx + w * 0.10, h * 0.26, cx + w * 0.06, h * 0.34, '#550088', 1.5);
+  // Pauldrons
+  _circle(ctx, cx - w * 0.28, h * 0.38, w * 0.10, '#2a1e10', '#665522', 1);
+  _circle(ctx, cx + w * 0.28, h * 0.38, w * 0.10, '#220040', '#660099', 1);
+  // Holy sword (left, still bright) + void energy right
+  _line(ctx, cx - w * 0.08, h * 0.18, cx - w * 0.06, h * 0.94, '#ccaa44', 4);
+  _line(ctx, cx - w * 0.18, h * 0.40, cx + w * 0.02, h * 0.40, '#ccaa44', 2.5);
+  ctx.strokeStyle = '#aa00ff'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2, r = w * 0.14;
+    ctx.moveTo(cx + w * 0.24, h * 0.50); ctx.lineTo(cx + w * 0.24 + Math.cos(a) * r, h * 0.50 + Math.sin(a) * h * 0.08);
+  }
+  ctx.stroke();
+  // Legs
+  _rect(ctx, cx - w * 0.20, h * 0.80, w * 0.16, h * 0.16, '#2a1e10');
+  _rect(ctx, cx + w * 0.04, h * 0.80, w * 0.16, h * 0.16, '#200034');
+};
+
+_P.outpost_warden = (ctx, w, h) => {
+  _bg(ctx, w, h, '#060a10', '#0c1420');
+  const cx = w / 2;
+  // Heavy iron plate (dark grey-blue)
+  _poly(ctx, [
+    [cx - w * 0.30, h * 0.34], [cx + w * 0.30, h * 0.34],
+    [cx + w * 0.28, h * 0.86], [cx - w * 0.28, h * 0.86]
+  ], '#1e2a36');
+  // Plate rivets
+  [[cx - w * 0.24, h * 0.40], [cx + w * 0.24, h * 0.40], [cx - w * 0.24, h * 0.60], [cx + w * 0.24, h * 0.60]].forEach(([rx, ry]) => _circle(ctx, rx, ry, w * 0.018, '#3a4a5a'));
+  _line(ctx, cx, h * 0.34, cx, h * 0.86, '#2a3a4a', 1.5);
+  _line(ctx, cx - w * 0.30, h * 0.60, cx + w * 0.30, h * 0.60, '#2a3a4a', 1.5);
+  // Warden badge (chest emblem - crossed keys)
+  ctx.strokeStyle = '#cc9900'; ctx.lineWidth = 1.8;
+  _line(ctx, cx - w * 0.06, h * 0.44, cx + w * 0.06, h * 0.56, '#cc9900', 2.5);
+  _line(ctx, cx + w * 0.06, h * 0.44, cx - w * 0.06, h * 0.56, '#cc9900', 2.5);
+  _circle(ctx, cx, h * 0.50, w * 0.08, null, '#cc9900', 1.5);
+  // Closed visored helmet (full face)
+  _poly(ctx, [[cx - w * 0.18, h * 0.08], [cx + w * 0.18, h * 0.08], [cx + w * 0.18, h * 0.34], [cx - w * 0.18, h * 0.34]], '#1a2432');
+  _poly(ctx, [[cx - w * 0.18, h * 0.08], [cx + w * 0.18, h * 0.08], [cx, h * 0.02]], '#1a2432');
+  // Visor slit
+  _rect(ctx, cx - w * 0.14, h * 0.20, w * 0.28, h * 0.04, '#000');
+  _line(ctx, cx - w * 0.14, h * 0.22, cx + w * 0.14, h * 0.22, '#4488cc', 2);
+  // Big pauldrons
+  _circle(ctx, cx - w * 0.32, h * 0.38, w * 0.12, '#1e2a36', '#2a3a4a', 1.5);
+  _circle(ctx, cx + w * 0.32, h * 0.38, w * 0.12, '#1e2a36', '#2a3a4a', 1.5);
+  // Twin axes
+  _line(ctx, cx - w * 0.36, h * 0.22, cx - w * 0.34, h * 0.84, '#664422', 3.5);
+  _poly(ctx, [[cx - w * 0.46, h * 0.22], [cx - w * 0.24, h * 0.22], [cx - w * 0.26, h * 0.40], [cx - w * 0.44, h * 0.40]], '#777777', '#aaaaaa', 1.5);
+  _line(ctx, cx + w * 0.36, h * 0.22, cx + w * 0.34, h * 0.84, '#664422', 3.5);
+  _poly(ctx, [[cx + w * 0.24, h * 0.22], [cx + w * 0.46, h * 0.22], [cx + w * 0.44, h * 0.40], [cx + w * 0.26, h * 0.40]], '#777777', '#aaaaaa', 1.5);
+  // Legs
+  _rect(ctx, cx - w * 0.22, h * 0.86, w * 0.18, h * 0.12, '#1a2432');
+  _rect(ctx, cx + w * 0.04, h * 0.86, w * 0.18, h * 0.12, '#1a2432');
+};
+
+_P.corrupted_captain = (ctx, w, h) => {
+  _bg(ctx, w, h, '#030810', '#06122a');
+  const cx = w / 2;
+  // Ghostly form (semi-transparent outer glow)
+  const cg = ctx.createRadialGradient(cx, h * 0.52, 0, cx, h * 0.52, w * 0.46);
+  cg.addColorStop(0, 'rgba(40,120,220,0.18)'); cg.addColorStop(1, 'transparent');
+  ctx.fillStyle = cg; ctx.fillRect(0, 0, w, h);
+  // Spectral captain coat (tattered)
+  _poly(ctx, [
+    [cx - w * 0.22, h * 0.32], [cx + w * 0.22, h * 0.32],
+    [cx + w * 0.28, h * 0.90], [cx + w * 0.14, h * 0.84],
+    [cx, h * 0.92], [cx - w * 0.14, h * 0.82],
+    [cx - w * 0.28, h * 0.90]
+  ], 'rgba(20,50,100,0.8)');
+  // Gold trim (faded)
+  _line(ctx, cx - w * 0.22, h * 0.32, cx - w * 0.28, h * 0.90, '#446688', 1.5);
+  _line(ctx, cx + w * 0.22, h * 0.32, cx + w * 0.28, h * 0.90, '#446688', 1.5);
+  _line(ctx, cx - w * 0.22, h * 0.52, cx + w * 0.22, h * 0.52, '#446688', 1);
+  // Captain's hat (tricorn ghost)
+  _poly(ctx, [[cx - w * 0.20, h * 0.14], [cx + w * 0.20, h * 0.14], [cx + w * 0.18, h * 0.28], [cx - w * 0.18, h * 0.28]], 'rgba(20,50,100,0.9)');
+  _poly(ctx, [[cx - w * 0.22, h * 0.14], [cx + w * 0.22, h * 0.14], [cx, h * 0.04]], 'rgba(20,50,100,0.9)');
+  // Skull face (ghostly blue)
+  _circle(ctx, cx, h * 0.22, w * 0.12, 'rgba(160,200,255,0.70)');
+  _circle(ctx, cx - w * 0.06, h * 0.20, w * 0.04, 'rgba(0,20,80,0.90)');
+  _circle(ctx, cx + w * 0.06, h * 0.20, w * 0.04, 'rgba(0,20,80,0.90)');
+  _circle(ctx, cx - w * 0.06, h * 0.20, w * 0.024, '#44aaff');
+  _circle(ctx, cx + w * 0.06, h * 0.20, w * 0.024, '#44aaff');
+  // Ethereal sword (glowing blue)
+  _line(ctx, cx + w * 0.16, h * 0.26, cx + w * 0.40, h * 0.78, 'rgba(100,180,255,0.85)', 3);
+  _line(ctx, cx + w * 0.09, h * 0.40, cx + w * 0.23, h * 0.35, 'rgba(100,180,255,0.65)', 2);
+  // Floating tendrils (corruption)
+  ctx.strokeStyle = 'rgba(80,140,255,0.38)'; ctx.lineWidth = 1.5;
+  [[-0.28, 0.44, -0.38, 0.68], [-0.26, 0.60, -0.42, 0.80], [0.24, 0.48, 0.38, 0.70]].forEach(([x1,y1,x2,y2]) => {
+    ctx.beginPath(); ctx.moveTo(cx + w * x1, h * y1); ctx.quadraticCurveTo(cx + w * (x1 - 0.08), h * ((y1 + y2) / 2), cx + w * x2, h * y2); ctx.stroke();
+  });
+  // Rank medallion (gold, cracked)
+  _circle(ctx, cx - w * 0.10, h * 0.42, w * 0.055, 'rgba(180,140,40,0.65)', '#996622', 1);
+  _line(ctx, cx - w * 0.13, h * 0.40, cx - w * 0.07, h * 0.44, '#664400', 1);
+};
+
+_P.hollow_king = (ctx, w, h) => {
+  _bg(ctx, w, h, '#000000', '#040008');
+  const cx = w / 2;
+  // Void aura (multiple concentric halos)
+  [0.48, 0.40, 0.32].forEach((r, i) => {
+    _circle(ctx, cx, h * 0.52, w * r, `rgba(${60 + i * 20},0,${120 + i * 30},${0.10 + i * 0.06})`);
+  });
+  // Crown of void (jagged spikes)
+  const spikes = [[-0.22, 0.08, -0.18, 0.20], [-0.10, 0.04, -0.08, 0.18], [0, 0.02, 0, 0.17], [0.10, 0.04, 0.08, 0.18], [0.22, 0.08, 0.18, 0.20]];
+  spikes.forEach(([sx, sy, ex, ey]) => {
+    _poly(ctx, [[cx + w * sx, h * sy], [cx + w * ((sx + ex) / 2 - 0.03), h * ey], [cx + w * ex, h * sy]], '#330066', '#8800cc', 1);
+  });
+  _rect(ctx, cx - w * 0.24, h * 0.18, w * 0.48, h * 0.05, '#220044', '#6600aa', 1);
+  // "Body" — just swirling void mass, no solid form
+  const vg = ctx.createRadialGradient(cx, h * 0.54, 0, cx, h * 0.54, w * 0.34);
+  vg.addColorStop(0, '#180030'); vg.addColorStop(0.6, '#0c0020'); vg.addColorStop(1, 'transparent');
+  ctx.fillStyle = vg; ctx.beginPath(); ctx.ellipse(cx, h * 0.54, w * 0.34, h * 0.38, 0, 0, Math.PI * 2); ctx.fill();
+  // Void tendrils radiating out
+  ctx.strokeStyle = 'rgba(120,0,220,0.45)'; ctx.lineWidth = 2;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * w * 0.24, h * 0.54 + Math.sin(a) * h * 0.24);
+    ctx.quadraticCurveTo(cx + Math.cos(a + 0.5) * w * 0.38, h * 0.54 + Math.sin(a + 0.5) * h * 0.32, cx + Math.cos(a + 0.9) * w * 0.30, h * 0.54 + Math.sin(a + 0.9) * h * 0.26);
+    ctx.stroke();
+  }
+  // Eyes — two massive glowing voids
+  const eyeGlow = (ex, ey) => {
+    const eg = ctx.createRadialGradient(ex, ey, 0, ex, ey, w * 0.12);
+    eg.addColorStop(0, '#ffffff'); eg.addColorStop(0.15, '#dd00ff'); eg.addColorStop(0.5, '#5500aa'); eg.addColorStop(1, 'transparent');
+    ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(ex, ey, w * 0.12, 0, Math.PI * 2); ctx.fill();
+    _circle(ctx, ex, ey, w * 0.04, '#ffffff');
+  };
+  eyeGlow(cx - w * 0.10, h * 0.38);
+  eyeGlow(cx + w * 0.10, h * 0.38);
+  // Void crown jewel
+  const cjg = ctx.createRadialGradient(cx, h * 0.21, 0, cx, h * 0.21, w * 0.06);
+  cjg.addColorStop(0, '#ffffff'); cjg.addColorStop(0.3, '#ee00ff'); cjg.addColorStop(1, 'transparent');
+  ctx.fillStyle = cjg; ctx.beginPath(); ctx.arc(cx, h * 0.21, w * 0.06, 0, Math.PI * 2); ctx.fill();
+  // Floating void shards
+  ctx.fillStyle = 'rgba(180,0,255,0.6)';
+  [[cx - w * 0.38, h * 0.34], [cx + w * 0.38, h * 0.38], [cx - w * 0.42, h * 0.62], [cx + w * 0.40, h * 0.58], [cx, h * 0.84]].forEach(([px, py]) => {
+    ctx.save(); ctx.translate(px, py); ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-w * 0.022, -w * 0.022, w * 0.044, w * 0.044);
+    ctx.restore();
+  });
+};
+
+// ── SHATTERED SANCTUM NPCs ─────────────────────────────────────────────────────
+
+_P.npc_voss = _P.voss = (ctx, w, h) => {
+  _bg(ctx, w, h, '#060c12', '#101c2a');
+  const cx = w / 2;
+  // Military coat (dark navy + gold trim)
+  _poly(ctx, [[cx - w * 0.24, h * 0.36], [cx + w * 0.24, h * 0.36], [cx + w * 0.26, h * 0.94], [cx - w * 0.26, h * 0.94]], '#0e1e30');
+  _line(ctx, cx, h * 0.36, cx, h * 0.94, '#335588', 1.5);
+  _line(ctx, cx - w * 0.10, h * 0.50, cx + w * 0.10, h * 0.50, '#cc9900', 2);
+  _line(ctx, cx - w * 0.10, h * 0.58, cx + w * 0.10, h * 0.58, '#cc9900', 2);
+  _line(ctx, cx - w * 0.10, h * 0.66, cx + w * 0.10, h * 0.66, '#cc9900', 2);
+  // Rank epaulettes
+  _rect(ctx, cx - w * 0.32, h * 0.34, w * 0.12, h * 0.08, '#cc9900');
+  _rect(ctx, cx + w * 0.20, h * 0.34, w * 0.12, h * 0.08, '#cc9900');
+  // Battle-scarred face (older, strong jawline, scar)
+  _face(ctx, cx, h * 0.24, w * 0.13, '#bb9966', '#221100');
+  _line(ctx, cx + w * 0.06, h * 0.18, cx + w * 0.04, h * 0.28, '#996644', 1.5); // scar
+  // Grey-streaked short hair
+  _circle(ctx, cx, h * 0.14, w * 0.14, '#3a3a3a');
+  _rect(ctx, cx - w * 0.14, h * 0.10, w * 0.28, h * 0.06, '#2a2a2a');
+  // Command baton
+  _line(ctx, cx + w * 0.22, h * 0.48, cx + w * 0.32, h * 0.72, '#885522', 3.5);
+  _circle(ctx, cx + w * 0.22, h * 0.46, w * 0.04, '#cc9900');
+  // Arms
+  _line(ctx, cx - w * 0.24, h * 0.40, cx - w * 0.32, h * 0.62, '#0e1e30', 10);
+  _line(ctx, cx + w * 0.24, h * 0.40, cx + w * 0.30, h * 0.60, '#0e1e30', 10);
+};
+
+_P.npc_mira = _P.mira = (ctx, w, h) => {
+  _bg(ctx, w, h, '#060e06', '#0c1a0a');
+  const cx = w / 2;
+  // Herbalist robe (earthy green-brown)
+  _poly(ctx, [[cx - w * 0.20, h * 0.36], [cx + w * 0.20, h * 0.36], [cx + w * 0.26, h * 0.94], [cx - w * 0.26, h * 0.94]], '#1e3018');
+  // Herb pouch belt
+  _rect(ctx, cx - w * 0.24, h * 0.55, w * 0.48, h * 0.06, '#553322');
+  _circle(ctx, cx - w * 0.12, h * 0.58, w * 0.05, '#554422');
+  _circle(ctx, cx + w * 0.08, h * 0.58, w * 0.05, '#554422');
+  // Kind face, young-ish, braided hair
+  _face(ctx, cx, h * 0.24, w * 0.12, '#ddaa77', '#221100');
+  // Braid (side)
+  _line(ctx, cx + w * 0.13, h * 0.16, cx + w * 0.16, h * 0.36, '#774422', 5);
+  _line(ctx, cx - w * 0.13, h * 0.16, cx - w * 0.16, h * 0.36, '#774422', 5);
+  // Headband with leaf motif
+  _rect(ctx, cx - w * 0.14, h * 0.13, w * 0.28, h * 0.04, '#2a5a18');
+  ctx.fillStyle = '#44aa22';
+  ctx.font = `${Math.floor(w * 0.09)}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('✿', cx, h * 0.15);
+  // Herb bundle in hand
+  _line(ctx, cx - w * 0.30, h * 0.48, cx - w * 0.26, h * 0.72, '#664422', 3);
+  ['#44aa22','#66cc44','#88bb66'].forEach((c, i) => _circle(ctx, cx - w * (0.28 - i * 0.04), h * 0.46, w * 0.03, c));
+  // Arms
+  _line(ctx, cx - w * 0.20, h * 0.40, cx - w * 0.32, h * 0.60, '#1e3018', 9);
+  _line(ctx, cx + w * 0.20, h * 0.40, cx + w * 0.28, h * 0.58, '#1e3018', 9);
+};
+
+_P.npc_aldric = _P.aldric = (ctx, w, h) => {
+  _bg(ctx, w, h, '#030610', '#06122a');
+  const cx = w / 2;
+  // Ghost form — translucent blue overlay
+  const gg = ctx.createRadialGradient(cx, h * 0.50, 0, cx, h * 0.50, w * 0.44);
+  gg.addColorStop(0, 'rgba(60,120,220,0.14)'); gg.addColorStop(1, 'transparent');
+  ctx.fillStyle = gg; ctx.fillRect(0, 0, w, h);
+  // Captain's uniform (spectral)
+  _poly(ctx, [[cx - w * 0.22, h * 0.32], [cx + w * 0.22, h * 0.32], [cx + w * 0.24, h * 0.88], [cx - w * 0.24, h * 0.88]], 'rgba(30,60,120,0.72)');
+  _line(ctx, cx, h * 0.32, cx, h * 0.88, 'rgba(80,140,220,0.4)', 1.5);
+  _line(ctx, cx - w * 0.22, h * 0.52, cx + w * 0.22, h * 0.52, 'rgba(80,140,220,0.3)', 1);
+  // Shoulder decoration
+  _rect(ctx, cx - w * 0.30, h * 0.32, w * 0.12, h * 0.06, 'rgba(100,160,255,0.50)');
+  _rect(ctx, cx + w * 0.18, h * 0.32, w * 0.12, h * 0.06, 'rgba(100,160,255,0.50)');
+  // Ghostly face — pale blue, sad expression
+  _circle(ctx, cx, h * 0.22, w * 0.13, 'rgba(140,190,255,0.70)');
+  _circle(ctx, cx - w * 0.07, h * 0.20, w * 0.038, 'rgba(0,30,100,0.90)');
+  _circle(ctx, cx + w * 0.07, h * 0.20, w * 0.038, 'rgba(0,30,100,0.90)');
+  _circle(ctx, cx - w * 0.07, h * 0.20, w * 0.022, '#88ccff');
+  _circle(ctx, cx + w * 0.07, h * 0.20, w * 0.022, '#88ccff');
+  // Sad downturned mouth
+  ctx.strokeStyle = 'rgba(80,140,220,0.8)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, h * 0.28, w * 0.06, Math.PI * 0.2, Math.PI * 0.8); ctx.stroke();
+  // Captain hat (ghostly tricorn)
+  _poly(ctx, [[cx - w * 0.18, h * 0.10], [cx + w * 0.18, h * 0.10], [cx + w * 0.16, h * 0.22], [cx - w * 0.16, h * 0.22]], 'rgba(20,50,120,0.80)');
+  _poly(ctx, [[cx - w * 0.20, h * 0.10], [cx + w * 0.20, h * 0.10], [cx, h * 0.03]], 'rgba(20,50,120,0.80)');
+  // Ghostly sword (faint)
+  _line(ctx, cx + w * 0.14, h * 0.28, cx + w * 0.36, h * 0.70, 'rgba(100,180,255,0.45)', 2.5);
+  // Fade at bottom
+  const fade = ctx.createLinearGradient(0, h * 0.70, 0, h);
+  fade.addColorStop(0, 'transparent'); fade.addColorStop(1, '#030610');
+  ctx.fillStyle = fade; ctx.fillRect(0, h * 0.70, w, h * 0.30);
+};
+
+_P.npc_archivist = _P.archivist = (ctx, w, h) => {
+  _bg(ctx, w, h, '#020006', '#06000e');
+  const cx = w / 2;
+  // Shadowy scholar robes (very dark, old-world)
+  _poly(ctx, [[cx - w * 0.22, h * 0.32], [cx + w * 0.22, h * 0.32], [cx + w * 0.28, h * 0.96], [cx - w * 0.28, h * 0.96]], '#0a000e');
+  _line(ctx, cx, h * 0.32, cx, h * 0.96, '#220033', 1.5);
+  // Layered cloak collar
+  _poly(ctx, [[cx - w * 0.28, h * 0.30], [cx + w * 0.28, h * 0.30], [cx + w * 0.20, h * 0.50], [cx - w * 0.20, h * 0.50]], '#080010');
+  // Ancient tome carried (under arm)
+  _rect(ctx, cx - w * 0.34, h * 0.54, w * 0.12, h * 0.20, '#331a00');
+  _rect(ctx, cx - w * 0.33, h * 0.55, w * 0.10, h * 0.18, '#221200');
+  _line(ctx, cx - w * 0.33, h * 0.60, cx - w * 0.23, h * 0.60, '#664400', 1);
+  _line(ctx, cx - w * 0.33, h * 0.65, cx - w * 0.23, h * 0.65, '#664400', 1);
+  _line(ctx, cx - w * 0.33, h * 0.70, cx - w * 0.23, h * 0.70, '#664400', 1);
+  // Pale, ageless face — sharp features, slight smile
+  _face(ctx, cx, h * 0.22, w * 0.11, '#c8b0c8', '#220033');
+  // Knowing half-smile
+  ctx.strokeStyle = '#998899'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(cx + w * 0.04, h * 0.275, w * 0.05, -Math.PI * 0.1, Math.PI * 0.35); ctx.stroke();
+  // Silver-streaked dark hair, swept back
+  _circle(ctx, cx, h * 0.14, w * 0.13, '#1a1020');
+  _rect(ctx, cx - w * 0.12, h * 0.09, w * 0.24, h * 0.05, '#1a1020');
+  _line(ctx, cx - w * 0.12, h * 0.09, cx - w * 0.14, h * 0.24, '#555566', 2);
+  _line(ctx, cx + w * 0.12, h * 0.09, cx + w * 0.14, h * 0.24, '#555566', 2);
+  // Quill pen in hand
+  _line(ctx, cx + w * 0.22, h * 0.36, cx + w * 0.36, h * 0.60, '#ccccaa', 2.5);
+  _poly(ctx, [[cx + w * 0.23, h * 0.34], [cx + w * 0.28, h * 0.30], [cx + w * 0.32, h * 0.36]], '#ccccaa');
+  // Faint rune glow on robes (subtle)
+  ctx.strokeStyle = 'rgba(100,0,150,0.28)'; ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) ctx.strokeRect(cx - w * 0.16 + i * w * 0.12, h * 0.72, w * 0.08, h * 0.07);
+  // Eye glow — cool grey-violet
+  _circle(ctx, cx - w * 0.06, h * 0.20, w * 0.022, '#9966cc');
+  _circle(ctx, cx + w * 0.06, h * 0.20, w * 0.022, '#9966cc');
 };
 
 // Fallback

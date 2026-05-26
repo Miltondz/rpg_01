@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CharacterSheetUI - User interface for displaying detailed character information
  * Shows stats, equipment, skills, and level progression
  */
@@ -27,13 +27,10 @@ export class CharacterSheetUI {
    * @param {string} characterId - Character ID to display
    */
   show(characterId) {
-    // Default to first alive party member when no ID given
-    if (!characterId) {
-      const party = this.characterSystem.partyManager?.party ?? [];
-      const first = party.find(Boolean);
-      characterId = first?.id ?? null;
-    }
-    const character = this.characterSystem.getCharacter(characterId);
+    // Read directly from partyManager — avoids getCharacter() Map miss after save/load
+    const party = this.characterSystem.partyManager?.party?.filter(Boolean) ?? [];
+    let character = characterId ? party.find(c => c.id === characterId) : null;
+    if (!character) character = party[0] ?? null;
     if (!character) {
       console.error('CharacterSheetUI: no character to show (party may be empty)');
       return;
@@ -85,7 +82,7 @@ export class CharacterSheetUI {
         <div class="cs-header">
           <div class="cs-party-tabs" id="cs-party-tabs"></div>
           <span id="character-name" class="cs-char-title">CHARACTER</span>
-          <button class="cs-close" id="close-character-sheet">âœ•</button>
+          <button class="cs-close" id="close-character-sheet">✕</button>
         </div>
 
         <!-- Three-column body -->
@@ -94,13 +91,13 @@ export class CharacterSheetUI {
           <!-- LEFT: portrait + stats -->
           <div class="cs-left">
             <div class="cs-portrait" id="character-portrait">
-              <span class="cs-portrait-icon" id="character-class-icon">âš”</span>
+              <span class="cs-portrait-icon" id="character-class-icon">⚔</span>
             </div>
             <div class="cs-identity">
-              <div class="cs-char-name" id="character-display-name">â€”</div>
+              <div class="cs-char-name" id="character-display-name">—</div>
               <div class="cs-char-meta">
-                <span id="character-class-name">â€”</span>
-                &nbsp;Â·&nbsp;
+                <span id="character-class-name">—</span>
+                &nbsp;·&nbsp;
                 <span id="character-level-info">Lv.1</span>
               </div>
             </div>
@@ -157,7 +154,7 @@ export class CharacterSheetUI {
             <div class="cs-divider"></div>
             <div class="cs-formation-row" id="formation-effects">
               <span class="cs-sect-lbl">FORMATION</span>
-              <span id="formation-description" class="cs-formation-val">â€”</span>
+              <span id="formation-description" class="cs-formation-val">—</span>
             </div>
           </div><!-- /cs-left -->
 
@@ -168,8 +165,8 @@ export class CharacterSheetUI {
               <!-- Top: head slot -->
               <div class="cs-doll-slot cs-doll-head" data-slot="weapon">
                 <div class="cs-doll-label">WEAPON</div>
-                <div class="cs-doll-icon">âš”</div>
-                <div class="cs-slot-content" id="weapon-slot"><span class="cs-empty-slot">â€”</span></div>
+                <div class="cs-doll-icon">⚔</div>
+                <div class="cs-slot-content" id="weapon-slot"><span class="cs-empty-slot">—</span></div>
               </div>
 
               <!-- Silhouette -->
@@ -192,15 +189,15 @@ export class CharacterSheetUI {
               <!-- Armor slot -->
               <div class="cs-doll-slot cs-doll-armor" data-slot="armor">
                 <div class="cs-doll-label">ARMOR</div>
-                <div class="cs-doll-icon">ðŸ›¡</div>
-                <div class="cs-slot-content" id="armor-slot"><span class="cs-empty-slot">â€”</span></div>
+                <div class="cs-doll-icon">🛡</div>
+                <div class="cs-slot-content" id="armor-slot"><span class="cs-empty-slot">—</span></div>
               </div>
 
               <!-- Accessory slot below -->
               <div class="cs-doll-slot cs-doll-acc" data-slot="accessory">
                 <div class="cs-doll-label">ACCESSORY</div>
-                <div class="cs-doll-icon">ðŸ’</div>
-                <div class="cs-slot-content" id="accessory-slot"><span class="cs-empty-slot">â€”</span></div>
+                <div class="cs-doll-icon">💍</div>
+                <div class="cs-slot-content" id="accessory-slot"><span class="cs-empty-slot">—</span></div>
               </div>
             </div>
           </div><!-- /cs-center -->
@@ -218,9 +215,9 @@ export class CharacterSheetUI {
 
         <!-- Footer -->
         <div class="cs-footer">
-          <button class="cs-btn cs-btn-lvl" id="level-up-btn" disabled>â–² LEVEL UP</button>
-          <button class="cs-btn cs-btn-heal" id="heal-character-btn">âœš HEAL</button>
-          <button class="cs-btn cs-btn-close" id="close-sheet-btn">âœ• CLOSE</button>
+          <button class="cs-btn cs-btn-lvl" id="level-up-btn" disabled>▲ LEVEL UP</button>
+          <button class="cs-btn cs-btn-heal" id="heal-character-btn">✚ HEAL</button>
+          <button class="cs-btn cs-btn-close" id="close-sheet-btn">✕ CLOSE</button>
         </div>
 
       </div>
@@ -255,8 +252,9 @@ export class CharacterSheetUI {
     const closeBtn = this.container.querySelector('#close-character-sheet');
     const closeSheetBtn = this.container.querySelector('#close-sheet-btn');
     
-    closeBtn.addEventListener('click', () => this.hide());
-    closeSheetBtn.addEventListener('click', () => this.hide());
+    const _close = () => window.dispatchEvent(new CustomEvent('characterSheetClose'));
+    closeBtn.addEventListener('click', _close);
+    closeSheetBtn.addEventListener('click', _close);
     
     // Action buttons
     const levelUpBtn = this.container.querySelector('#level-up-btn');
@@ -324,13 +322,13 @@ export class CharacterSheetUI {
     
     // Update class icon
     const classIcons = {
-      warrior: 'âš”',
-      rogue: 'ðŸ—¡',
-      mage: 'ðŸ”®',
-      cleric: 'âœ¨'
+      warrior: '⚔',
+      rogue: '🗡',
+      mage: '🔮',
+      cleric: '✨'
     };
     this.container.querySelector('#character-class-icon').textContent = 
-      classIcons[char.class] || 'âš”';
+      classIcons[char.class] || '⚔';
     
     // Update experience
     this.updateExperienceDisplay();
@@ -356,13 +354,14 @@ export class CharacterSheetUI {
    */
   updateExperienceDisplay() {
     const char = this.currentCharacter;
-    const xpForCurrentLevel = this.characterSystem.experienceSystem.getExperienceForLevel(char.level);
-    const xpForNextLevel = this.characterSystem.experienceSystem.getExperienceForLevel(char.level + 1);
+    // Use cumulative totals — getExperienceForLevel returns cost of ONE level, not threshold
+    const xpForCurrentLevel = this.characterSystem.experienceSystem.getTotalExperienceForLevel(char.level);
+    const xpForNextLevel = this.characterSystem.experienceSystem.getTotalExperienceForLevel(char.level + 1);
     const currentLevelXP = char.experience - xpForCurrentLevel;
     const neededXP = xpForNextLevel - xpForCurrentLevel;
-    const xpToNext = xpForNextLevel - char.experience;
-    
-    const xpPercent = (currentLevelXP / neededXP) * 100;
+    const xpToNext = Math.max(0, xpForNextLevel - char.experience);
+
+    const xpPercent = neededXP > 0 ? Math.min(100, (currentLevelXP / neededXP) * 100) : 100;
     
     this.container.querySelector('#xp-fill').style.width = `${xpPercent}%`;
     this.container.querySelector('#xp-text').textContent = `${currentLevelXP} / ${neededXP} XP`;
@@ -400,7 +399,7 @@ export class CharacterSheetUI {
       totalStats.SPD > baseStats.SPD ? `+${totalStats.SPD - baseStats.SPD}` : '';
     this.container.querySelector('#spd-total').textContent = totalStats.SPD;
 
-    // Visual stat bars (Daggerfall style) â€” scale ATK/DEF/SPD bars against 30 max
+    // Visual stat bars (Daggerfall style) — scale ATK/DEF/SPD bars against 30 max
     const pct = (v, max) => Math.min(100, Math.round(v / max * 100)) + '%';
     const atkBar = this.container.querySelector('#atk-bar-visual');
     const defBar = this.container.querySelector('#def-bar-visual');
@@ -451,7 +450,7 @@ export class CharacterSheetUI {
           <div class="skill-level">Lv.${skillInfo.level}</div>
           <div class="skill-name">${skillInfo.name}</div>
           <div class="skill-status">
-            ${hasSkill ? 'âœ“ Learned' : isUnlocked ? 'â—‹ Available' : 'âœ— Locked'}
+            ${hasSkill ? '✓ Learned' : isUnlocked ? '○ Available' : '✗ Locked'}
           </div>
         </div>
       `;
@@ -596,9 +595,8 @@ export class CharacterSheetUI {
     const char = this.currentCharacter;
     const levelUpBtn = this.container.querySelector('#level-up-btn');
     const healBtn = this.container.querySelector('#heal-character-btn');
-    
-    // Level up button (for testing - normally would be automatic)
-    const xpForNextLevel = this.characterSystem.experienceSystem.getExperienceForLevel(char.level + 1);
+
+    const xpForNextLevel = this.characterSystem.experienceSystem.getTotalExperienceForLevel(char.level + 1);
     levelUpBtn.disabled = char.experience < xpForNextLevel;
     
     // Heal button
@@ -612,29 +610,29 @@ export class CharacterSheetUI {
    */
   getSkillIcon(skillId) {
     const icons = {
-      power_strike: 'ðŸ’¥',
-      taunt: 'ðŸ›¡',
-      cleave: 'âš”',
-      iron_will: 'ðŸ’ª',
-      execute: 'ðŸ’€',
-      backstab: 'ðŸ—¡',
-      poison_blade: 'â˜ ',
-      evasion: 'ðŸ’¨',
-      multi_strike: 'âš¡',
-      assassinate: 'ðŸŽ¯',
-      fireball: 'ðŸ”¥',
-      ice_shard: 'â„',
-      lightning_storm: 'âš¡',
-      mana_shield: 'ðŸ”®',
-      meteor: 'â˜„',
-      heal: 'ðŸ’š',
-      bless: 'âœ¨',
-      mass_heal: 'ðŸ’–',
-      resurrect: 'ðŸ‘¼',
-      divine_shield: 'ðŸ›¡'
+      power_strike: '💥',
+      taunt: '🛡',
+      cleave: '⚔',
+      iron_will: '💪',
+      execute: '💀',
+      backstab: '🗡',
+      poison_blade: '☠',
+      evasion: '💨',
+      multi_strike: '⚡',
+      assassinate: '🎯',
+      fireball: '🔥',
+      ice_shard: '❄',
+      lightning_storm: '⚡',
+      mana_shield: '🔮',
+      meteor: '☄',
+      heal: '💚',
+      bless: '✨',
+      mass_heal: '💖',
+      resurrect: '👼',
+      divine_shield: '🛡'
     };
     
-    return icons[skillId] || 'â­';
+    return icons[skillId] || '⭐';
   }
 
   /**
@@ -642,10 +640,10 @@ export class CharacterSheetUI {
    */
   levelUpCharacter() {
     if (!this.currentCharacter) return;
-    
-    const xpNeeded = this.characterSystem.experienceSystem.getExperienceForLevel(this.currentCharacter.level + 1);
-    const xpToAdd = xpNeeded - this.currentCharacter.experience;
-    
+
+    const xpNeeded = this.characterSystem.experienceSystem.getTotalExperienceForLevel(this.currentCharacter.level + 1);
+    const xpToAdd = Math.max(0, xpNeeded - this.currentCharacter.experience);
+
     this.characterSystem.experienceSystem.addExperience(this.currentCharacter, xpToAdd);
     this.updateDisplay();
   }
@@ -825,7 +823,7 @@ export class CharacterSheetUI {
       <div class="comparison-content">
         <div class="modal-header">
           <h3>Equipment Comparison - ${slot.charAt(0).toUpperCase() + slot.slice(1)}</h3>
-          <button class="close-comparison">Ã—</button>
+          <button class="close-comparison">×</button>
         </div>
         
         <div class="comparison-grid">
@@ -977,9 +975,9 @@ export class CharacterSheetUI {
     const upgrades = Object.values(comparison).filter(stat => stat.isUpgrade).length;
     const downgrades = Object.values(comparison).filter(stat => !stat.isUpgrade).length;
     
-    if (upgrades > downgrades) return `â†‘ ${upgrades} stats improved`;
-    if (downgrades > upgrades) return `â†“ ${downgrades} stats decreased`;
-    return `Â± Mixed changes`;
+    if (upgrades > downgrades) return `↑ ${upgrades} stats improved`;
+    if (downgrades > upgrades) return `↓ ${downgrades} stats decreased`;
+    return `± Mixed changes`;
   }
 
   /**
@@ -1116,7 +1114,7 @@ export class CharacterSheetUI {
               const changePercent = Math.round((Math.abs(diff) / comparisonData[stat].current) * 100);
               
               statDisplay += `
-                <span class="stat-arrow">â†’</span>
+                <span class="stat-arrow">→</span>
                 <span class="stat-new ${isUpgrade ? 'better' : 'worse'}">+${comparisonData[stat].new}</span>
                 <span class="stat-diff ${isUpgrade ? 'positive' : 'negative'}">(${diff > 0 ? '+' : ''}${diff})</span>
                 <span class="stat-percent ${isUpgrade ? 'positive' : 'negative'}">[${changePercent}%]</span>
@@ -1155,7 +1153,7 @@ export class CharacterSheetUI {
       
       ${isEquipped ? `
         <div class="equipped-indicator">
-          <span style="color: #00ff00;">âœ“ Currently Equipped</span>
+          <span style="color: #00ff00;">✓ Currently Equipped</span>
         </div>
       ` : ''}
     `;
@@ -1211,7 +1209,7 @@ export class CharacterSheetUI {
     if (hasBetterItem) {
       const indicator = document.createElement('div');
       indicator.className = 'stat-indicator upgrade-available';
-      indicator.innerHTML = 'â†‘';
+      indicator.innerHTML = '↑';
       indicator.title = `Better items available in inventory (${upgradeCount} stat${upgradeCount > 1 ? 's' : ''} improved)`;
       
       // Add upgrade count badge for multiple upgrades
@@ -1406,7 +1404,7 @@ export class CharacterSheetUI {
     const style = document.createElement('style');
     style.id = 'character-sheet-styles';
     style.textContent = `
-      /* â”€â”€ Daggerfall-style Character Sheet â”€â”€ */
+      /* ── Daggerfall-style Character Sheet ── */
       .character-sheet-overlay {
         position: fixed;
         top: 0;
@@ -1417,7 +1415,7 @@ export class CharacterSheetUI {
         z-index: 2500;
         font-family: 'Press Start 2P', 'Courier New', monospace;
       }
-      /* â”€â”€ Modal shell â”€â”€ */
+      /* ── Modal shell ── */
       .cs-modal {
         background: #0a0a0a;
         border: 1px solid #8B6914;
@@ -1426,7 +1424,7 @@ export class CharacterSheetUI {
         box-shadow: 0 0 40px rgba(139,105,20,0.25), inset 0 0 40px rgba(0,0,0,0.5);
         color: #C8A84B;
       }
-      /* â”€â”€ Header â”€â”€ */
+      /* ── Header ── */
       .cs-header {
         display: flex; align-items: center; gap: 10px;
         padding: 8px 12px;
@@ -1452,7 +1450,7 @@ export class CharacterSheetUI {
       }
       .cs-party-tab:hover { border-color: #8B6914; color: #C8A84B; }
       .cs-tab-active { border-color: #C8A84B !important; color: #FFD700 !important; background: #1a1400 !important; }
-      /* â”€â”€ Three-column body â”€â”€ */
+      /* ── Three-column body ── */
       .cs-body {
         display: grid; grid-template-columns: 220px 1fr 220px;
         flex: 1; overflow: hidden; min-height: 0;
@@ -1502,7 +1500,7 @@ export class CharacterSheetUI {
       /* Formation */
       .cs-formation-row { margin-top: 8px; }
       .cs-formation-val { font-size: 7px; color: #8B6914; display: block; margin-top: 4px; line-height: 1.6; }
-      /* â”€â”€ Paper-doll â”€â”€ */
+      /* ── Paper-doll ── */
       .cs-paperdoll {
         display: grid; grid-template-columns: 1fr auto 1fr;
         grid-template-rows: 1fr auto 1fr;
@@ -1532,7 +1530,7 @@ export class CharacterSheetUI {
       .cs-empty-slot { color: #2a1f05; }
       /* Existing equipment-slot class compat */
       .equipment-slot { } /* neutralize old styles */
-      /* â”€â”€ Skills â”€â”€ */
+      /* ── Skills ── */
       .cs-skills-list, .cs-skill-tree { display: flex; flex-direction: column; gap: 6px; }
       /* skill-item from old code */
       .skill-item { background: #0d0d0a; border: 1px solid #2a1f05; padding: 8px; border-left: 3px solid #5a4510; }
@@ -1548,7 +1546,7 @@ export class CharacterSheetUI {
       .skill-level { font-size: 7px; color: #5a4510; flex-shrink: 0; }
       .skill-name { font-size: 7px; color: #C8A84B; flex: 1; }
       .skill-status { font-size: 6px; color: #5a4510; }
-      /* â”€â”€ Footer â”€â”€ */
+      /* ── Footer ── */
       .cs-footer {
         display: flex; gap: 8px; padding: 10px 14px;
         border-top: 1px solid #3D2E0A; background: #111007;
@@ -1580,7 +1578,7 @@ export class CharacterSheetUI {
       .comparison-stat { font-size:7px;color:#C8A84B;margin:3px 0; }
       .comparison-better { color:#4aCC4a; }
       .comparison-worse  { color:#CC4a4a; }
-      /* compat â€“ old slot tooltip */
+      /* compat – old slot tooltip */
       .equipment-tooltip { display:none; }
       @media (max-width:700px) {
         .cs-body { grid-template-columns: 1fr; }

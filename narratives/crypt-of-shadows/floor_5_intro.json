@@ -1,0 +1,20 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^The deepest level. The Throne of Shadows.",
+      "\n",
+      "^Darkness moves here as if alive. Shadows peel from walls and watch you pass.",
+      "\n",
+      "^At the heart of this place waits the Shadow Lord — ancient, corrupted, and waiting.",
+      "\n",
+      "^Steel your nerves. This is what you came for.",
+      "\n",
+      {"#": "knot_reached:floor_5_intro_complete"},
+      "end",
+      null
+    ],
+    null
+  ],
+  "listDefs": {}
+}

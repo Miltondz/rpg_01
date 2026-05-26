@@ -8,11 +8,11 @@ const log = Logger.tag('UI:Router');
 export class UIRouter {
   constructor() {
     this.screens = new Map(); // name → { show, hide }
-    this._stack = [];
+    this._stack = []; // [{ name, detail }]
   }
 
   get current() {
-    return this._stack.length > 0 ? this._stack[this._stack.length - 1] : null;
+    return this._stack.length > 0 ? this._stack[this._stack.length - 1].name : null;
   }
 
   // Register a named screen with show/hide callbacks.
@@ -21,13 +21,16 @@ export class UIRouter {
   }
 
   // Push a new screen on top. Hides the previous top.
-  push(name) {
+  push(name, detail) {
     if (this.current === name) return;
-    const prev = this.screens.get(this.current);
-    if (prev) prev.hide();
-    this._stack.push(name);
+    const prevEntry = this._stack[this._stack.length - 1];
+    if (prevEntry) {
+      const prev = this.screens.get(prevEntry.name);
+      if (prev) prev.hide();
+    }
+    this._stack.push({ name, detail });
     const next = this.screens.get(name);
-    if (next) next.show();
+    if (next) next.show(detail);
     log.info(`push → ${name}`);
     this._dispatch(name, 'show');
   }
@@ -36,27 +39,27 @@ export class UIRouter {
   pop() {
     if (this._stack.length === 0) return;
     const leaving = this._stack.pop();
-    const leaver = this.screens.get(leaving);
+    const leaver = this.screens.get(leaving.name);
     if (leaver) leaver.hide();
-    const prev = this.current;
-    if (prev) {
-      const resume = this.screens.get(prev);
-      if (resume) resume.show();
+    const prevEntry = this._stack[this._stack.length - 1];
+    if (prevEntry) {
+      const resume = this.screens.get(prevEntry.name);
+      if (resume) resume.show(prevEntry.detail);
     }
-    log.info(`pop ← ${leaving} → ${prev ?? 'exploration'}`);
-    this._dispatch(leaving, 'hide');
+    log.info(`pop ← ${leaving.name} → ${prevEntry?.name ?? 'exploration'}`);
+    this._dispatch(leaving.name, 'hide');
   }
 
   // Replace top without keeping it in the back-stack.
-  replace(name) {
+  replace(name, detail) {
     if (this._stack.length > 0) {
       const leaving = this._stack.pop();
-      const leaver = this.screens.get(leaving);
+      const leaver = this.screens.get(leaving.name);
       if (leaver) leaver.hide();
     }
-    this._stack.push(name);
+    this._stack.push({ name, detail });
     const next = this.screens.get(name);
-    if (next) next.show();
+    if (next) next.show(detail);
     log.info(`replace → ${name}`);
   }
 
@@ -70,27 +73,28 @@ export class UIRouter {
   // Hides each screen without re-showing intermediates — avoids flash during boot transitions.
   closeAll() {
     while (this._stack.length > 0) {
-      const leaving = this._stack.pop();
-      const leaver  = this.screens.get(leaving);
+      const entry = this._stack.pop();
+      const leaver = this.screens.get(entry.name);
       if (leaver) leaver.hide();
     }
     log.info('closeAll → exploration');
   }
 
   isActive(name) { return this.current === name; }
-  isOpen(name)   { return name ? this._stack.includes(name) : this._stack.length > 0; }
+  isOpen(name)   { return name ? this._stack.some(e => e.name === name) : this._stack.length > 0; }
 
   // Pop a specific named screen regardless of stack position (removes first match from top).
   popNamed(name) {
-    const idx = this._stack.lastIndexOf(name);
+    const idx = this._stack.map(e => e.name).lastIndexOf(name);
     if (idx < 0) return;
     this._stack.splice(idx, 1);
     const screen = this.screens.get(name);
     if (screen) screen.hide();
     // If removed from top, resume new top
     if (idx === this._stack.length && this.current) {
-      const resume = this.screens.get(this.current);
-      if (resume) resume.show();
+      const topEntry = this._stack[this._stack.length - 1];
+      const resume = this.screens.get(topEntry.name);
+      if (resume) resume.show(topEntry.detail);
     }
     log.info(`popNamed ← ${name}`);
     this._dispatch(name, 'hide');

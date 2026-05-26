@@ -3,6 +3,7 @@
  * Handles combat interface, HP/AP displays, action menus, and turn indicators
  */
 import { CharacterPortrait } from './CharacterPortrait.js';
+import { CardPhysics } from './CardPhysics.js';
 
 export class CombatUI {
   constructor() {
@@ -23,7 +24,10 @@ export class CombatUI {
     
     // Event handlers
     this.actionHandlers = new Map();
-    
+
+    // Spring physics instances for action cards
+    this._cardPhysics = [];
+
     this.isInitialized = false;
   }
 
@@ -52,12 +56,13 @@ export class CombatUI {
    * Create main combat container
    */
   createCombatContainer() {
-    // Separate backdrop div — explicit show/hide avoids box-shadow persistence bugs
+    // Separate backdrop div — must live inside #game-container so position:absolute clips correctly
     let backdrop = document.getElementById('combat-backdrop');
     if (!backdrop) {
       backdrop = document.createElement('div');
       backdrop.id = 'combat-backdrop';
-      document.body.appendChild(backdrop);
+      const gameContainer = document.getElementById('game-container') ?? document.body;
+      gameContainer.appendChild(backdrop);
     }
     backdrop.className = 'combat-backdrop hidden';
     this.elements.backdrop = backdrop;
@@ -210,18 +215,31 @@ export class CombatUI {
   }
 
   _actionIcon(id) {
+    const o = (inner) =>
+      `<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+    const f = (inner) =>
+      `<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" stroke="none" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+
     const icons = {
-      attack: '⚔', basic_attack: '⚔',
-      skill: '✨',
-      item: '🧪', use_item: '🧪',
-      defend: '🛡',
-      flee: '🏃',
-      skip: '⏭'
+      // Sword: diagonal blade + perpendicular crossguard + pommel
+      attack:       o('<line x1="2" y1="14" x2="12" y2="4"/><line x1="4" y1="12" x2="8" y2="8"/><circle cx="2.5" cy="13.5" r="1.2" fill="currentColor" stroke="none"/>'),
+      basic_attack: o('<line x1="2" y1="14" x2="12" y2="4"/><line x1="4" y1="12" x2="8" y2="8"/><circle cx="2.5" cy="13.5" r="1.2" fill="currentColor" stroke="none"/>'),
+      // 4-pointed star
+      skill:        f('<path d="M8 1L9.4 6.3 14.5 8 9.4 9.7 8 15 6.6 9.7 1.5 8 6.6 6.3Z"/>'),
+      // Potion flask: narrow neck → wide body
+      item:         o('<path d="M6 1.5h4v3.5l2.5 4.5v5h-9v-5L6 5V1.5z"/><line x1="5.5" y1="1.5" x2="10.5" y2="1.5"/>'),
+      use_item:     o('<path d="M6 1.5h4v3.5l2.5 4.5v5h-9v-5L6 5V1.5z"/><line x1="5.5" y1="1.5" x2="10.5" y2="1.5"/>'),
+      // Classic shield
+      defend:       f('<path d="M8 1.5L14 4.5V10Q13.5 15.5 8 15.5Q2.5 15.5 2 10V4.5Z"/>'),
+      // Double chevron right
+      flee:         o('<polyline points="2,4 7,8 2,12"/><polyline points="7,4 12,8 7,12"/>'),
+      // Two right-pointing triangles (end-turn / skip)
+      skip:         f('<path d="M2 3L7.5 8 2 13ZM7.5 3L13 8 7.5 13Z"/>'),
     };
-    // For skill or item actions with specific IDs (e.g. 'power_strike', 'use_item_health_potion')
+
     if (!icons[id]) {
-      if (id && id.startsWith('use_item')) return '🧪';
-      return '✨'; // generic skill icon for anything else
+      if (id?.startsWith('use_item')) return icons.item;
+      return icons.skill;
     }
     return icons[id];
   }
@@ -270,8 +288,10 @@ export class CombatUI {
     }
 
     this.isActive = true;
-    // Reset any inline styles left by animations (opacity, transform from end-of-combat effects)
+    // Reset inline styles, then lock opacity to 0 BEFORE removing hidden.
+    // playCombatStartAnimation() fires on the same combatStarted event and handles the fade-in.
     this.elements.combatContainer.style.cssText = '';
+    this.elements.combatContainer.style.opacity = '0';
     this.elements.backdrop?.classList.remove('hidden');
     this.elements.combatContainer.classList.remove('hidden');
 
@@ -303,12 +323,26 @@ export class CombatUI {
    */
   hideCombat() {
     this.isActive = false;
-    // Reset any animation-applied inline styles before hiding
-    this.elements.combatContainer.style.cssText = '';
-    this.elements.combatContainer.classList.add('hidden');
-    this.elements.backdrop?.classList.add('hidden');
-    this.clearCombatLog();
-    if (this.elements.actionMenu) this.elements.actionMenu.innerHTML = '';
+    const container = this.elements.combatContainer;
+
+    const _doHide = () => {
+      container.style.cssText = '';
+      container.classList.add('hidden');
+      this.elements.backdrop?.classList.add('hidden');
+      this.clearCombatLog();
+      if (this.elements.actionMenu) this.elements.actionMenu.innerHTML = '';
+    };
+
+    // If playCombatEndAnimation already faded to 0, hide immediately.
+    // Otherwise do a quick fade-out first.
+    const currentOpacity = parseFloat(container.style.opacity ?? '1');
+    if (currentOpacity < 0.05) {
+      _doHide();
+    } else {
+      container.style.transition = 'opacity 0.3s ease-in';
+      container.style.opacity = '0';
+      setTimeout(_doHide, 310);
+    }
   }
 
   /**
@@ -333,9 +367,10 @@ export class CombatUI {
       const frontCell = document.createElement('div');
       frontCell.className = 'formation-cell front-cell';
       if (front[i]) {
-        const card = this.createCombatantCard(front[i], 'party', i);
-        card.classList.add('front-row-card');
-        frontCell.appendChild(card);
+        const slot = this.createCombatantCard(front[i], 'party', i);
+        const innerCard = slot.querySelector('.combatant-card');
+        if (innerCard) innerCard.classList.add('front-row-card');
+        frontCell.appendChild(slot);
       }
       this.elements.partyHUD.appendChild(frontCell);
     }
@@ -361,124 +396,96 @@ export class CombatUI {
    * @param {number} index - Position index
    * @returns {HTMLElement} Combatant card element
    */
-  createCombatantCard(combatant, type, index) {
-    const card = document.createElement('div');
-    card.className = `combatant-card ${type === 'enemy' ? 'enemy-card' : 'party-card'}`;
-    card.setAttribute('data-ui-component', 'combatant-card');
-    card.setAttribute('data-ui-name', `${type}-${combatant.id || index}`);
-    card.setAttribute('data-combatant-id', combatant.id || `${type}-${index}`);
-    
-    // Portrait canvas — let CSS control display size, no inline height restriction
-    const avatarDiv = document.createElement('div');
-    avatarDiv.className = 'combatant-avatar';
-    const portraitKey = type === 'party' ? (combatant.class || 'unknown') : (combatant.type || 'unknown');
-    const portraitCanvas = CharacterPortrait.createCanvas(portraitKey, 96, 120);
-    avatarDiv.appendChild(portraitCanvas);
-    card.appendChild(avatarDiv);
+  _hpColor(pct) {
+    if (pct <= 0)  return '#333333';
+    if (pct <= 15) return '#ff0000';
+    if (pct <= 35) return '#ff4400';
+    if (pct <= 50) return '#ff8800';
+    if (pct <= 75) return '#ffaa00';
+    if (pct <= 90) return '#ccff00';
+    return '#00ff00';
+  }
 
-    // Name and level
+  _apColor(pct) {
+    if (pct <= 0)  return '#444444';
+    if (pct <= 25) return '#ff6600';
+    if (pct <= 50) return '#ffaa00';
+    if (pct <= 75) return '#00aaff';
+    return '#0088ff';
+  }
+
+  createCombatantCard(combatant, type, index) {
+    const isEnemy = type === 'enemy';
+    const hpPct   = Math.max(0, (combatant.currentHP / combatant.maxHP) * 100);
+    const maxAP   = combatant.maxAP || 3;
+    const curAP   = Math.max(0, combatant.currentAP || 0);
+    const apPct   = (curAP / maxAP) * 100;
+
+    // ── Slot wrapper (carries data-combatant-id for targeting) ──
+    const slot = document.createElement('div');
+    slot.className = `combatant-slot ${isEnemy ? 'enemy-slot' : 'party-slot'}`;
+    slot.setAttribute('data-ui-component', 'combatant-card');
+    slot.setAttribute('data-ui-name', `${type}-${combatant.id || index}`);
+    slot.setAttribute('data-combatant-id', combatant.id || `${type}-${index}`);
+    if (combatant.currentHP <= 0) slot.classList.add('dead');
+
+    // ── Name (above portrait) ──
     const nameDiv = document.createElement('div');
     nameDiv.className = 'combatant-name';
     nameDiv.textContent = `${combatant.name} (Lv.${combatant.level || 1})`;
-    card.appendChild(nameDiv);
-    
-    // HP Bar with enhanced color coding
-    const hpContainer = document.createElement('div');
-    hpContainer.className = 'stat-container hp-container';
-    
-    const hpLabel = document.createElement('div');
-    hpLabel.className = 'stat-label';
-    hpLabel.textContent = 'HP';
-    
+    slot.appendChild(nameDiv);
+
+    // ── Portrait row: [HP bar] | [card] | [AP bar] ──
+    const portraitRow = document.createElement('div');
+    portraitRow.className = 'combatant-portrait-row';
+
+    // HP vertical bar — left side
     const hpBar = document.createElement('div');
-    hpBar.className = 'stat-bar hp-bar';
+    hpBar.className = 'stat-side-bar hp-side-bar';
     hpBar.setAttribute('data-ui-component', 'hp-bar');
     hpBar.setAttribute('data-ui-name', `${type}-${combatant.id || index}-hp`);
-    
     const hpFill = document.createElement('div');
-    hpFill.className = 'stat-fill hp-fill';
-    const hpPercent = Math.max(0, (combatant.currentHP / combatant.maxHP) * 100);
-    hpFill.style.width = `${hpPercent}%`;
-    
-    // Enhanced color coding based on HP percentage with smooth transitions
-    if (hpPercent === 0) {
-      hpFill.style.background = '#333333'; // Dead - Dark Gray
-      card.classList.add('dead');
-    } else if (hpPercent <= 15) {
-      hpFill.style.background = '#ff0000'; // Critical - Bright Red
-      hpFill.style.boxShadow = '0 0 8px rgba(255, 0, 0, 0.6)';
-    } else if (hpPercent <= 35) {
-      hpFill.style.background = '#ff4400'; // Very Low - Red-Orange
-    } else if (hpPercent <= 50) {
-      hpFill.style.background = '#ff8800'; // Low - Orange
-    } else if (hpPercent <= 75) {
-      hpFill.style.background = '#ffaa00'; // Medium - Yellow-Orange
-    } else if (hpPercent <= 90) {
-      hpFill.style.background = '#ccff00'; // Good - Yellow-Green
-    } else {
-      hpFill.style.background = '#00ff00'; // Full - Bright Green
-    }
-    
-    const hpText = document.createElement('div');
-    hpText.className = 'stat-text';
-    hpText.textContent = `${combatant.currentHP}/${combatant.maxHP}`;
-    
+    hpFill.className = 'stat-side-fill hp-side-fill';
+    hpFill.style.height = `${hpPct}%`;
+    hpFill.style.background = this._hpColor(hpPct);
+    if (hpPct <= 15 && hpPct > 0) hpFill.style.boxShadow = '0 0 6px rgba(255,0,0,0.7)';
     hpBar.appendChild(hpFill);
-    hpBar.appendChild(hpText);
-    hpContainer.appendChild(hpLabel);
-    hpContainer.appendChild(hpBar);
-    card.appendChild(hpContainer);
-    
-    // AP Bar with enhanced color coding
-    const apContainer = document.createElement('div');
-    apContainer.className = 'stat-container ap-container';
-    
-    const apLabel = document.createElement('div');
-    apLabel.className = 'stat-label';
-    apLabel.textContent = 'AP';
-    
+    portraitRow.appendChild(hpBar);
+
+    // Portrait card (portrait only — no bars inside)
+    const card = document.createElement('div');
+    card.className = `combatant-card ${isEnemy ? 'enemy-card' : 'party-card'}`;
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'combatant-avatar';
+    const portraitKey = isEnemy ? (combatant.type || 'unknown') : (combatant.class || 'unknown');
+    avatarDiv.appendChild(CharacterPortrait.createCanvas(portraitKey, 96, 128));
+    card.appendChild(avatarDiv);
+    portraitRow.appendChild(card);
+
+    // AP vertical bar — right side
     const apBar = document.createElement('div');
-    apBar.className = 'stat-bar ap-bar';
+    apBar.className = 'stat-side-bar ap-side-bar';
     apBar.setAttribute('data-ui-component', 'ap-bar');
     apBar.setAttribute('data-ui-name', `${type}-${combatant.id || index}-ap`);
-    
     const apFill = document.createElement('div');
-    apFill.className = 'stat-fill ap-fill';
-    const maxAP = combatant.maxAP || 3;
-    const currentAP = Math.max(0, combatant.currentAP || 0);
-    const apPercent = (currentAP / maxAP) * 100;
-    apFill.style.width = `${apPercent}%`;
-    
-    // Enhanced color coding based on AP percentage
-    if (apPercent === 0) {
-      apFill.style.background = '#444444'; // Empty - Dark Gray
-    } else if (apPercent <= 25) {
-      apFill.style.background = '#ff6600'; // Very Low - Orange-Red
-    } else if (apPercent <= 50) {
-      apFill.style.background = '#ffaa00'; // Low - Orange
-    } else if (apPercent <= 75) {
-      apFill.style.background = '#00aaff'; // Medium - Light Blue
-    } else {
-      apFill.style.background = '#0088ff'; // Full - Bright Blue
-      apFill.style.boxShadow = '0 0 6px rgba(0, 136, 255, 0.4)';
-    }
-    
-    const apText = document.createElement('div');
-    apText.className = 'stat-text';
-    apText.textContent = `${currentAP}/${maxAP}`;
-    
+    apFill.className = 'stat-side-fill ap-side-fill';
+    apFill.style.height = `${apPct}%`;
+    apFill.style.background = this._apColor(apPct);
+    if (apPct >= 75) apFill.style.boxShadow = '0 0 5px rgba(0,136,255,0.5)';
     apBar.appendChild(apFill);
-    apBar.appendChild(apText);
-    apContainer.appendChild(apLabel);
-    apContainer.appendChild(apBar);
-    card.appendChild(apContainer);
-    
-    // Mark as dead if HP is 0
-    if (combatant.currentHP <= 0) {
-      card.classList.add('dead');
-    }
-    
-    return card;
+    portraitRow.appendChild(apBar);
+
+    slot.appendChild(portraitRow);
+
+    // ── Stat numbers (below portrait, outside card) ──
+    const statText = document.createElement('div');
+    statText.className = 'combatant-stat-text';
+    statText.innerHTML =
+      `<span class="hp-text">${combatant.currentHP}/${combatant.maxHP}</span>` +
+      `<span class="ap-text">${curAP}/${maxAP}AP</span>`;
+    slot.appendChild(statText);
+
+    return slot;
   }
 
   /**
@@ -513,17 +520,13 @@ export class CombatUI {
    * @param {string} type - 'player' or 'enemy'
    */
   highlightCurrentCharacter(characterId, type) {
-    // Remove previous highlights
-    const allCards = this.elements.combatContainer.querySelectorAll('.combatant-card');
-    allCards.forEach(card => card.classList.remove('current-turn'));
-    
-    // Add highlight to current character
-    const currentCard = this.elements.combatContainer.querySelector(
+    const allSlots = this.elements.combatContainer.querySelectorAll('.combatant-slot');
+    allSlots.forEach(s => s.classList.remove('current-turn'));
+
+    const slot = this.elements.combatContainer.querySelector(
       `[data-combatant-id="${characterId}"]`
     );
-    if (currentCard) {
-      currentCard.classList.add('current-turn');
-    }
+    if (slot) slot.classList.add('current-turn');
   }
 
   /**
@@ -534,6 +537,8 @@ export class CombatUI {
   updateActions(actions, character) {
     this.currentCharacter = character;
 
+    // Dispose existing card physics before rebuilding
+    this._disposeCardPhysics();
     this.elements.actionMenu.innerHTML = '';
 
     // If no character provided, show disabled default actions
@@ -595,6 +600,23 @@ export class CombatUI {
     skipButton.innerHTML = `<span class="action-icon">${this._actionIcon('skip')}</span><span class="action-name">Skip</span><span class="action-cost">End Turn</span>`;
     
     this.elements.actionMenu.appendChild(skipButton);
+
+    // Attach spring physics to all rendered cards (skip button too)
+    requestAnimationFrame(() => {
+      const cards = this.elements.actionMenu.querySelectorAll('.action-btn');
+      cards.forEach(card => {
+        const phys = new CardPhysics(card);
+        phys.start();
+        // AP validation — disable physics interaction for unaffordable cards
+        if (card.disabled) phys.setDisabled(true);
+        this._cardPhysics.push(phys);
+      });
+    });
+  }
+
+  _disposeCardPhysics() {
+    for (const p of this._cardPhysics) p.dispose();
+    this._cardPhysics = [];
   }
 
   /**
@@ -635,7 +657,12 @@ export class CombatUI {
       return;
     }
     
-    this.emitActionEvent('action', { action, character: this.currentCharacter });
+    const btn = this.elements.actionMenu.querySelector(`[data-action-id="${actionId}"]`);
+    const rect = btn?.getBoundingClientRect();
+    const fromDOMPos = rect
+      ? { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.5 }
+      : null;
+    this.emitActionEvent('action', { action, character: this.currentCharacter, fromDOMPos });
   }
 
   /**
@@ -747,12 +774,50 @@ export class CombatUI {
    * Update all combatant stats displays
    */
   updateCombatantStats() {
-    // This would be called with updated combatant data
-    // For now, we'll emit an event requesting updated data
     const event = new CustomEvent('combatUIRequest', {
       detail: { type: 'updateStats' }
     });
     window.dispatchEvent(event);
+  }
+
+  /**
+   * Refresh a single combatant's stat bars/text in-place (no DOM rebuild, animation-safe).
+   * @param {Object} combatant - Updated combatant data (must have id matching data-combatant-id)
+   */
+  refreshCombatantSlot(combatant) {
+    const slot = this.elements.combatContainer?.querySelector(
+      `[data-combatant-id="${combatant.id}"]`
+    );
+    if (!slot) return;
+
+    const hpPct = Math.max(0, (combatant.currentHP / combatant.maxHP) * 100);
+    const maxAP = combatant.maxAP || 3;
+    const curAP = Math.max(0, combatant.currentAP || 0);
+    const apPct = (curAP / maxAP) * 100;
+
+    const hpFill = slot.querySelector('.hp-side-fill');
+    if (hpFill) {
+      hpFill.style.height = `${hpPct}%`;
+      hpFill.style.background = this._hpColor(hpPct);
+      hpFill.style.boxShadow = (hpPct <= 15 && hpPct > 0) ? '0 0 6px rgba(255,0,0,0.7)' : '';
+    }
+
+    const apFill = slot.querySelector('.ap-side-fill');
+    if (apFill) {
+      apFill.style.height = `${apPct}%`;
+      apFill.style.background = this._apColor(apPct);
+      apFill.style.boxShadow = (apPct >= 75) ? '0 0 5px rgba(0,136,255,0.5)' : '';
+    }
+
+    const statText = slot.querySelector('.combatant-stat-text');
+    if (statText) {
+      statText.innerHTML =
+        `<span class="hp-text">${combatant.currentHP}/${combatant.maxHP}</span>` +
+        `<span class="ap-text">${curAP}/${maxAP}AP</span>`;
+    }
+
+    if (combatant.currentHP <= 0) slot.classList.add('dead');
+    else slot.classList.remove('dead');
   }
 
   /**
@@ -853,6 +918,7 @@ export class CombatUI {
     }
     
     this.actionHandlers.clear();
+    this._disposeCardPhysics();
     this.elements = {};
     this.isInitialized = false;
     this.isActive = false;

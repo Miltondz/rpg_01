@@ -205,9 +205,6 @@ export class PerformanceManager {
       // Clear frustum culler
       this.frustumCuller.clear();
       
-      // Force memory cleanup
-      this.memoryManager.processDisposalQueue();
-      
       console.log('Level optimizations cleaned up');
       
     } catch (error) {
@@ -316,9 +313,7 @@ export class PerformanceManager {
       if (metrics.memoryUsage > this.config.memoryLeakThreshold) {
         console.log('High memory usage detected, cleaning up...');
         
-        // Force memory cleanup
-        this.memoryManager.processDisposalQueue();
-        this.memoryManager.forceGarbageCollection();
+        this.memoryManager.forceGarbageCollection?.();
         
         optimizationsApplied++;
       }

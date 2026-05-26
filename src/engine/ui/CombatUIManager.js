@@ -6,6 +6,7 @@
 import { CombatUI } from './CombatUI.js';
 import { CombatAnimations } from './CombatAnimations.js';
 import { CombatResultsUI } from './CombatResultsUI.js';
+import { combatTextManager } from './CombatTextManager.js';
 
 export class CombatUIManager {
   constructor() {
@@ -18,13 +19,22 @@ export class CombatUIManager {
     this.isInitialized = false;
     this.isActive = false;
     this.currentCombatSystem = null;
-    
+    this.targetingOverlay   = null;
+    this._isTargeting       = false;
+    this._targetingFromPos  = null;
+    this._targetingEnemyHUD = null;
+    this._targetingPartyHUD = null;
+    this._onPartySlotClick  = null;
+    this._onPartySlotHover  = null;
+
     // Event handlers
     this.boundHandlers = {
-      combatUIAction: this.handleCombatUIAction.bind(this),
-      combatUIRequest: this.handleCombatUIRequest.bind(this),
+      combatUIAction:      this.handleCombatUIAction.bind(this),
+      combatUIRequest:     this.handleCombatUIRequest.bind(this),
       combatResultsAction: this.handleCombatResultsAction.bind(this),
-      combatResultsRequest: this.handleCombatResultsRequest.bind(this)
+      combatResultsRequest: this.handleCombatResultsRequest.bind(this),
+      battleStateChange:   this.handleBattleStateChange.bind(this),
+      keydownTargeting:    this.handleKeydownTargeting.bind(this),
     };
   }
 
@@ -45,21 +55,26 @@ export class CombatUIManager {
       this.combatUI = new CombatUI();
       this.combatAnimations = new CombatAnimations();
       this.combatResultsUI = new CombatResultsUI();
-      
+
       // Initialize all components
       const initResults = await Promise.all([
         this.combatUI.initialize(),
         this.combatAnimations.initialize(),
         this.combatResultsUI.initialize()
       ]);
-      
+
       if (!initResults.every(result => result)) {
         throw new Error('Failed to initialize one or more UI components');
       }
-      
+
+      // Ensure singleton combatTextManager is initialized (idempotent)
+      if (combatTextManager && !combatTextManager._running) {
+        combatTextManager.initialize();
+      }
+
       // Setup event listeners
       this.setupEventListeners();
-      
+
       this.isInitialized = true;
       console.log('CombatUIManager initialized successfully');
       
@@ -86,6 +101,159 @@ export class CombatUIManager {
     window.addEventListener('combatEvent', (event) => {
       this.handleCombatEvent(event.detail);
     });
+
+    // FSM state changes — drive targeting overlay
+    window.addEventListener('battleStateChange', this.boundHandlers.battleStateChange);
+
+    // Escape cancels targeting
+    window.addEventListener('keydown', this.boundHandlers.keydownTargeting);
+  }
+
+  setTargetingOverlay(overlay) {
+    this.targetingOverlay = overlay;
+  }
+
+  handleBattleStateChange(event) {
+    const { state } = event.detail ?? {};
+    if (state === 'PLAYER_INPUT_TARGETING') {
+      this._enterTargetingUI();
+      // Disable buttons while selecting target — prevents double "cannot target now"
+      this.combatUI?.elements?.actionMenu?.querySelectorAll('.action-btn')
+        ?.forEach(b => { b.disabled = true; b.classList.add('disabled'); });
+    } else {
+      if (this._isTargeting) this._exitTargetingUI();
+      if (state === 'ACTION_RESOLUTION') {
+        // Lock buttons while action executes to prevent double-fire
+        this.combatUI?.elements?.actionMenu?.querySelectorAll('.action-btn')
+          ?.forEach(b => { b.disabled = true; b.classList.add('disabled'); });
+      } else if (state === 'PLAYER_INPUT_ACTION' && this.isActive) {
+        const char = this.currentCombatSystem?.currentCharacter;
+        if (char) this.updatePlayerActions(char);
+      }
+    }
+  }
+
+  handleKeydownTargeting(event) {
+    if (event.key === 'Escape' && this._isTargeting) {
+      this.currentCombatSystem?.cancelTargeting();
+    }
+  }
+
+  _enterTargetingUI() {
+    if (!this.targetingOverlay || !this.currentCombatSystem) return;
+
+    const cs = this.currentCombatSystem;
+    if (!cs.fsm?.is?.('PLAYER_INPUT_TARGETING')) return;
+
+    this._isTargeting = true;
+
+    const action = cs._pendingAction;
+
+    // ── ALLY targeting (heal, bless, divine_shield, items, etc.) ──
+    if (action?.targetType === 'single_ally') {
+      const aliveAllies = cs.playerParty?.getAliveMembers() ?? [];
+
+      // Single alive ally → auto-confirm, no overlay
+      if (aliveAllies.length === 1) {
+        cs.confirmTargeting([aliveAllies[0]]);
+        return;
+      }
+
+      const partyHUD = this.combatUI?.elements?.partyHUD;
+      if (partyHUD) {
+        partyHUD.querySelectorAll('.party-slot:not(.dead)').forEach(s => s.classList.add('targeting-active'));
+
+        this._onPartySlotClick = (e) => {
+          const slot = e.target.closest('.party-slot.targeting-active');
+          if (!slot) return;
+          const id   = slot.getAttribute('data-combatant-id');
+          const ally = aliveAllies.find(a => a.id === id) ?? null;
+          if (ally) cs.confirmTargeting([ally]);
+        };
+        this._onPartySlotHover = (e) => {
+          const slot = e.target.closest('.party-slot.targeting-active');
+          partyHUD.querySelectorAll('.party-slot').forEach(s => s.classList.remove('targeting-hover'));
+          if (slot) slot.classList.add('targeting-hover');
+        };
+
+        partyHUD.addEventListener('click',     this._onPartySlotClick);
+        partyHUD.addEventListener('mouseover', this._onPartySlotHover);
+        this._targetingPartyHUD = partyHUD;
+      }
+
+      this.combatUI?.addLogMessage('Select an ally to target...', 'system');
+      return;
+    }
+
+    // ── ENEMY targeting (attack skills, etc.) ──
+    const aliveEnemies = (cs.enemies ?? []).filter(e => e.isAlive?.());
+    const validEntities = aliveEnemies.map(e => cs.battleGrid?.entities?.get(e.id)).filter(Boolean);
+
+    // Single alive enemy → auto-confirm immediately
+    if (aliveEnemies.length === 1) {
+      const combatant = validEntities[0]?.combatant ?? aliveEnemies[0];
+      cs.confirmTargeting([combatant]);
+      return;
+    }
+
+    const scene = cs._scene ?? null;
+    this.targetingOverlay.enter(validEntities, this._targetingFromPos, scene);
+
+    const enemyHUD = this.combatUI?.elements?.enemyHUD;
+    if (enemyHUD) {
+      enemyHUD.querySelectorAll('.enemy-slot').forEach(s => s.classList.add('targeting-active'));
+
+      this._onEnemySlotHover = (e) => {
+        const slot = e.target.closest('.enemy-slot.targeting-active');
+        if (!slot) return;
+        const rect   = slot.getBoundingClientRect();
+        const domPos = { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.5 };
+        const id     = slot.getAttribute('data-combatant-id');
+        const entity = cs.battleGrid?.entities?.get(id) ?? null;
+        this.targetingOverlay?.setHoverTarget(domPos, entity);
+      };
+      this._onEnemySlotClick = (e) => {
+        const slot = e.target.closest('.enemy-slot.targeting-active');
+        if (!slot) return;
+        const id        = slot.getAttribute('data-combatant-id');
+        const entity    = cs.battleGrid?.entities?.get(id) ?? null;
+        const combatant = entity?.combatant ?? aliveEnemies.find(en => en.id === id) ?? null;
+        if (combatant) cs.confirmTargeting([combatant]);
+      };
+      enemyHUD.addEventListener('mouseover', this._onEnemySlotHover);
+      enemyHUD.addEventListener('click',     this._onEnemySlotClick);
+      this._targetingEnemyHUD = enemyHUD;
+    }
+  }
+
+  _exitTargetingUI() {
+    this._isTargeting = false;
+    this.targetingOverlay?.exit();
+
+    // Clean up enemy targeting
+    const hub = this._targetingEnemyHUD;
+    if (hub) {
+      hub.querySelectorAll('.enemy-slot').forEach(s => s.classList.remove('targeting-active'));
+      if (this._onEnemySlotHover) hub.removeEventListener('mouseover', this._onEnemySlotHover);
+      if (this._onEnemySlotClick) hub.removeEventListener('click',     this._onEnemySlotClick);
+    }
+    this._onEnemySlotHover  = null;
+    this._onEnemySlotClick  = null;
+    this._targetingEnemyHUD = null;
+
+    // Clean up ally targeting
+    const partyHub = this._targetingPartyHUD;
+    if (partyHub) {
+      partyHub.querySelectorAll('.party-slot').forEach(s => {
+        s.classList.remove('targeting-active');
+        s.classList.remove('targeting-hover');
+      });
+      if (this._onPartySlotClick) partyHub.removeEventListener('click',     this._onPartySlotClick);
+      if (this._onPartySlotHover) partyHub.removeEventListener('mouseover', this._onPartySlotHover);
+    }
+    this._onPartySlotClick  = null;
+    this._onPartySlotHover  = null;
+    this._targetingPartyHUD = null;
   }
 
   /**
@@ -105,6 +273,10 @@ export class CombatUIManager {
         break;
       case 'actionExecuted':
         this.handleActionExecuted(eventData.data);
+        break;
+      case 'aiActionCompleted':
+        // Enemy attacked — ensure HP display refreshes
+        this.requestStatsUpdate();
         break;
       case 'statusEffectTick':
         this.handleStatusEffectTick(eventData.data);
@@ -131,6 +303,9 @@ export class CombatUIManager {
       this._hideTimeout = null;
     }
 
+    // Clean up any targeting state left over from the previous combat
+    if (this._isTargeting) this._exitTargetingUI();
+
     this.isActive = true;
     this.combatUI.showCombat(combatData);
     this.combatUI.addLogMessage('Combat begins!', 'system');
@@ -144,19 +319,25 @@ export class CombatUIManager {
   handleCombatEnded(endData) {
     if (!this.isActive) return;
 
-    // Distribute rewards immediately so XP/gold/loot land before results screen
     if (endData.result === 'victory' && endData.rewards) {
       this.distributeRewards(endData.rewards);
-      // AutoSaveManager listens for combatVictory to trigger post-combat save
       window.dispatchEvent(new CustomEvent('combatVictory', { detail: endData }));
+    } else if (endData.result === 'fled') {
+      this.combatUI?.addLogMessage('You escaped from combat!', 'system');
+    } else if (endData.result === 'defeat') {
+      this.combatUI?.addLogMessage('Your party has been defeated...', 'damage');
     }
 
-    // Store timeout ID so it can be cancelled if a new combat starts before it fires
+    const delay = endData.result === 'fled' ? 1200 : 2000;
     this._hideTimeout = setTimeout(() => {
       this._hideTimeout = null;
       this.combatUI.hideCombat();
       this.isActive = false;
-    }, 2000);
+      if (endData.result === 'defeat') {
+        const party = this.currentCombatSystem?.playerParty?.party ?? [];
+        window.dispatchEvent(new CustomEvent('partyDefeated', { detail: { party } }));
+      }
+    }, delay);
   }
 
   /**
@@ -170,15 +351,16 @@ export class CombatUIManager {
     const party = cs.playerParty;
     if (!party) return;
 
-    // XP — distribute to all alive members
+    // XP — split equally among alive members
     if (rewards.experience) {
       const aliveMembers = party.getAliveMembers();
+      const xpPerMember = Math.floor(rewards.experience / Math.max(1, aliveMembers.length));
       for (const member of aliveMembers) {
         if (typeof member.addExperience === 'function') {
-          member.addExperience(rewards.experience);
+          member.addExperience(xpPerMember);
         }
       }
-      console.log(`Distributed ${rewards.experience} XP to ${party.getAliveMembers().length} members`);
+      console.log(`Distributed ${rewards.experience} XP → ${xpPerMember} each to ${aliveMembers.length} members`);
     }
 
     // Gold — add to party pool
@@ -220,7 +402,8 @@ export class CombatUIManager {
 
     if (turnData.currentCharacter.type === 'player') {
       // Pass the REAL Character object (with hasAP, skills, etc.), not the summary
-      this.updatePlayerActions(this.currentCombatSystem.currentCharacter);
+      const realChar = this.currentCombatSystem?.currentCharacter;
+      if (realChar) this.updatePlayerActions(realChar);
       this.combatUI.addLogMessage(`${turnData.currentCharacter.name}'s turn — choose your action...`, 'system');
     } else {
       // Enemy turn — disable action buttons
@@ -287,9 +470,7 @@ export class CombatUIManager {
   updatePlayerActions(character) {
     if (!this.currentCombatSystem) return;
 
-    // Pass null for inventorySystem — individual item buttons cause layout overflow.
-    // A single "Use Item" button keeps the action menu predictable (max ~6 buttons).
-    const availableActions = this.currentCombatSystem.getAvailableActions(character, null);
+    const availableActions = this.currentCombatSystem.getAvailableActions(character, this.inventorySystem);
 
     this.combatUI.updateActions(availableActions, character);
   }
@@ -303,7 +484,7 @@ export class CombatUIManager {
     
     switch (type) {
       case 'action':
-        this.executePlayerAction(data.action, data.character);
+        this.executePlayerAction(data.action, data.character, data.fromDOMPos ?? null);
         break;
       case 'skip':
         this.skipPlayerTurn();
@@ -367,13 +548,37 @@ export class CombatUIManager {
    * @param {Object} action - Action to execute
    * @param {Object} character - Character performing action
    */
-  async executePlayerAction(action, _characterSummary) {
+  async executePlayerAction(action, _characterSummary, fromDOMPos = null) {
     if (!this.currentCombatSystem) return;
 
     // Use the REAL Character object from CombatSystem — processAction does identity check
     const character = this.currentCombatSystem.currentCharacter;
     if (!character) {
       this.combatUI.addLogMessage('No active character!', 'error');
+      return;
+    }
+
+    // Skills/items that need explicit target selection (single_enemy or single_ally).
+    // AoE, self, and none target types are resolved automatically.
+    const needsExplicitTarget = (action.targetType === 'single_enemy' || action.targetType === 'single_ally')
+      && (action.type === 'skill' || action.type === 'item')
+      && this.targetingOverlay;
+
+    if (needsExplicitTarget) {
+      // If already in targeting (e.g. double-click), cancel first then re-enter
+      if (this.currentCombatSystem.fsm?.is?.('PLAYER_INPUT_TARGETING')) {
+        this.currentCombatSystem.cancelTargeting();
+      }
+      // Arc origin: use the character's portrait card, not the action button
+      let charCardPos = fromDOMPos;
+      const charCard = document.querySelector(`[data-combatant-id="${character.id}"]`);
+      if (charCard) {
+        const r = charCard.getBoundingClientRect();
+        charCardPos = { x: r.left + r.width * 0.5, y: r.top + r.height * 0.5 };
+      }
+      this._targetingFromPos = charCardPos;
+      const ok = this.currentCombatSystem.enterTargeting(action);
+      if (!ok) this.combatUI?.addLogMessage('Cannot target now — not your turn.', 'warning');
       return;
     }
 
@@ -447,16 +652,35 @@ export class CombatUIManager {
    */
   requestStatsUpdate() {
     if (!this.currentCombatSystem) return;
-    
-    // Get current combat status
+
     const status = this.currentCombatSystem.getCombatStatus();
-    
-    if (status.playerParty) {
-      this.combatUI.updatePartyDisplay(status.playerParty.members || []);
+
+    // Try fast in-place refresh first (preserves animations + avoids DOM rebuild)
+    const partyMembers = status.playerParty?.members || [];
+    const enemies      = status.enemies || [];
+    const allCombatants = [...partyMembers, ...enemies];
+
+    let usedFastPath = allCombatants.length > 0;
+    for (const c of allCombatants) {
+      if (!this.combatUI.elements.combatContainer?.querySelector(`[data-combatant-id="${c.id}"]`)) {
+        usedFastPath = false;
+        break;
+      }
     }
-    
-    if (status.enemies) {
-      this.combatUI.updateEnemyDisplay(status.enemies);
+
+    if (usedFastPath) {
+      allCombatants.forEach(c => this.combatUI.refreshCombatantSlot(c));
+    } else {
+      // Slots missing (first render or enemy died/was added) — full rebuild
+      if (status.playerParty) this.combatUI.updatePartyDisplay(partyMembers);
+      if (status.enemies)     this.combatUI.updateEnemyDisplay(enemies);
+    }
+
+    // Keep turn banner AP in sync after partial AP use
+    const cur = this.currentCombatSystem.currentCharacter;
+    if (cur && cur.currentAP !== undefined) {
+      const apEl = this.combatUI?.elements?.turnIndicator?.querySelector('.turn-ap');
+      if (apEl) apEl.textContent = `AP: ${cur.currentAP}/${cur.maxAP || 3}`;
     }
   }
 
@@ -596,9 +820,13 @@ export class CombatUIManager {
    */
   dispose() {
     // Remove event listeners
-    Object.entries(this.boundHandlers).forEach(([event, handler]) => {
-      window.removeEventListener(event, handler);
-    });
+    window.removeEventListener('combatUIAction',      this.boundHandlers.combatUIAction);
+    window.removeEventListener('combatUIRequest',     this.boundHandlers.combatUIRequest);
+    window.removeEventListener('combatResultsAction', this.boundHandlers.combatResultsAction);
+    window.removeEventListener('combatResultsRequest',this.boundHandlers.combatResultsRequest);
+    window.removeEventListener('battleStateChange',   this.boundHandlers.battleStateChange);
+    window.removeEventListener('keydown',             this.boundHandlers.keydownTargeting);
+    if (this._isTargeting) this._exitTargetingUI();
     
     // Dispose components
     if (this.combatUI) {
