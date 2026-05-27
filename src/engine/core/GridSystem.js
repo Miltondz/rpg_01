@@ -22,7 +22,10 @@ export class GridSystem {
         // Use Map with string keys for efficient tile lookup
         /** @type {Map<string, import('../../types/interfaces.js').TileData>} */
         this.tiles = new Map();
-        
+
+        // MazeZones: array of { id, xpMultiplier, tiles: [[x1,z1],[x2,z2]] (bounding box corners) }
+        this.zones = [];
+
         // Initialize with empty tiles
         this.initializeGrid();
     }
@@ -37,7 +40,8 @@ export class GridSystem {
                 const key = this.getKey(x, z);
                 this.tiles.set(key, {
                     type: 'empty',
-                    walkable: false
+                    walkable: false,
+                    explored: false
                 });
             }
         }
@@ -105,6 +109,67 @@ export class GridSystem {
     getTile(x, z) {
         const key = this.getKey(x, z);
         return this.tiles.get(key) || null;
+    }
+
+    setZones(zones) {
+        this.zones = Array.isArray(zones) ? zones : [];
+    }
+
+    getZoneMultiplier(x, z) {
+        for (const zone of this.zones) {
+            if (!zone.tiles || zone.tiles.length < 2) continue;
+            const [[x1, z1], [x2, z2]] = zone.tiles;
+            if (x >= Math.min(x1, x2) && x <= Math.max(x1, x2) &&
+                z >= Math.min(z1, z2) && z <= Math.max(z1, z2)) {
+                return zone.xpMultiplier ?? 1;
+            }
+        }
+        return 1;
+    }
+
+    setTileExplored(x, z) {
+        const offsets = [[0,0],[0,-1],[0,1],[-1,0],[1,0]];
+        for (const [dx, dz] of offsets) {
+            const tile = this.getTile(x + dx, z + dz);
+            if (tile) tile.explored = true;
+        }
+    }
+
+    // Feature #23: Ground items with sub-positions (NW/NE/SW/SE)
+    // Sub-slots: 0=NW, 1=NE, 2=SW, 3=SE (matching LoL JS mapPosition)
+    static GROUND_SLOTS = ['NW', 'NE', 'SW', 'SE'];
+
+    /**
+     * Add an item to a tile's ground slots.
+     * Returns the slot index used, or -1 if tile is full.
+     */
+    addGroundItem(x, z, item) {
+        const tile = this.getTile(x, z);
+        if (!tile) return -1;
+        if (!tile.groundItems) tile.groundItems = [null, null, null, null];
+        const slot = tile.groundItems.indexOf(null);
+        if (slot === -1) return -1;
+        tile.groundItems[slot] = { ...item, subPos: GridSystem.GROUND_SLOTS[slot] };
+        return slot;
+    }
+
+    /**
+     * Remove ground item from tile by slot index.
+     */
+    removeGroundItem(x, z, slot) {
+        const tile = this.getTile(x, z);
+        if (!tile?.groundItems) return null;
+        const item = tile.groundItems[slot] ?? null;
+        if (item) tile.groundItems[slot] = null;
+        return item;
+    }
+
+    /**
+     * Get all non-null ground items on a tile.
+     */
+    getGroundItems(x, z) {
+        const tile = this.getTile(x, z);
+        return (tile?.groundItems ?? []).filter(Boolean);
     }
 
     /**

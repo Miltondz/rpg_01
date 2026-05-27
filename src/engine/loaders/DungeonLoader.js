@@ -76,6 +76,11 @@ export class DungeonLoader {
       // Register pickups (lootChests, keyItems) as tile metadata
       this._registerPickups(level);
 
+      // Load MazeZones (xpMultiplier per area)
+      if (this.gridSystem?.setZones) {
+        this.gridSystem.setZones(level.zones ?? []);
+      }
+
       this.currentLevel = level;
 
       // Parse dungeon + floor from level id: "dungeon-name-floor-N"
@@ -176,9 +181,13 @@ export class DungeonLoader {
         // Merge optional enriched metadata
         const meta = metaByIndex.get(index);
         if (meta) {
-          if (meta.environment)         tileData.environment   = meta.environment;
+          if (meta.environment)           tileData.environment   = meta.environment;
           if (meta.ceilingHeight != null) tileData.ceilingHeight = meta.ceilingHeight;
-          if (Array.isArray(meta.triggers)) tileData.triggers  = meta.triggers;
+          if (Array.isArray(meta.triggers)) tileData.triggers    = meta.triggers;
+          if (meta.decorations)           tileData.decorations   = meta.decorations;
+          if (meta.wallSwitch)            tileData.wallSwitch    = meta.wallSwitch;
+          if (meta.forceField)            tileData.forceField    = meta.forceField;
+          if (meta.pit)                   tileData.pit           = meta.pit;
         }
 
         this.gridSystem.setTile(x, z, tileData);
@@ -251,10 +260,51 @@ export class DungeonLoader {
           this.trackGeometry(`wall_${x}_${z}`, wallMesh);
           wallCount++;
         }
+
+        // Per-face decorations (Feature #12)
+        if (tile?.decorations) {
+          this._spawnTileDecorations(x, z, tile.decorations);
+        }
       }
     }
     
     console.log(`Generated geometry: ${floorCount} floors, ${wallCount} walls, ${ceilingCount} ceilings`);
+  }
+
+  _spawnTileDecorations(x, z, decorations) {
+    if (!this.renderer || !decorations) return;
+    const TS = 2.0; // tileSize
+    const faceOffsets = {
+      north: { dx: 0, dz: -0.85 },
+      south: { dx: 0, dz:  0.85 },
+      east:  { dx:  0.85, dz: 0 },
+      west:  { dx: -0.85, dz: 0 },
+    };
+    const COLORS = {
+      barrel: 0x8B4513, torch: 0xFF6600, shelf: 0x8B7355,
+      altar:  0x888888, chest: 0xDAA520,
+    };
+
+    for (const [face, id] of Object.entries(decorations)) {
+      if (!id) continue;
+      const off = faceOffsets[face];
+      if (!off) continue;
+
+      const color   = COLORS[id] ?? 0xAAAAAA;
+      const geo     = new THREE.BoxGeometry(0.35, 0.5, 0.35);
+      const mat     = new THREE.MeshStandardMaterial({ color, roughness: 0.9 });
+      const mesh    = new THREE.Mesh(geo, mat);
+      const wx = x * TS + off.dx;
+      const wz = z * TS + off.dz;
+      mesh.position.set(wx, 0.25, wz);
+      mesh.userData.decorationType = id;
+      mesh.userData.decorationFace = face;
+      mesh.userData.tileX = x;
+      mesh.userData.tileZ = z;
+
+      this.renderer.addToScene(mesh);
+      this.trackGeometry(`dec_${x}_${z}_${face}`, mesh);
+    }
   }
 
   /**
@@ -483,6 +533,9 @@ export class DungeonLoader {
     
     // Set player position and direction
     movementController.setPosition(spawn.x, spawn.z, spawn.direction);
+    if (this.gridSystem?.setTileExplored) {
+      this.gridSystem.setTileExplored(spawn.x, spawn.z);
+    }
     
     // Update camera position and rotation
     if (this.renderer) {

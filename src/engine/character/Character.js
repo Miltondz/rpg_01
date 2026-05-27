@@ -43,7 +43,14 @@ export class Character {
     // Skills and abilities
     this.skills = []; // Array of skill objects with full data
     this.unlockedSkills = []; // Array of skill IDs
-    
+
+    // Feature #21: spell slots (mage/cleric only)
+    this.spellSlots = null; // set in initializeClass
+    this.knownSpells = [];  // spell IDs learned (Feature #25)
+
+    // Row position in formation (Feature #10)
+    this.row = 'front'; // 'front' | 'back'
+
     // Initialize character based on class
     this.initializeClass(characterClass);
     
@@ -69,8 +76,54 @@ export class Character {
     if (classData.startingSkill) {
       this.unlockSkill(classData.startingSkill);
     }
-    
+
+    // Feature #21: spell slots for caster classes
+    this.spellSlots = this._getBaseSpellSlots(characterClass);
+
     console.log(`Initialized ${characterClass} with stats:`, this.stats);
+  }
+
+  _getBaseSpellSlots(cls = this.class) {
+    if (cls === 'mage')   return { 1: 2, 2: 1, 3: 0 };
+    if (cls === 'cleric') return { 1: 2, 2: 1, 3: 0 };
+    return null;
+  }
+
+  /**
+   * Cast a spell, consuming a spell slot.
+   * @param {string} spellId
+   * @param {Object} skillSystem - SkillSystem instance
+   * @param {Array} targets
+   * @returns {{ success: boolean, reason?: string, effects?: any }}
+   */
+  castSpell(spellId, skillSystem, targets) {
+    if (!this.spellSlots) return { success: false, reason: 'not_a_caster' };
+    const spell = skillSystem?.getSkill?.(spellId);
+    if (!spell) return { success: false, reason: 'unknown_spell' };
+    const lvl = spell.level ?? 1;
+    if (!(lvl in this.spellSlots) || this.spellSlots[lvl] <= 0) {
+      return { success: false, reason: `no_slot_level_${lvl}` };
+    }
+    this.spellSlots[lvl]--;
+    const result = skillSystem.useSkill(this, spellId, targets);
+    return { success: true, effects: result.effects };
+  }
+
+  /** Restore all spell slots (call after resting). */
+  restoreSpellSlots() {
+    this.spellSlots = this._getBaseSpellSlots();
+  }
+
+  /**
+   * Learn a spell from a scroll.
+   * Feature #25: Magic Scrolls.
+   */
+  learnSpell(spellId) {
+    if (!this.knownSpells.includes(spellId)) {
+      this.knownSpells.push(spellId);
+      return true;
+    }
+    return false;
   }
 
   /**

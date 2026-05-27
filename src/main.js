@@ -22,6 +22,8 @@ import { Logger, LogLevel } from './engine/utils/Logger.js';
 import { SystemInspector } from './engine/utils/SystemInspector.js';
 import { EventBus, EventTypes } from './engine/core/EventBus.js';
 import { Dir } from './engine/core/Direction.js';
+import { Dice } from './engine/utils/Dice.js';
+import { CameraAnimator } from './engine/core/CameraAnimator.js';
 
 // Import performance systems
 import { PerformanceOptimizer } from './engine/performance/PerformanceOptimizer.js';
@@ -50,6 +52,7 @@ import { PropSystem } from './engine/systems/PropSystem.js';
 import { SpriteManager } from './engine/ui/SpriteManager.js';
 import { NavigationLight } from './engine/core/NavigationLight.js';
 import { ZoneTriggerSystem } from './engine/systems/ZoneTriggerSystem.js';
+import { ViewFieldSystem } from './engine/systems/ViewFieldSystem.js';
 import { InteractionSystem } from './engine/systems/InteractionSystem.js';
 import { TouchControls } from './engine/ui/TouchControls.js';
 import { ResolutionManager } from './engine/core/ResolutionManager.js';
@@ -76,6 +79,7 @@ import { MainMenuScreen } from './engine/ui/MainMenuScreen.js';
 import { PauseMenuScreen } from './engine/ui/PauseMenuScreen.js';
 import { OptionsScreen } from './engine/ui/OptionsScreen.js';
 import { ExplorationHUD } from './engine/ui/ExplorationHUD.js';
+import { CampUI } from './engine/ui/CampUI.js';
 import { HUDPanels }      from './engine/ui/HUDPanels.js';
 import { ThemeManager }   from './engine/themes/ThemeManager.js';
 import { CryptTheme }     from './engine/themes/CryptTheme.js';
@@ -322,8 +326,9 @@ class DungeonCrawlerEngine {
     this.combatSystem.setScene(this.renderer.getScene());
 
     // Hit feedback systems
-    this.hitFlashSystem = new HitFlashSystem(this.renderer);
-    this.screenShake    = new ScreenShake(this.renderer.getCamera());
+    this.hitFlashSystem   = new HitFlashSystem(this.renderer);
+    this.screenShake      = new ScreenShake(this.renderer.getCamera());
+    this.cameraAnimator   = new CameraAnimator(this.renderer.getCamera());
     this.combatSystem.battleExecutor.setVisualSystems({
       hitFlash:    this.hitFlashSystem,
       screenShake: this.screenShake,
@@ -357,6 +362,9 @@ class DungeonCrawlerEngine {
     // Phase 15 — zone triggers + typewriter text
     this.zoneTriggerSystem = new ZoneTriggerSystem(this.gridSystem);
     this.zoneTriggerSystem.initialize();
+
+    // Feature #26: ViewField cone of vision
+    this.viewFieldSystem = new ViewFieldSystem(this.gridSystem);
 
     // Phase 16 — raycaster prop interaction
     this.interactionSystem = new InteractionSystem(
@@ -407,6 +415,11 @@ class DungeonCrawlerEngine {
     // Pixel exploration HUD (party column, compass, quest, log, hotbar)
     this.explorationHUD = new ExplorationHUD();
     this.explorationHUD.initialize();
+
+    // Feature #18: Camp UI (Z key)
+    this.campUI = new CampUI(this.partyManager, this.saveSystem, this.autoSaveManager);
+    this.campUI.initialize();
+    this.campUI.onClose(() => { this.inputManager.unblockInput(); });
 
     // Overlay panels: Journal, Bestiary
     this.hudPanels = new HUDPanels();
@@ -605,7 +618,7 @@ class DungeonCrawlerEngine {
     this.autoSaveManager = new AutoSaveManager(this.saveSystem);
 
     // EncounterSystem — uses shared partyManager (same ref as CharacterSystem.partyManager)
-    this.encounterSystem = new EncounterSystem(this.combatSystem, this.partyManager);
+    this.encounterSystem = new EncounterSystem(this.combatSystem, this.partyManager, this.gridSystem);
 
     // movementCompleted → encounter check + NPC proximity + zone triggers + nav light
     window.addEventListener('movementCompleted', async (e) => {
@@ -615,8 +628,17 @@ class DungeonCrawlerEngine {
       }
       // Phase 14: navigation light step decay
       this.navigationLight?.step();
-      // Phase 15: zone trigger check
+      // Phase 15: zone trigger check (onEnter/onStand)
       if (pos) this.zoneTriggerSystem?.checkTriggers(pos.x, pos.z);
+      // Feature #26: update ViewField
+      if (pos && this.viewFieldSystem) {
+        this.viewFieldSystem.update(pos.x, pos.z, e.detail.direction ?? 0);
+      }
+      // Feature #19: onLeave triggers for previous tile
+      const prevPos = e.detail.previousPosition;
+      if (prevPos) this.zoneTriggerSystem?.checkLeaveTriggers(prevPos.x, prevPos.z);
+      // Feature #17: step camera animation
+      this.cameraAnimator?.startStep();
       // Pickup check (lootChests / keyItems registered by DungeonLoader)
       if (pos && this.gridSystem) this._checkPickup(pos.x, pos.z);
 
@@ -1261,6 +1283,65 @@ class DungeonCrawlerEngine {
       this.handleTransitionError(event.detail);
     });
 
+    // Feature #27: HUD movement buttons → route same as keyboard actions
+    window.addEventListener('hudMovementButton', (e) => {
+      const action = e.detail?.action;
+      if (!action || !this.movementController) return;
+      this.handleInputAction({ type: action });
+    });
+
+    // Feature #14: Pit trap — apply damage to party after landing
+    window.addEventListener('pitEntered', (e) => {
+      const { pitData } = e.detail ?? {};
+      if (!pitData || pitData.illusion) return;
+      const members = this.partyManager?.getActiveMembers?.() ?? [];
+      if (members.length === 0) return;
+      let dmg = 6; // default 1d6
+      if (pitData.damage) {
+        try { dmg = Dice.parse(pitData.damage).roll(); } catch (_) { /* use default */ }
+      }
+      members.forEach(m => m.takeDamage?.(dmg));
+      this.explorationHUD?.addMessage(`¡TRAMPA! Caes al pozo — ${dmg} daño.`, 'danger');
+      this.debugUI.showWarning(`Pit trap! ${dmg} damage`);
+      if (pitData.target && this.transitionSystem) {
+        window.dispatchEvent(new CustomEvent('levelTransition', {
+          detail: { transitionData: pitData.target }
+        }));
+      }
+    });
+
+    // Feature #15: ForceField — rotate/push party on enter
+    window.addEventListener('forceFieldEntered', (e) => {
+      const { forceField } = e.detail ?? {};
+      if (!forceField || !this.movementController) return;
+      switch (forceField.type) {
+        case 'Spin':
+          if (forceField.spin === 'Rotate180') {
+            this.movementController.turnLeft();
+            this.movementController.turnLeft();
+          } else if (forceField.spin === 'Rotate90') {
+            this.movementController.turnRight();
+          } else if (forceField.spin === 'Rotate270') {
+            this.movementController.turnLeft();
+          }
+          this.explorationHUD?.addMessage('¡Campo de fuerza! Girado.', 'danger');
+          break;
+        case 'FaceTo':
+          if (forceField.direction != null) {
+            this.movementController.setPosition(
+              this.movementController.getPosition().x,
+              this.movementController.getPosition().z,
+              forceField.direction
+            );
+            this.explorationHUD?.addMessage('Un campo invisible te orienta.', 'ambient');
+          }
+          break;
+        case 'Move':
+          this.explorationHUD?.addMessage('¡Empujado por la fuerza!', 'danger');
+          break;
+      }
+    });
+
     // openEquipmentSelection (emitted by CharacterSheetUI) → open equipment overlay
     window.addEventListener('openEquipmentSelection', (e) => {
       Logger.tag('Event:openEquipmentSelection').debug('received', e.detail);
@@ -1468,13 +1549,21 @@ class DungeonCrawlerEngine {
         await this.movementController.strafeRight();
         break;
       case 'turnLeft':
+        this.cameraAnimator?.startTurn('left');
         await this.movementController.turnLeft();
         break;
       case 'turnRight':
+        this.cameraAnimator?.startTurn('right');
         await this.movementController.turnRight();
         break;
       case 'interact':
         this.performInteraction();
+        break;
+      case 'openCamp':
+        if (this.campUI) {
+          if (this.campUI.isVisible()) { this.campUI.hide(); }
+          else { this.inputManager.blockInput(); this.campUI.show(); }
+        }
         break;
       case 'loadTest':
         await this.loadTestLevel();
@@ -1557,6 +1646,26 @@ class DungeonCrawlerEngine {
 
     // Check if there's a door at the target position
     const tile = this.gridSystem.getTile(targetX, targetZ);
+
+    // Feature #13: WallSwitch interaction
+    if (tile?.wallSwitch) {
+      const result = this.collisionSystem.handleWallSwitch(
+        targetX, targetZ,
+        this.inventorySystem ?? null
+      );
+      if (result.activated) {
+        const sw = tile.wallSwitch;
+        const msg = sw.active ? 'Switch activated!' : 'Switch deactivated.';
+        this.debugUI.showSuccess(msg);
+        this.explorationHUD?.addMessage(sw.active ? '*Click!*' : '*Clack.*', 'system');
+      } else {
+        const msg = result.reason === 'missing_item' ? `Need: ${result.item}`
+                  : result.reason === 'already_used' ? 'Already used'
+                  : 'Cannot activate switch';
+        this.debugUI.showWarning(msg);
+      }
+      return;
+    }
 
     if (!tile || tile.type !== 'door') {
       Logger.tag('Interact').debug(`no door, tile=${tile ? tile.type : 'undefined'}`);
@@ -1762,6 +1871,9 @@ class DungeonCrawlerEngine {
     // Screen shake (must run before render, after camera position set)
     if (this.screenShake) this.screenShake.update();
 
+    // Camera animations: wall hit, step, turn
+    if (this.cameraAnimator) this.cameraAnimator.update();
+
     // Render the Three.js scene
     this.renderer.render();
   }
@@ -1915,7 +2027,13 @@ class DungeonCrawlerEngine {
           console.log(`No tile data at (${x}, ${z})`);
           continue;
         }
-        
+
+        if (!tile.explored) {
+          cell.style.visibility = 'hidden';
+          continue;
+        }
+        cell.style.visibility = '';
+
         // Reset classes
         cell.className = 'minimap-cell';
         
@@ -1971,6 +2089,8 @@ class DungeonCrawlerEngine {
           // Restore original tile content
           const tile = this.gridSystem.getTile(x, z);
           if (tile) {
+            if (!tile.explored) { cell.style.visibility = 'hidden'; continue; }
+            cell.style.visibility = '';
             switch (tile.type) {
               case 'wall': cell.textContent = '■'; break;
               case 'floor': cell.textContent = '·'; break;
@@ -2088,6 +2208,8 @@ class DungeonCrawlerEngine {
     switch (reason) {
       case 'wall':
         this.debugUI.showWarning('Cannot walk through walls');
+        this.screenShake?.trigger(0.12);
+        this.cameraAnimator?.startWallHit();
         break;
       case 'door_locked':
         this.debugUI.showWarning(message);

@@ -35,9 +35,26 @@ export class Enemy {
     this.aiType = this.enemyData.aiType;
     this.skills = this.enemyData.skills || [];
     this.resistances = this.enemyData.resistances || {};
+    this.immunities  = this.enemyData.immunities  || [];
+    this.flags       = this.enemyData.flags       || {};
     this.phases = this.enemyData.phases || null; // For boss enemies
     this.currentPhase = 0;
     this.ai = null; // Will be set by combat system
+
+    // Feature #16: Extended monster struct
+    this.detectionRange = this.enemyData.detectionRange ?? 3;
+    this.sightRange     = this.enemyData.sightRange     ?? 5;
+    this.smartAI        = this.enemyData.smartAI        ?? false;
+    this.pickupRate     = this.enemyData.pickupRate      ?? 0;
+    this.stealRate      = this.enemyData.stealRate       ?? 0;
+    this.hasHealMagic   = this.enemyData.flags?.hasHealMagic ?? false;
+    this.canMove        = this.enemyData.canMove         ?? true;
+    this.attackSpeed    = this.enemyData.attackSpeed     ?? 1000;
+    this.aiState        = 'idle'; // 'idle' | 'pursuing' | 'fleeing'
+    this.gridX          = 0;     // exploration grid position (set by dungeon loader)
+    this.gridZ          = 0;
+    this.baseX          = 0;     // spawn position (home for patrol)
+    this.baseZ          = 0;
     
     console.log(`Created ${enemyType} enemy: ${this.name} (Level ${level}, Tier ${this.tier})`);
   }
@@ -179,8 +196,10 @@ export class Enemy {
     let actualDamage = damage;
     
     // Apply elemental resistance
-    if (this.resistances && this.resistances[element]) {
-      actualDamage = Math.floor(damage * this.resistances[element]);
+    if (this.resistances && element in this.resistances) {
+      const res = this.resistances[element];
+      if (res === 'immune') return 0;
+      actualDamage = Math.floor(damage * res);
     }
     
     this.currentHP = Math.max(0, this.currentHP - actualDamage);

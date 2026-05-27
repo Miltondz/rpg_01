@@ -10,17 +10,38 @@ Browser-based turn-based RPG / dungeon crawler. Vanilla ES6 modules + Three.js r
 
 Full game loop is playable end-to-end: main menu → party creation → dungeon exploration → random encounters → turn-based combat → victory/defeat → save/load → continue.
 
-**Latest changes:**
-- **Main menu redesign** — full-screen pixel RPG aesthetic with CRT scanlines, animated skull, floating particles, Credits panel, QUIT confirmation
-- **Party presets** — CUSTOM / PRESETS tab toggle in party creation; 4 presets (The Covenant, Iron Vanguard, The Arcanum, Shadow Guild) with instant one-click party setup
-- **Character Sheet** — Daggerfall-style redesign: party tabs, paper-doll silhouette, stat bars with visual fill, equipment anchors, skill tree
-- **Inventory** — Baldur's Gate-style: item grid, detail pane, filter tabs (All/Equipment/Potions/Materials/Misc), hover tooltips
-- **Journal** — BG/Morrowind style: category tabs (ALL / EVENTS / COMBAT / LOCATIONS / ITEMS), timestamped entries, color-coded by type
-- **Bestiary** — Morrowind/X-COM style: two-column research view (creature list + detail pane), tier badges, encounter counter, full stats/resistances/skills/loot
-- **Bug fixes**:
-  - Save validation failed with "No characters in party" when `party.characters` was empty array (constructor default) — now uses whichever array has members
-  - Save slot display showed "0 characters" — `getDisplayMetadata` applies same fix
-  - Equipment selection overlay rendered behind Character Sheet (z-index 1000 < 2500) — raised to 3000
+**Latest changes — darkmoor/LoL-JS feature port (27 features):**
+
+Phase 1 (combat depth):
+- **Fog-of-war minimap** — tiles hidden until explored; spawn tile + 4 neighbors revealed on enter
+- **Camera bump** — FOV bump + screen shake on wall collision; step/turn/strafe animations via `CameraAnimator`
+- **Configurable crits** — d20 roll vs `critConfig.minimum/maximum`, per-weapon multiplier; fixes Rogue >100% crit bug
+- **Saving throws** — Fortitude/Reflex/Will vs DC on skills; half-damage on save
+- **Relative compass** — HUD shows left·ahead·right labels based on current facing
+- **MazeZone XP multiplier** — level JSON `zones[]` with `xpMultiplier`; deeper areas give more XP
+- **Enemy resistances** — `resistances: { fire: 0.5, poison: 'immune' }` + `immunities[]` on enemies; fixes falsy-zero resistance bug
+- **Dice system** — `Dice.parse('2d6+3').roll()` + `DC` enum; used throughout combat
+
+Phase 2 (systems):
+- **Front/back row** — party formation stamped on characters; back row can't use melee
+- **Roll to-hit** — d20 + ATK bonus vs target AC (DEF + SPD); attacks can miss
+- **Tile face decorations** — `decorations` schema in level JSON; Three.js geometry spawned per tile face
+- **WallSwitch** — `tile.wallSwitch` JSON actor; Space key activates scripts (openDoor/closeDoor/toggleDoor), optional item requirement
+- **Pit traps** — `tile.pit` with `damage` (dice expr), `hidden`, `difficulty`; damage on land, optional level teleport
+- **ForceField** — `tile.forceField` with `Spin/FaceTo/Move` types; redirects party on enter
+- **Extended monster struct** — `detectionRange`, `sightRange`, `smartAI`, `pickupRate`, `stealRate`, `hasHealMagic`, `canMove` on all enemies
+- **Camp / rest** — `Z` key opens camp overlay; restores HP + spell slots, manual save
+- **EventSquare onLeave/onStand** — `triggerOn: 'leave'|'stand'|'enter'` on tile triggers
+- **Spells as scripts** — `onCast: (caster, targets, level) => effects` function on skills; `fireball`, `ice_bolt`, `holy_smite` added
+- **SpellBook slots** — `character.spellSlots` by level; `castSpell()` consumes slot, `restoreSpellSlots()` on rest
+
+Phase 3 (advanced):
+- **AI exploration** — `EnemyAI.updateExploration()` patrol/pursuit state machine using `detectionRange`/`sightRange`
+- **Ground item sub-positions** — `GridSystem.addGroundItem/removeGroundItem/getGroundItems` with NW/NE/SW/SE slots per tile
+- **Animated portraits** — `CharacterPortrait.createAnimatedCanvas()` spritesheet or procedural idle blink
+- **Magic Scrolls** — `scroll_fireball`, `scroll_ice_bolt`, `scroll_holy_smite` items; `character.learnSpell()` on use
+- **ViewField cone** — `ViewFieldSystem` 16-position 5×5 view cone; `isVisible()`, `getDepth()` for targeting/loot
+- **Clickable movement buttons** — 3×3 D-pad in HUD bottom-right; mobile/accessibility; routes same as keyboard
 
 ## Running
 
@@ -42,8 +63,10 @@ Open `http://localhost:8000`.
 | S / ↓ | Move backward |
 | A / ← | Turn left |
 | D / → | Turn right |
-| Q / E | Strafe left / right |
-| Space | Interact (doors, props, NPCs) |
+| Q | Strafe left |
+| E | Strafe right |
+| Space | Interact (doors, wall switches, props, NPCs) |
+| Z | Camp menu (rest, restore spell slots, save) |
 | I | Inventory |
 | C | Character sheet |
 | ESC | Pause menu / close panel |
@@ -53,34 +76,43 @@ Open `http://localhost:8000`.
 | F | Performance stats (debug) |
 | L | Cycle test levels (debug) |
 
+Movement buttons (3×3 D-pad) also available bottom-right of HUD for mouse/touch.
+
 ## Architecture
 
 Entry point: `index.html` → `src/main.js` (`DungeonCrawlerEngine` class).
 
 ```
 src/engine/
-├── core/         GridSystem, Renderer (Three.js), Direction (N/E/S/W source of truth)
+├── core/         GridSystem (tile grid + ground item slots), Renderer (Three.js),
+│                 Direction (N/E/S/W source of truth), CameraAnimator
 ├── managers/     InputManager, MovementController, GameLoopManager
-├── systems/      CollisionSystem, DoorSystem, TransitionSystem, EncounterSystem
-├── character/    Character, CharacterClasses, SkillSystem, ExperienceSystem, PartyManager
-├── combat/       CombatSystem (AP-driven), EnemyAI (4 archetypes), ActionResolver, TargetingSystem
-├── inventory/    InventorySystem (40 slots), ItemDatabase (singleton), ConsumableSystem
+├── systems/      CollisionSystem (wall switch handler), DoorSystem, TransitionSystem,
+│                 EncounterSystem, ZoneTriggerSystem (onEnter/onStand/onLeave),
+│                 ViewFieldSystem (5×5 cone of vision)
+├── character/    Character (spell slots, learnSpell), CharacterClasses, SkillSystem
+│                 (onCast scripts), ExperienceSystem, PartyManager (front/back row)
+├── combat/       CombatSystem (AP-driven, zone XP), EnemyAI (4 archetypes + exploration
+│                 patrol/pursuit), ActionResolver (d20 to-hit, saving throws),
+│                 TargetingSystem, Enemy (extended struct: detectionRange, smartAI, …)
+├── inventory/    InventorySystem (40 slots), ItemDatabase (magic scrolls), ConsumableSystem
 ├── equipment/    Equipment slots and bonuses
 ├── loot/         LootSystem — drop tables, chest rolls
 ├── shop/         ShopSystem (singleton) — level-scaled inventory, buy/sell
 ├── save/         SaveSystem, AutoSaveManager, SaveData (localStorage, multi-slot)
-├── balance/      CombatBalanceConfig, BalanceTuningSystem — tune values here not in combat code
+├── balance/      CombatBalanceConfig (CRIT_DEFAULTS, Dice formulas) — tune here
 ├── performance/  PerformanceManager, MemoryManager, GeometryInstancer, FrustumCuller
 ├── campaign/     CampaignManager — multi-floor dungeon progression
 ├── narrative/    NarrativeManager — inkjs 2.x story playback
 ├── npc/          NPCEngine, NPC, NPCBehavior, NPCRelationshipSystem
-├── loaders/      DungeonLoader — parses levels/*.json, builds Three.js geometry
-├── data/         EnemyDatabase (singleton)
-├── utils/        Logger (tag-based), SystemInspector
+├── loaders/      DungeonLoader — parses levels/*.json, tile actors (pit/forceField/wallSwitch)
+├── data/         EnemyDatabase (singleton, extended monster schema)
+├── utils/        Logger (tag-based), SystemInspector, Dice (XdY+Z parser + DC enum)
 └── ui/           CombatUI, CombatUIManager, InventoryUI, CharacterSheetUI,
-                  ShopUI, SaveLoadUI, EquipmentUI, PartyCreationUI,
+                  ShopUI, SaveLoadUI, EquipmentUI, PartyCreationUI, CampUI,
                   SplashScreen, MainMenuScreen, PauseMenuScreen, OptionsScreen,
-                  NarrativeUI, DebugUI, UIRouter (exclusive screen stack)
+                  NarrativeUI, ExplorationHUD (animated portraits, D-pad buttons),
+                  DebugUI, UIRouter (exclusive screen stack)
 ```
 
 ## Key Conventions
@@ -93,10 +125,14 @@ src/engine/
 ## Content
 
 - **Dungeon**: `levels/crypt-of-shadows-floor-{1..5}.json` + `campaigns/crypt-of-shadows-config.json`
-- **Enemies**: `src/engine/data/EnemyDatabase.js` — add via `this.addEnemy(id, { tier, baseStats, aiType, skills, resistances, lootTable })`
-- **Items**: `src/engine/inventory/ItemDatabase.js` — add via `this.addItem(id, { name, type, rarity, ... })`
+- **Enemies**: `src/engine/data/EnemyDatabase.js` — add via `this.addEnemy(id, { tier, baseStats, aiType, detectionRange, sightRange, smartAI, skills, resistances, immunities, flags, lootTable })`
+- **Items**: `src/engine/inventory/ItemDatabase.js` — add via `this.addItem(id, { name, type, rarity, ... })`. Magic scrolls: `type: 'scroll', spellId, onUse: (user) => {...}`
+- **Spells**: `src/engine/character/SkillSystem.js` — add via `this.registerSkill({ id, class, level, onCast: (caster, targets, level) => effects[] })`
+- **Tile actors** (level JSON): `"wallSwitch": { side, reusable, neededItem, scripts[] }` / `"pit": { damage, hidden, difficulty }` / `"forceField": { type, spin, affectTeam }`
+- **Zone triggers**: `"triggers": [{ type, text, triggerOn: 'enter'|'stand'|'leave', once }]`
+- **MazeZones**: `"zones": [{ id, xpMultiplier, tiles: [[x1,z1],[x2,z2]] }]`
 - **NPCs**: `npcs/crypt-of-shadows/*.json` + `narratives/crypt-of-shadows/*.json` (inkjs 2.x compiled format)
-- **Balance**: `src/engine/balance/` — damage/XP formulas live here
+- **Balance**: `src/engine/balance/` — damage/XP formulas live here; `CombatBalanceConfig.CRIT_DEFAULTS` for crit range/multiplier
 
 ## Testing
 

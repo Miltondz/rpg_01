@@ -56,6 +56,13 @@ export const Dir = Object.freeze({
   toRadians: (dir) => RADIANS[norm(dir)],
 
   delta:     (dir) => DELTAS[norm(dir)],
+
+  // Returns absolute direction for a relative slot when facing `facing`.
+  // slot: 0=left, 1=ahead, 2=right, 3=behind
+  getRelativeDirection: (facing, slot) => norm(facing + [3, 0, 1, 2][slot]),
+
+  // Single-letter label for a direction index.
+  label: (dir) => NAMES[norm(dir)][0], // 'N','E','S','W'
 });
 
 if (typeof window !== 'undefined') {

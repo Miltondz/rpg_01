@@ -353,6 +353,66 @@ export class CollisionSystem {
   }
 
   /**
+   * Handle WallSwitch interaction at target tile.
+   * @param {number} x - Target tile X
+   * @param {number} z - Target tile Z
+   * @param {Object|null} inventory - Optional inventory object with hasItem/removeItem
+   * @returns {Object} { activated, active, reason, results }
+   */
+  handleWallSwitch(x, z, inventory = null) {
+    const tile = this.gridSystem.getTile(x, z);
+    if (!tile?.wallSwitch) return { activated: false, reason: 'no_switch' };
+
+    const sw = tile.wallSwitch;
+    if (!sw.reusable && sw.used) return { activated: false, reason: 'already_used' };
+
+    if (sw.neededItem) {
+      const hasItem = inventory?.hasItem?.(sw.neededItem) ?? false;
+      if (!hasItem) return { activated: false, reason: 'missing_item', item: sw.neededItem };
+      if (sw.consumeItem) inventory?.removeItem?.(sw.neededItem);
+    }
+
+    sw.used = true;
+    sw.active = !sw.active;
+
+    const results = [];
+    for (const script of sw.scripts ?? []) {
+      results.push(this._executeWallSwitchScript(script));
+    }
+
+    return { activated: true, active: sw.active, results };
+  }
+
+  _executeWallSwitchScript(script) {
+    switch (script.action) {
+      case 'openDoor': {
+        const t = this.gridSystem.getTile(script.target?.x, script.target?.z);
+        if (t?.type === 'door') { t.walkable = true; t.closed = false; }
+        window.dispatchEvent(new CustomEvent('wallSwitchScript', { detail: script }));
+        return { action: 'openDoor', success: !!t };
+      }
+      case 'closeDoor': {
+        const t = this.gridSystem.getTile(script.target?.x, script.target?.z);
+        if (t?.type === 'door') { t.walkable = false; t.closed = true; }
+        window.dispatchEvent(new CustomEvent('wallSwitchScript', { detail: script }));
+        return { action: 'closeDoor', success: !!t };
+      }
+      case 'toggleDoor': {
+        const t = this.gridSystem.getTile(script.target?.x, script.target?.z);
+        if (t?.type === 'door') {
+          t.closed = !t.closed;
+          t.walkable = !t.closed;
+        }
+        window.dispatchEvent(new CustomEvent('wallSwitchScript', { detail: script }));
+        return { action: 'toggleDoor', success: !!t };
+      }
+      default:
+        window.dispatchEvent(new CustomEvent('wallSwitchScript', { detail: script }));
+        return { action: script.action, success: true };
+    }
+  }
+
+  /**
    * Get collision information for debugging
    * @param {number} x - Grid X coordinate
    * @param {number} z - Grid Z coordinate

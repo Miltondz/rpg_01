@@ -1366,8 +1366,19 @@ export class EnemyDatabase {
    */
   addEnemy(id, data) {
     this.enemies.set(id, {
-      id: id,
-      gridSize: { w: 1, h: 1 }, // default; override per-enemy for large creatures
+      id,
+      gridSize: { w: 1, h: 1 },
+      // Feature #16: extended monster struct defaults
+      detectionRange: 3,
+      sightRange: 5,
+      smartAI: false,
+      pickupRate: 0,
+      stealRate: 0,
+      canMove: true,
+      attackSpeed: 1000,
+      flags: {},
+      resistances: {},
+      immunities: [],
       ...data,
       createdAt: Date.now()
     });

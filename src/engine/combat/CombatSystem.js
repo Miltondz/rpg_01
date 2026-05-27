@@ -80,6 +80,7 @@ export class CombatSystem {
     // Set up combat participants
     this.playerParty = playerParty;
     this.enemies = [...enemies];
+    this.zoneXPMultiplier = encounterData.xpMultiplier ?? 1;
     
     // Initialize AI for enemies
     this.initializeEnemyAI();
@@ -601,8 +602,8 @@ export class CombatSystem {
     const totalEnemyLevel = this.enemies.reduce((sum, enemy) => sum + (enemy.level || 1), 0);
     const averagePartyLevel = this.playerParty.getAverageLevel();
     
-    // Base XP calculation
-    const baseXP = totalEnemyLevel * 25;
+    // Base XP calculation (scaled by zone multiplier)
+    const baseXP = totalEnemyLevel * 25 * (this.zoneXPMultiplier ?? 1);
     const xpPerMember = Math.floor(baseXP / alivePartyMembers.length);
     
     // Generate loot from defeated enemies

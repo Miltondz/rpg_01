@@ -710,6 +710,58 @@ export class EnemyAI {
     return baseScore;
   }
 
+  // ── Feature #22: Exploration AI with detectionRange / sightRange ────────────
+
+  /**
+   * Update enemy state during exploration (called once per move tick).
+   * @param {Object} enemy   - Enemy with gridX/gridZ/aiState/detectionRange/sightRange
+   * @param {{x:number,z:number}} playerPos
+   * @param {import('../core/GridSystem.js').GridSystem} grid
+   */
+  updateExploration(enemy, playerPos, grid) {
+    if (!enemy.canMove) return;
+    const dist = Math.abs(enemy.gridX - playerPos.x) + Math.abs(enemy.gridZ - playerPos.z);
+    const detection = enemy.detectionRange ?? 3;
+    const sight     = enemy.sightRange     ?? 5;
+
+    if (dist <= detection) {
+      enemy.aiState = 'pursuing';
+      if (enemy.smartAI || dist > 1) {
+        this._stepToward(enemy, playerPos, grid);
+      }
+    } else if (enemy.aiState === 'pursuing' && dist > sight) {
+      enemy.aiState = 'idle';
+      // Return toward base position
+      this._stepToward(enemy, { x: enemy.baseX, z: enemy.baseZ }, grid);
+    }
+  }
+
+  _stepToward(enemy, target, grid) {
+    const dx = target.x - enemy.gridX;
+    const dz = target.z - enemy.gridZ;
+    if (dx === 0 && dz === 0) return;
+
+    // Try primary axis first, then secondary
+    const candidates = [];
+    if (Math.abs(dx) >= Math.abs(dz)) {
+      candidates.push({ x: enemy.gridX + Math.sign(dx), z: enemy.gridZ });
+      candidates.push({ x: enemy.gridX, z: enemy.gridZ + Math.sign(dz) });
+    } else {
+      candidates.push({ x: enemy.gridX, z: enemy.gridZ + Math.sign(dz) });
+      candidates.push({ x: enemy.gridX + Math.sign(dx), z: enemy.gridZ });
+    }
+
+    for (const c of candidates) {
+      const tile = grid?.getTile(c.x, c.z);
+      if (tile?.walkable) {
+        // Check no other enemy occupies this tile
+        enemy.gridX = c.x;
+        enemy.gridZ = c.z;
+        return;
+      }
+    }
+  }
+
   /**
    * Create AI instance for enemy type
    * @param {string} enemyType - Type of enemy

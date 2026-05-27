@@ -415,6 +415,46 @@ export class ItemDatabase {
       value: 180, stackable: true, maxStack: 10,
       description: 'Dangerous brew of void essence. Heals and empowers, but tastes of dread.'
     });
+
+    // Feature #25: Magic Scrolls — teach spells to Mage on use
+    this.addItem('scroll_fireball', {
+      name: 'Scroll of Fireball',
+      type: 'scroll', category: 'magic_scroll', rarity: 'rare',
+      icon: '📜', spellId: 'fireball', targetClass: 'mage',
+      value: 150, stackable: false,
+      description: 'Contains the Fireball incantation. Mage only.',
+      onUse: (user) => {
+        if (user.class !== 'mage') return { success: false, reason: 'only_mage' };
+        const learned = user.learnSpell?.('fireball') ?? false;
+        return { success: true, consumed: true, learned };
+      }
+    });
+
+    this.addItem('scroll_ice_bolt', {
+      name: 'Scroll of Ice Bolt',
+      type: 'scroll', category: 'magic_scroll', rarity: 'uncommon',
+      icon: '📜', spellId: 'ice_bolt', targetClass: 'mage',
+      value: 100, stackable: false,
+      description: 'Contains the Ice Bolt incantation. Mage only.',
+      onUse: (user) => {
+        if (user.class !== 'mage') return { success: false, reason: 'only_mage' };
+        const learned = user.learnSpell?.('ice_bolt') ?? false;
+        return { success: true, consumed: true, learned };
+      }
+    });
+
+    this.addItem('scroll_holy_smite', {
+      name: 'Scroll of Holy Smite',
+      type: 'scroll', category: 'magic_scroll', rarity: 'uncommon',
+      icon: '📜', spellId: 'holy_smite', targetClass: 'cleric',
+      value: 100, stackable: false,
+      description: 'Contains the Holy Smite incantation. Cleric only.',
+      onUse: (user) => {
+        if (user.class !== 'cleric') return { success: false, reason: 'only_cleric' };
+        const learned = user.learnSpell?.('holy_smite') ?? false;
+        return { success: true, consumed: true, learned };
+      }
+    });
   }
 
   /**

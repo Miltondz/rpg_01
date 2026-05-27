@@ -12,6 +12,7 @@
  */
 import { CharacterPortrait } from './CharacterPortrait.js';
 import { ThemeManager }      from '../themes/ThemeManager.js';
+import { Dir }               from '../core/Direction.js';
 
 const FALLBACK_SLOTS = [
   { key: '1', label: 'ATK',  sym: '⚔' },
@@ -57,6 +58,7 @@ export class ExplorationHUD {
     this._setupMinimapToggle();
     this._buildHotbar();
     this._renderCompass();
+    this._buildMovementButtons(); // Feature #27
     this.addMessage('El sistema respira...', 'ambient');
     this.addMessage('Prepárate.', 'system');
 
@@ -205,15 +207,18 @@ export class ExplorationHUD {
     const el = this.elements.compass;
     if (!el) return;
 
-    const labels    = ['W', 'N', 'E', 'S'];
-    const dirToLabel = ['N', 'E', 'S', 'W'];
-    const active    = dirToLabel[this._direction] ?? 'N';
+    // Layout: [left] ·-· [ahead(active)] ·-· [right]
+    // slot 0=left, 1=ahead, 2=right
+    const slots = [0, 1, 2].map(slot => ({
+      label: Dir.label(Dir.getRelativeDirection(this._direction, slot)),
+      active: slot === 1
+    }));
 
     el.innerHTML = '';
     const row = document.createElement('div');
     row.className = 'hud-compass-row';
 
-    labels.forEach((lbl, i) => {
+    slots.forEach(({ label, active }, i) => {
       if (i > 0) {
         const sep = document.createElement('span');
         sep.className = 'hud-compass-sep';
@@ -221,9 +226,9 @@ export class ExplorationHUD {
         row.appendChild(sep);
       }
       const span = document.createElement('span');
-      span.className = 'hud-compass-dir' + (lbl === active ? ' hud-compass-active' : '');
-      span.textContent = lbl;
-      if (lbl === active) {
+      span.className = 'hud-compass-dir' + (active ? ' hud-compass-active' : '');
+      span.textContent = label;
+      if (active) {
         const tri = document.createElement('span');
         tri.className = 'hud-compass-tri';
         tri.textContent = '^';
@@ -425,5 +430,56 @@ export class ExplorationHUD {
     const root = document.getElementById('pixel-hud');
     if (root) root.style.display = 'none';
     this._visible = false;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Feature #27: Clickable movement buttons
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  _buildMovementButtons() {
+    const container = document.getElementById('hud-movement-buttons');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // 3×3 grid layout: row/col 1-based
+    // Row 1: [turnLeft] [forward] [turnRight]
+    // Row 2: [strafeLeft] [interact] [strafeRight]
+    // Row 3: [—] [backward] [—]
+    const defs = [
+      { action: 'turnLeft',   label: '↺', row: 1, col: 1, title: 'Turn Left (A)' },
+      { action: 'forward',    label: '▲', row: 1, col: 2, title: 'Forward (W)' },
+      { action: 'turnRight',  label: '↻', row: 1, col: 3, title: 'Turn Right (D)' },
+      { action: 'strafeLeft', label: '◄', row: 2, col: 1, title: 'Strafe Left (Q)' },
+      { action: 'interact',   label: '✦', row: 2, col: 2, title: 'Interact (Space)' },
+      { action: 'strafeRight',label: '►', row: 2, col: 3, title: 'Strafe Right (E)' },
+      { action: 'backward',   label: '▼', row: 3, col: 2, title: 'Backward (S)' },
+    ];
+
+    container.style.cssText = [
+      'position:fixed', 'bottom:8px', 'right:8px',
+      'display:grid', 'grid-template-columns:repeat(3,36px)',
+      'grid-template-rows:repeat(3,36px)', 'gap:2px', 'z-index:200',
+    ].join(';');
+
+    for (const d of defs) {
+      const btn = document.createElement('button');
+      btn.textContent = d.label;
+      btn.title       = d.title;
+      btn.setAttribute('data-action', d.action);
+      btn.style.cssText = [
+        `grid-row:${d.row}`, `grid-column:${d.col}`,
+        'background:rgba(0,0,0,0.7)', 'border:1px solid #FF0055',
+        'color:#FF3377', 'font-size:14px', 'cursor:pointer',
+        'display:flex', 'align-items:center', 'justify-content:center',
+        'border-radius:2px', 'touch-action:manipulation',
+      ].join(';');
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('hudMovementButton', {
+          detail: { action: d.action }
+        }));
+      });
+      container.appendChild(btn);
+    }
   }
 }

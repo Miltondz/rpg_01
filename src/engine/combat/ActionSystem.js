@@ -3,7 +3,7 @@
  * Implements 5 action types: Attack, Skill, Item, Defend, Flee
  */
 
-import { combatBalanceConfig } from '../balance/CombatBalanceConfig.js';
+import { CombatBalanceConfig, combatBalanceConfig } from '../balance/CombatBalanceConfig.js';
 
 export class ActionSystem {
   constructor() {
@@ -208,15 +208,31 @@ export class ActionSystem {
    */
   executeAttack(action, attacker, targets, result) {
     const targetArray = Array.isArray(targets) ? targets : [targets];
-    
+
+    // Back-row characters can't make melee attacks
+    if (attacker.row === 'back' && !action.ranged) {
+      result.success = false;
+      result.messages.push(`${attacker.name} can't reach from the back row!`);
+      return result;
+    }
+
     for (const target of targetArray) {
       if (!target || !target.isAlive()) {
         continue;
       }
-      
+
+      // Roll to-hit: d20 + ATK_BONUS vs target AC (DEF + SPD modifier)
+      const atkBonus = Math.floor((attacker.stats?.ATK ?? 10) / 4);
+      const targetAC = Math.floor((target.stats?.DEF ?? 5) / 2) + Math.floor((target.stats?.SPD ?? 5) / 6);
+      const hitRoll  = Math.floor(Math.random() * 20) + 1 + atkBonus;
+      if (hitRoll < targetAC) {
+        result.messages.push(`${attacker.name} misses ${target.name}!`);
+        continue;
+      }
+
       // Calculate damage
       const damageResult = this.calculateDamage(attacker, target, action);
-      
+
       // Apply damage — use elemental resistance if target supports it
       let actualDamage = Math.max(1, damageResult.finalDamage);
       let died;
@@ -313,18 +329,39 @@ export class ActionSystem {
    */
   executeSkillAttack(skill, attacker, targets, result) {
     const skillMultiplier = this.getSkillDamageMultiplier(skill.id);
-    
+
+    // Saving throw stat map: Fortitude→DEF, Reflex→SPD, Will→SPD
+    const SAVE_STAT = { Fortitude: 'DEF', Reflex: 'SPD', Will: 'SPD' };
+
     for (const target of targets) {
       if (!target || !target.isAlive()) {
         continue;
       }
-      
+
+      // Saving throw check
+      let savedHalf = false;
+      let savedFull = false;
+      if (skill.savingThrow && skill.savingThrowDC) {
+        const saveStat = target.stats[SAVE_STAT[skill.savingThrow] ?? 'DEF'] ?? 10;
+        const saveRoll = Math.floor(Math.random() * 20) + 1 + Math.floor((saveStat - 10) / 2);
+        if (saveRoll >= skill.savingThrowDC) {
+          if (skill.savingThrow === 'Reflex') savedHalf = true;
+          else savedFull = true;
+        }
+      }
+
+      if (savedFull) {
+        result.messages.push(`${target.name} resists ${skill.name}!`);
+        continue;
+      }
+
       // Calculate skill damage
       const damageResult = this.calculateDamage(attacker, target, { type: 'skill', skillMultiplier });
       
       // Apply damage — use elemental resistance if target supports it
-      let actualDamage = Math.max(1, damageResult.finalDamage);
+      let actualDamage = Math.max(1, savedHalf ? Math.floor(damageResult.finalDamage / 2) : damageResult.finalDamage);
       let died;
+      if (savedHalf) result.messages.push(`${target.name} partially evades ${skill.name}!`);
       const element = skill.element ?? attacker.stats?.element ?? 'Physical';
       if (typeof target.takeDamageWithElement === 'function') {
         actualDamage = Math.max(1, target.takeDamageWithElement(actualDamage, element));
@@ -359,6 +396,11 @@ export class ActionSystem {
         // Apply any status effects defined on the skill
         for (const effect of skill.effects || []) {
           if (effect.type === 'status') {
+            const immune = target.immunities?.includes(effect.statusType);
+            if (immune) {
+              result.messages.push(`${target.name} is immune to ${effect.statusType}!`);
+              continue;
+            }
             target.statusEffects.push({
               type: effect.statusType,
               value: effect.value,
@@ -590,12 +632,13 @@ export class ActionSystem {
     const variance = 0.9 + (Math.random() * 0.2);
     let finalDamage = Math.floor(baseDamage * variance);
     
-    // Check for critical hit
-    const criticalChance = this.calculateCriticalChance(attacker);
-    const isCritical = Math.random() < criticalChance;
-    
+    // Check for critical hit via d20 roll against configurable range
+    const critCfg = action?.critConfig ?? attacker.critConfig ?? CombatBalanceConfig.CRIT_DEFAULTS;
+    const critRoll = Math.floor(Math.random() * 20) + 1;
+    const isCritical = critRoll >= critCfg.minimum && critRoll <= critCfg.maximum;
+
     if (isCritical) {
-      finalDamage *= 2; // Critical hits deal 2x damage
+      finalDamage *= critCfg.multiplier;
     }
     
     // Apply elemental modifiers

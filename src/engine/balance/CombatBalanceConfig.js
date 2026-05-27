@@ -4,6 +4,10 @@
  */
 
 export class CombatBalanceConfig {
+  // d20 roll range for critical hits. roll >= minimum && roll <= maximum → crit.
+  // Weapons/skills can override per-entry via critConfig: { minimum, maximum, multiplier }.
+  static CRIT_DEFAULTS = { minimum: 19, maximum: 20, multiplier: 2 };
+
   constructor() {
     // Combat timing targets (in seconds)
     this.combatTimingTargets = {

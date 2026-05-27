@@ -177,8 +177,10 @@ export class PartyManager {
       if (character) {
         if (i < 2) {
           this.formation.frontRow.push(character);
+          character.row = 'front';
         } else {
           this.formation.backRow.push(character);
+          character.row = 'back';
         }
       }
     }

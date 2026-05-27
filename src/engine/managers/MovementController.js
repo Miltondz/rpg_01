@@ -378,6 +378,29 @@ export class MovementController {
 
   // Emit movement completed event for game loop integration
   _emitMovementCompleted(newPosition) {
+    if (this.gridSystem?.setTileExplored) {
+      this.gridSystem.setTileExplored(newPosition.x, newPosition.z);
+    }
+
+    // Tile effects: pit and forceField fire after landing
+    const tile = this.gridSystem?.getTile(newPosition.x, newPosition.z);
+    if (tile?.pit && (!tile.pit.hidden || tile.pit.revealed)) {
+      if (tile.pit.hidden && !tile.pit.revealed) tile.pit.revealed = true;
+      window.dispatchEvent(new CustomEvent('pitEntered', {
+        detail: { pitData: tile.pit, position: { ...newPosition } }
+      }));
+    } else if (tile?.pit?.hidden && !tile.pit.revealed) {
+      tile.pit.revealed = true;
+      window.dispatchEvent(new CustomEvent('pitEntered', {
+        detail: { pitData: tile.pit, position: { ...newPosition } }
+      }));
+    }
+    if (tile?.forceField && tile.forceField.affectTeam !== false) {
+      window.dispatchEvent(new CustomEvent('forceFieldEntered', {
+        detail: { forceField: tile.forceField, position: { ...newPosition } }
+      }));
+    }
+
     if (typeof window !== 'undefined' && window.dispatchEvent) {
       const event = new CustomEvent('movementCompleted', {
         detail: {

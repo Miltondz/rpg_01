@@ -44,6 +44,9 @@ export class InputManager {
       'Digit4':     'combatAction4',
       'Digit5':     'combatAction5',
 
+      // Camp / rest (Feature #18)
+      'KeyZ':       'openCamp',
+
       // Dev / debug (kept from previous build)
       'KeyT':       'loadTest',
       'KeyL':       'loadTest',

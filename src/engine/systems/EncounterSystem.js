@@ -7,9 +7,10 @@ import { Enemy } from '../combat/Enemy.js';
 import { enemyDatabase } from '../data/EnemyDatabase.js';
 
 export class EncounterSystem {
-  constructor(combatSystem, partyManager) {
+  constructor(combatSystem, partyManager, gridSystem = null) {
     this.combatSystem = combatSystem;
     this.partyManager = partyManager;
+    this.gridSystem   = gridSystem;
     
     // Encounter settings
     this.encounterChance = 0.17; // 17% chance (15-20% range)
@@ -412,6 +413,9 @@ export class EncounterSystem {
     });
 
     // Initialize combat after the transition has started
+    const xpMultiplier = this.gridSystem?.getZoneMultiplier
+      ? this.gridSystem.getZoneMultiplier(position?.x ?? 0, position?.z ?? 0)
+      : 1;
     const combatInitialized = this.combatSystem.initializeCombat(
       this.partyManager,
       enemies,
@@ -419,7 +423,8 @@ export class EncounterSystem {
         type: encounterData.type,
         id: encounterData.id,
         position: position,
-        environment: encounterData.environment
+        environment: encounterData.environment,
+        xpMultiplier
       }
     );
 

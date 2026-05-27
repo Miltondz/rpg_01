@@ -4,6 +4,7 @@
  */
 
 import { combatBalanceConfig } from '../balance/CombatBalanceConfig.js';
+import { Dice } from '../utils/Dice.js';
 
 export class SkillSystem {
     constructor() {
@@ -387,6 +388,67 @@ export class SkillSystem {
                 }
             ]
         });
+
+        // Feature #20: onCast script spells
+        this.registerSkill({
+            id: 'fireball',
+            name: 'Fireball',
+            description: '4d6 Fire damage to all enemies',
+            class: 'mage',
+            level: 3,
+            apCost: 3,
+            cooldown: 2,
+            targetType: 'enemy_all',
+            savingThrow: 'Reflex',
+            savingThrowDC: 15,
+            onCast: (caster, targets) => {
+                const dmg = Dice.parse('4d6').roll();
+                return (targets ?? []).map(t => {
+                    const actual = t.takeDamageWithElement?.(dmg, 'Fire') ?? dmg;
+                    return { target: t.name, damage: actual, element: 'Fire' };
+                });
+            }
+        });
+
+        this.registerSkill({
+            id: 'ice_bolt',
+            name: 'Ice Bolt',
+            description: '2d8 Ice damage, chance to slow',
+            class: 'mage',
+            level: 2,
+            apCost: 2,
+            cooldown: 1,
+            targetType: 'enemy_single',
+            onCast: (caster, targets) => {
+                const dmg = Dice.parse('2d8').roll();
+                return (targets ?? []).map(t => {
+                    const actual = t.takeDamageWithElement?.(dmg, 'Ice') ?? dmg;
+                    if (Math.random() < 0.4 && t.statusEffects) {
+                        t.statusEffects.push({ type: 'slow', duration: 2 });
+                    }
+                    return { target: t.name, damage: actual, element: 'Ice' };
+                });
+            }
+        });
+
+        this.registerSkill({
+            id: 'holy_smite',
+            name: 'Holy Smite',
+            description: '3d6 Light damage, extra vs undead',
+            class: 'cleric',
+            level: 2,
+            apCost: 2,
+            cooldown: 1,
+            targetType: 'enemy_single',
+            onCast: (caster, targets) => {
+                return (targets ?? []).map(t => {
+                    const base = Dice.parse('3d6').roll();
+                    const bonus = t.resistances?.Light != null ? 1 : (t.type?.includes('undead') ? 1.5 : 1);
+                    const actual = t.takeDamageWithElement?.(Math.floor(base * bonus), 'Light') ?? base;
+                    return { target: t.name, damage: actual, element: 'Light' };
+                });
+            }
+        });
     }
 
     /**
@@ -481,8 +543,19 @@ export class SkillSystem {
             this.setCooldown(character.id, skillId, skill.cooldown);
         }
 
-        // Apply skill effects
-        const effects = this.applySkillEffects(character, skill, targets);
+        // Feature #20: onCast function takes priority over effects array
+        let effects;
+        if (typeof skill.onCast === 'function') {
+            try {
+                const result = skill.onCast(character, targets, skill.level ?? 1);
+                effects = Array.isArray(result) ? result : [result];
+            } catch (e) {
+                console.warn(`onCast error for ${skillId}:`, e);
+                effects = [];
+            }
+        } else {
+            effects = this.applySkillEffects(character, skill, targets);
+        }
 
         console.log(`${character.name} used ${skill.name}`);
 
@@ -492,6 +565,14 @@ export class SkillSystem {
             effects: effects,
             targets: targets
         };
+    }
+
+    /**
+     * Register a spell with an onCast script function.
+     * Alias of registerSkill — provided for clarity.
+     */
+    registerSpell(spellDef) {
+        this.registerSkill(spellDef);
     }
 
     /**

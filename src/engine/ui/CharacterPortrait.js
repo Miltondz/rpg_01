@@ -56,6 +56,65 @@ export class CharacterPortrait {
     };
     img.src = `assets/portraits/${key}.png`;
   }
+
+  /**
+   * Feature #24: Animated portrait using a horizontal spritesheet.
+   * Falls back to procedural idle blink if no spritesheet is found.
+   *
+   * @param {string} typeKey - character class or enemy type
+   * @param {number} w - canvas width
+   * @param {number} h - canvas height
+   * @param {number} frameCount - number of frames in spritesheet
+   * @param {number} fps - animation speed in frames per second
+   * @returns {HTMLCanvasElement} with _stopAnimation() method attached
+   */
+  static createAnimatedCanvas(typeKey, w = 96, h = 128, frameCount = 4, fps = 2) {
+    const canvas = document.createElement('canvas');
+    canvas.width  = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+
+    const key = String(typeKey || 'unknown').toLowerCase().replace(/[^a-z_]/g, '_');
+    const sheetSrc = `assets/portraits/${key}_sheet.png`;
+    let frame = 0;
+
+    // Try spritesheet first
+    const sheet = new Image();
+    let useSheet = false;
+    sheet.onload = () => { useSheet = true; };
+    sheet.src = sheetSrc;
+
+    // Draw procedural first as placeholder
+    CharacterPortrait.draw(canvas, typeKey);
+
+    const draw = () => {
+      if (useSheet && sheet.complete) {
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(sheet, frame * w, 0, w, h, 0, 0, w, h);
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth   = 1;
+        ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+      } else {
+        // Procedural idle: subtle blink every 2 frames
+        if (frame % (frameCount - 1) === 0 && frame !== 0) {
+          const _fn = _P[key] || _P.unknown;
+          if (_fn) {
+            ctx.clearRect(0, 0, w, h);
+            _fn(ctx, w, h);
+            // Darken eyes slightly for blink
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(Math.floor(w * 0.25), Math.floor(h * 0.32),
+                         Math.floor(w * 0.5), Math.floor(h * 0.06));
+          }
+        }
+      }
+      frame = (frame + 1) % frameCount;
+    };
+
+    const interval = setInterval(draw, Math.round(1000 / fps));
+    canvas._stopAnimation = () => clearInterval(interval);
+    return canvas;
+  }
 }
 
 // ─── Private drawing helpers ──────────────────────────────────────────────────

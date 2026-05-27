@@ -38,32 +38,63 @@ export class ZoneTriggerSystem {
 
   /**
    * Check tile at (x, z) for triggers and fire them.
-   * Call from movementCompleted handler.
+   * Call from movementCompleted handler for onEnter / onStand.
+   *
+   * Feature #19: triggerOn field:
+   *   'enter' (default) — fires once when stepping onto tile
+   *   'stand'           — fires every time player is on this tile (no dedup)
+   *   'leave'           — fires when player leaves; use checkLeaveTriggers(prev)
    */
   checkTriggers(x, z) {
     const tile = this._grid?.getTile(x, z);
     if (!tile?.triggers) return;
 
     for (const trigger of tile.triggers) {
+      const on = trigger.triggerOn ?? 'enter';
+      if (on === 'leave') continue; // handled by checkLeaveTriggers
+
       const key = `${x},${z}::${trigger.type}::${(trigger.text ?? '').slice(0, 20)}`;
+      if (on === 'enter' && trigger.once && this._fired.has(key)) continue;
+      // 'stand' fires every time — no dedup check
+
+      this._fire(trigger, x, z);
+      if (on === 'enter' && trigger.once !== false) this._fired.add(key);
+    }
+  }
+
+  /**
+   * Call with the tile the player just LEFT to fire 'leave' triggers.
+   * @param {number} x - Previous tile X
+   * @param {number} z - Previous tile Z
+   */
+  checkLeaveTriggers(x, z) {
+    const tile = this._grid?.getTile(x, z);
+    if (!tile?.triggers) return;
+
+    for (const trigger of tile.triggers) {
+      if ((trigger.triggerOn ?? 'enter') !== 'leave') continue;
+      const key = `leave::${x},${z}::${(trigger.text ?? '').slice(0, 20)}`;
       if (trigger.once && this._fired.has(key)) continue;
 
-      switch (trigger.type) {
-        case 'flavor_text':
-          this._showText(trigger.title ?? '', trigger.text ?? '');
-          break;
-        case 'hud_message':
-          window.dispatchEvent(new CustomEvent('zoneTriggerHudMessage', {
-            detail: { text: trigger.text ?? '', msgType: trigger.msgType ?? 'system' }
-          }));
-          break;
-        default:
-          window.dispatchEvent(new CustomEvent('zoneTriggerFired', {
-            detail: { type: trigger.type, trigger, x, z }
-          }));
-      }
-
+      this._fire(trigger, x, z);
       if (trigger.once !== false) this._fired.add(key);
+    }
+  }
+
+  _fire(trigger, x, z) {
+    switch (trigger.type) {
+      case 'flavor_text':
+        this._showText(trigger.title ?? '', trigger.text ?? '');
+        break;
+      case 'hud_message':
+        window.dispatchEvent(new CustomEvent('zoneTriggerHudMessage', {
+          detail: { text: trigger.text ?? '', msgType: trigger.msgType ?? 'system' }
+        }));
+        break;
+      default:
+        window.dispatchEvent(new CustomEvent('zoneTriggerFired', {
+          detail: { type: trigger.type, trigger, x, z }
+        }));
     }
   }
 
